@@ -348,6 +348,104 @@ export default function Home() {
     await loadPhotoCount()
   }
 
+  async function deleteOwner() {
+    setMessage('')
+
+    if (!selectedOwnerId || !selectedOwner) {
+      setMessage('Select an owner first.')
+      return
+    }
+
+    const assignedHorses = horses.filter((horse) => horse.owner_id === selectedOwnerId)
+    const horseNames = assignedHorses.map((horse) => `"${horse.name}"`)
+
+    let warningMessage = `Delete owner "${selectedOwner.full_name}" permanently?\n\nThis action cannot be undone.`
+
+    if (assignedHorses.length === 1) {
+      warningMessage = `${horseNames[0]} is assigned to ${selectedOwner.full_name}.\n\nDeleting ${selectedOwner.full_name} will permanently delete the horse record as well.\n\nThis action cannot be undone.\n\nDo you want to continue?`
+    }
+
+    if (assignedHorses.length > 1) {
+      warningMessage = `${horseNames.join(', ')} are assigned to ${selectedOwner.full_name}.\n\nDeleting ${selectedOwner.full_name} will permanently delete those horse records as well.\n\nThis action cannot be undone.\n\nDo you want to continue?`
+    }
+
+    const confirmed = window.confirm(warningMessage)
+    if (!confirmed) return
+
+    const horseIdsToDelete = assignedHorses.map((horse) => horse.id)
+
+    if (horseIdsToDelete.length > 0) {
+      const { error: photoDeleteError } = await supabase
+        .from('photos')
+        .delete()
+        .in('horse_id', horseIdsToDelete)
+
+      if (photoDeleteError) {
+        setMessage(`Error deleting photos: ${photoDeleteError.message}`)
+        return
+      }
+
+      const { error: visitDeleteError } = await supabase
+        .from('visits')
+        .delete()
+        .in('horse_id', horseIdsToDelete)
+
+      if (visitDeleteError) {
+        setMessage(`Error deleting visits: ${visitDeleteError.message}`)
+        return
+      }
+
+      const { data: deletedHorses, error: horseDeleteError } = await supabase
+        .from('horses')
+        .delete()
+        .in('id', horseIdsToDelete)
+        .select('id')
+
+      if (horseDeleteError) {
+        setMessage(`Error deleting horses: ${horseDeleteError.message}`)
+        return
+      }
+
+      if ((deletedHorses || []).length !== horseIdsToDelete.length) {
+        setMessage(
+          'Horse delete was blocked. This usually means your Supabase delete policy is not allowing the delete.'
+        )
+        return
+      }
+    }
+
+    const { data: deletedOwners, error: ownerDeleteError } = await supabase
+      .from('owners')
+      .delete()
+      .eq('id', selectedOwnerId)
+      .select('id')
+
+    if (ownerDeleteError) {
+      setMessage(`Error deleting owner: ${ownerDeleteError.message}`)
+      return
+    }
+
+    if (!deletedOwners || deletedOwners.length === 0) {
+      setMessage(
+        'Owner delete was blocked. The button worked, but Supabase did not actually delete the row. This is usually a Row Level Security delete policy issue on the owners table.'
+      )
+      return
+    }
+
+    setEditingOwner(false)
+    setSelectedOwnerId(null)
+    setOwnerNameEdit('')
+    setOwnerPhoneEdit('')
+    setOwnerEmailEdit('')
+    setOwnerAddressEdit('')
+    setMessage('Owner and related records deleted permanently.')
+
+    await loadOwners()
+    await loadHorses()
+    await loadVisitCount()
+    await loadPhotoCount()
+  }
+
   function startOwnerEdit(owner: Owner) {
     setEditingOwner(true)
     setOwnerNameEdit(owner.full_name || '')
@@ -465,14 +563,14 @@ export default function Home() {
     <main className="min-h-screen bg-slate-400 p-4 md:p-6 xl:p-8">
       <div className="mx-auto max-w-7xl">
         <div className="rounded-3xl bg-white p-5 shadow-sm md:p-6">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-[140px_1fr_260px] md:items-center">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-[180px_1fr_320px] md:items-center">
             <div className="flex justify-center md:justify-start">
-              <div className="relative h-20 w-20 overflow-hidden rounded-2xl bg-slate-100">
+              <div className="relative h-28 w-28 overflow-hidden rounded-2xl bg-slate-100 md:h-32 md:w-32">
                 <Image
                   src="/logo.png"
                   alt="Short-Go logo"
                   fill
-                  className="object-contain p-2"
+                  className="object-contain p-1"
                 />
               </div>
             </div>
@@ -490,20 +588,30 @@ export default function Home() {
             </div>
 
             <div className="flex flex-col items-center gap-3 md:items-end">
-              <p className="text-sm text-slate-500 break-all text-center md:text-right">
+              <p className="break-all text-center text-sm text-slate-500 md:text-right">
                 Signed in as: {userEmail || 'Unknown user'}
               </p>
-              <button
-                onClick={handleSignOut}
-                className="min-h-[44px] rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-900"
-              >
-                Sign Out
-              </button>
+
+              <div className="flex flex-wrap justify-center gap-2 md:justify-end">
+                <Link
+                  href="/anatomy"
+                  className="min-h-[44px] rounded-2xl border border-slate-900 bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+                >
+                  Anatomy Viewer
+                </Link>
+
+                <button
+                  onClick={handleSignOut}
+                  className="min-h-[44px] rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-900"
+                >
+                  Sign Out
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="mt-5 grid gap-4 grid-cols-2 xl:grid-cols-4">
+        <div className="mt-5 grid grid-cols-2 gap-4 xl:grid-cols-4">
           <StatCard label="Owners" value={owners.length} />
           <StatCard label="Horses" value={horses.length} />
           <StatCard label="Visits" value={visitCount} />
@@ -634,69 +742,85 @@ export default function Home() {
 
           <div className="mt-6 grid gap-6 xl:grid-cols-[340px_1fr]">
             <div className="rounded-3xl bg-slate-100 p-4 md:p-5">
-              <h3 className="text-lg font-semibold text-slate-900">
-                {searchMode === 'owner' ? 'Owner Results' : 'Horse Results'}
-              </h3>
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-lg font-semibold text-slate-900">
+                  {searchMode === 'owner' ? 'Owner Results' : 'Horse Results'}
+                </h3>
+                <span className="text-xs text-slate-500">
+                  {searchMode === 'owner'
+                    ? `${filteredOwners.length} result${filteredOwners.length === 1 ? '' : 's'}`
+                    : `${filteredHorses.length} result${filteredHorses.length === 1 ? '' : 's'}`}
+                </span>
+              </div>
 
-              <div className="mt-4 max-h-[520px] space-y-3 overflow-y-auto pr-2">
-                {searchMode === 'owner' ? (
-                  filteredOwners.length === 0 ? (
-                    <p className="text-sm text-slate-500">No owners found.</p>
+              <div className="mt-4 h-[520px] overflow-y-scroll pr-2">
+                <div className="space-y-3">
+                  {searchMode === 'owner' ? (
+                    filteredOwners.length === 0 ? (
+                      <p className="text-sm text-slate-500">No owners found.</p>
+                    ) : (
+                      filteredOwners.map((owner) => {
+                        const isSelected = selectedOwnerId === owner.id
+
+                        return (
+                          <button
+                            key={owner.id}
+                            onClick={() => {
+                              setSelectedOwnerId(owner.id)
+                              setEditingOwner(false)
+                            }}
+                            className={`w-full rounded-2xl border p-4 text-left transition ${
+                              isSelected
+                                ? 'border-slate-900 bg-slate-900 text-white'
+                                : 'border-slate-200 bg-white hover:border-slate-300'
+                            }`}
+                          >
+                            <p className="font-semibold">{owner.full_name}</p>
+                            <p
+                              className={`mt-1 text-sm ${
+                                isSelected ? 'text-slate-300' : 'text-slate-500'
+                              }`}
+                            >
+                              {owner.phone || 'No phone'}
+                            </p>
+                            <p
+                              className={`text-sm ${
+                                isSelected ? 'text-slate-300' : 'text-slate-500'
+                              }`}
+                            >
+                              {owner.email || 'No email'}
+                            </p>
+                            <p
+                              className={`mt-1 text-sm ${
+                                isSelected ? 'text-slate-300' : 'text-slate-500'
+                              }`}
+                            >
+                              {owner.address || 'No address'}
+                            </p>
+                          </button>
+                        )
+                      })
+                    )
+                  ) : filteredHorses.length === 0 ? (
+                    <p className="text-sm text-slate-500">Search to find a horse.</p>
                   ) : (
-                    filteredOwners.map((owner) => {
-                      const isSelected = selectedOwnerId === owner.id
-
-                      return (
-                        <button
-                          key={owner.id}
-                          onClick={() => {
-                            setSelectedOwnerId(owner.id)
-                            setEditingOwner(false)
-                          }}
-                          className={`w-full rounded-2xl border p-4 text-left transition ${
-                            isSelected
-                              ? 'border-slate-900 bg-slate-900 text-white'
-                              : 'border-slate-200 bg-white hover:border-slate-300'
-                          }`}
-                        >
-                          <p className="font-semibold">{owner.full_name}</p>
-                          <p
-                            className={`mt-1 text-sm ${
-                              isSelected ? 'text-slate-300' : 'text-slate-500'
-                            }`}
-                          >
-                            {owner.phone || 'No phone'}
-                          </p>
-                          <p
-                            className={`text-sm ${
-                              isSelected ? 'text-slate-300' : 'text-slate-500'
-                            }`}
-                          >
-                            {owner.email || 'No email'}
-                          </p>
-                        </button>
-                      )
-                    })
-                  )
-                ) : filteredHorses.length === 0 ? (
-                  <p className="text-sm text-slate-500">Search to find a horse.</p>
-                ) : (
-                  filteredHorses.map((horse) => (
-                    <Link
-                      key={horse.id}
-                      href={`/horses/${horse.id}`}
-                      className="block rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300"
-                    >
-                      <p className="font-semibold text-slate-900">{horse.name}</p>
-                      <p className="mt-1 text-sm text-slate-500">
-                        Owner: {horse.owners?.full_name || '—'}
-                      </p>
-                      <p className="text-sm text-slate-500">
-                        {horse.discipline || 'No discipline'}
-                      </p>
-                    </Link>
-                  ))
-                )}
+                    filteredHorses.map((horse) => (
+                      <Link
+                        key={horse.id}
+                        href={`/horses/${horse.id}`}
+                        className="block rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300"
+                      >
+                        <p className="font-semibold text-slate-900">{horse.name}</p>
+                        <p className="mt-1 text-sm text-slate-500">
+                          Owner: {horse.owners?.full_name || '—'}
+                        </p>
+                        <p className="text-sm text-slate-500">
+                          {horse.discipline || 'No discipline'}
+                        </p>
+                      </Link>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
 
@@ -791,6 +915,12 @@ export default function Home() {
                               className="rounded-2xl border border-amber-300 bg-white px-4 py-3 text-sm text-amber-700"
                             >
                               Archive Owner
+                            </button>
+                            <button
+                              onClick={deleteOwner}
+                              className="rounded-2xl border border-red-300 bg-white px-4 py-3 text-sm text-red-700"
+                            >
+                              Delete Owner
                             </button>
                           </div>
                         </div>
