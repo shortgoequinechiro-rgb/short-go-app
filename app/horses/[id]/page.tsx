@@ -1,9 +1,18 @@
 'use client'
 
 import Link from 'next/link'
-import { ChangeEvent, useEffect, useState } from 'react'
+import { ChangeEvent, useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
+
+type Owner = {
+  id: string
+  full_name: string
+  phone: string | null
+  email: string | null
+  address: string | null
+  archived: boolean
+}
 
 type Horse = {
   id: string
@@ -12,12 +21,14 @@ type Horse = {
   breed: string | null
   discipline: string | null
   barn_location: string | null
+  archived: boolean
   medical_alerts?: string | null
   history_notes?: string | null
   owners?: {
     full_name: string
     phone: string | null
     email: string | null
+    address: string | null
   } | null
 }
 
@@ -55,6 +66,9 @@ type PhotoWithSignedUrl = Photo & {
   signed_url?: string | null
 }
 
+const RECENT_HORSE_IDS_KEY = 'shortgo_recent_horse_ids'
+const RECENT_OWNER_IDS_KEY = 'shortgo_recent_owner_ids'
+
 const emptyVisitForm = {
   visitDate: '',
   visitLocation: '',
@@ -79,9 +93,25 @@ export default function HorseDetailPage() {
   const [userEmail, setUserEmail] = useState('')
   const [message, setMessage] = useState('')
 
+  const [owners, setOwners] = useState<Owner[]>([])
   const [horse, setHorse] = useState<Horse | null>(null)
+  const [ownerOtherHorses, setOwnerOtherHorses] = useState<Horse[]>([])
+  const [selectedOwnerHorseId, setSelectedOwnerHorseId] = useState('')
   const [visits, setVisits] = useState<Visit[]>([])
   const [photos, setPhotos] = useState<PhotoWithSignedUrl[]>([])
+
+  const [editingHorse, setEditingHorse] = useState(false)
+  const [horseNameEdit, setHorseNameEdit] = useState('')
+  const [horseBreedEdit, setHorseBreedEdit] = useState('')
+  const [horseDisciplineEdit, setHorseDisciplineEdit] = useState('')
+  const [horseBarnLocationEdit, setHorseBarnLocationEdit] = useState('')
+  const [horseOwnerIdEdit, setHorseOwnerIdEdit] = useState('')
+
+  const [editingOwner, setEditingOwner] = useState(false)
+  const [ownerNameEdit, setOwnerNameEdit] = useState('')
+  const [ownerPhoneEdit, setOwnerPhoneEdit] = useState('')
+  const [ownerEmailEdit, setOwnerEmailEdit] = useState('')
+  const [ownerAddressEdit, setOwnerAddressEdit] = useState('')
 
   const [editingVisitId, setEditingVisitId] = useState<string | null>(null)
   const [generatingSoap, setGeneratingSoap] = useState(false)
@@ -126,6 +156,41 @@ export default function HorseDetailPage() {
     router.push('/login')
   }
 
+  function saveRecentHorse(id: string) {
+    if (typeof window === 'undefined') return
+
+    const existing = window.localStorage.getItem(RECENT_HORSE_IDS_KEY)
+    const parsed: string[] = existing ? JSON.parse(existing) : []
+    const updated = [id, ...parsed.filter((item) => item !== id)].slice(0, 3)
+
+    window.localStorage.setItem(RECENT_HORSE_IDS_KEY, JSON.stringify(updated))
+  }
+
+  function saveRecentOwner(id: string) {
+    if (typeof window === 'undefined') return
+
+    const existing = window.localStorage.getItem(RECENT_OWNER_IDS_KEY)
+    const parsed: string[] = existing ? JSON.parse(existing) : []
+    const updated = [id, ...parsed.filter((item) => item !== id)].slice(0, 3)
+
+    window.localStorage.setItem(RECENT_OWNER_IDS_KEY, JSON.stringify(updated))
+  }
+
+  async function loadOwners() {
+    const { data, error } = await supabase
+      .from('owners')
+      .select('id, full_name, phone, email, address, archived')
+      .eq('archived', false)
+      .order('full_name', { ascending: true })
+
+    if (error) {
+      setMessage(`Error loading owners: ${error.message}`)
+      return
+    }
+
+    setOwners((data || []) as Owner[])
+  }
+
   async function loadHorse() {
     const { data, error } = await supabase
       .from('horses')
@@ -135,11 +200,13 @@ export default function HorseDetailPage() {
         owners (
           full_name,
           phone,
-          email
+          email,
+          address
         )
       `
       )
       .eq('id', horseId)
+      .eq('archived', false)
       .single()
 
     if (error) {
@@ -147,7 +214,47 @@ export default function HorseDetailPage() {
       return
     }
 
-    setHorse(data)
+    setHorse(data as Horse)
+
+    setHorseNameEdit(data.name || '')
+    setHorseBreedEdit(data.breed || '')
+    setHorseDisciplineEdit(data.discipline || '')
+    setHorseBarnLocationEdit(data.barn_location || '')
+    setHorseOwnerIdEdit(data.owner_id || '')
+
+    setOwnerNameEdit(data.owners?.full_name || '')
+    setOwnerPhoneEdit(data.owners?.phone || '')
+    setOwnerEmailEdit(data.owners?.email || '')
+    setOwnerAddressEdit(data.owners?.address || '')
+
+    if (data.owner_id) {
+      saveRecentOwner(data.owner_id)
+    }
+    saveRecentHorse(data.id)
+  }
+
+  async function loadOwnerOtherHorses(currentOwnerId: string | null) {
+    if (!currentOwnerId) {
+      setOwnerOtherHorses([])
+      setSelectedOwnerHorseId('')
+      return
+    }
+
+    const { data, error } = await supabase
+      .from('horses')
+      .select('id, owner_id, name, breed, discipline, barn_location, archived')
+      .eq('owner_id', currentOwnerId)
+      .eq('archived', false)
+      .order('name', { ascending: true })
+
+    if (error) {
+      setMessage(`Error loading owner horses: ${error.message}`)
+      return
+    }
+
+    const horsesForOwner = (data || []) as Horse[]
+    setOwnerOtherHorses(horsesForOwner)
+    setSelectedOwnerHorseId(horseId)
   }
 
   async function loadVisits() {
@@ -162,7 +269,7 @@ export default function HorseDetailPage() {
       return
     }
 
-    setVisits(data || [])
+    setVisits((data || []) as Visit[])
   }
 
   async function loadPhotos() {
@@ -192,10 +299,9 @@ export default function HorseDetailPage() {
           return { ...photo, signed_url: null }
         }
 
-        const { data: signedUrlData, error: signedUrlError } =
-          await supabase.storage
-            .from('horse-photos')
-            .createSignedUrl(photo.image_path, 60 * 60)
+        const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+          .from('horse-photos')
+          .createSignedUrl(photo.image_path, 60 * 60)
 
         if (signedUrlError) {
           console.error('Signed URL error:', signedUrlError.message, photo.image_path)
@@ -210,6 +316,94 @@ export default function HorseDetailPage() {
     )
 
     setPhotos(signedPhotos)
+  }
+
+  async function saveHorseInfo() {
+    setMessage('')
+
+    if (!horseNameEdit.trim()) {
+      setMessage('Horse name is required.')
+      return
+    }
+
+    if (!horseOwnerIdEdit) {
+      setMessage('Please select an owner.')
+      return
+    }
+
+    const { error } = await supabase
+      .from('horses')
+      .update({
+        owner_id: horseOwnerIdEdit,
+        name: horseNameEdit,
+        breed: horseBreedEdit || null,
+        discipline: horseDisciplineEdit || null,
+        barn_location: horseBarnLocationEdit || null,
+      })
+      .eq('id', horseId)
+
+    if (error) {
+      setMessage(`Error updating horse: ${error.message}`)
+      return
+    }
+
+    setEditingHorse(false)
+    setEditingOwner(false)
+    setMessage('Horse info updated successfully. History preserved with the horse record.')
+    await loadHorse()
+    await loadOwnerOtherHorses(horseOwnerIdEdit)
+    await loadVisits()
+  }
+
+  function cancelHorseEdit() {
+    setEditingHorse(false)
+    setHorseNameEdit(horse?.name || '')
+    setHorseBreedEdit(horse?.breed || '')
+    setHorseDisciplineEdit(horse?.discipline || '')
+    setHorseBarnLocationEdit(horse?.barn_location || '')
+    setHorseOwnerIdEdit(horse?.owner_id || '')
+  }
+
+  async function saveOwnerInfo() {
+    setMessage('')
+
+    if (!horse?.owner_id) {
+      setMessage('No owner is linked to this horse.')
+      return
+    }
+
+    if (!ownerNameEdit.trim()) {
+      setMessage('Owner name is required.')
+      return
+    }
+
+    const { error } = await supabase
+      .from('owners')
+      .update({
+        full_name: ownerNameEdit,
+        phone: ownerPhoneEdit || null,
+        email: ownerEmailEdit || null,
+        address: ownerAddressEdit || null,
+      })
+      .eq('id', horse.owner_id)
+
+    if (error) {
+      setMessage(`Error updating owner: ${error.message}`)
+      return
+    }
+
+    setEditingOwner(false)
+    setMessage('Owner info updated successfully.')
+    await loadOwners()
+    await loadHorse()
+  }
+
+  function cancelOwnerEdit() {
+    setEditingOwner(false)
+    setOwnerNameEdit(horse?.owners?.full_name || '')
+    setOwnerPhoneEdit(horse?.owners?.phone || '')
+    setOwnerEmailEdit(horse?.owners?.email || '')
+    setOwnerAddressEdit(horse?.owners?.address || '')
   }
 
   function resetVisitForm() {
@@ -448,11 +642,26 @@ export default function HorseDetailPage() {
     setSelectedFile(file)
   }
 
+  function handleOwnerHorseJump(nextHorseId: string) {
+    setSelectedOwnerHorseId(nextHorseId)
+    if (!nextHorseId || nextHorseId === horseId) return
+    router.push(`/horses/${nextHorseId}`)
+  }
+
+  const currentHorseOwnerName = useMemo(() => {
+    return (
+      owners.find((owner) => owner.id === horseOwnerIdEdit)?.full_name ||
+      horse?.owners?.full_name ||
+      '—'
+    )
+  }, [owners, horseOwnerIdEdit, horse])
+
   useEffect(() => {
     async function init() {
       const isLoggedIn = await checkUser()
       if (!isLoggedIn) return
 
+      await loadOwners()
       await loadHorse()
       await loadVisits()
       await loadPhotos()
@@ -460,6 +669,15 @@ export default function HorseDetailPage() {
 
     init()
   }, [horseId])
+
+  useEffect(() => {
+    if (horse?.owner_id) {
+      loadOwnerOtherHorses(horse.owner_id)
+    } else {
+      setOwnerOtherHorses([])
+      setSelectedOwnerHorseId('')
+    }
+  }, [horse?.owner_id])
 
   if (checkingAuth) {
     return (
@@ -489,8 +707,7 @@ export default function HorseDetailPage() {
               </h1>
 
               <p className="mt-2 text-slate-600">
-                {horse?.breed || '—'} • {horse?.discipline || '—'} •{' '}
-                {horse?.barn_location || '—'}
+                {horse?.breed || '—'} • {horse?.discipline || '—'} • {horse?.barn_location || '—'}
               </p>
             </div>
 
@@ -511,15 +728,191 @@ export default function HorseDetailPage() {
         <div className="mt-6 grid gap-6 lg:grid-cols-[340px_1fr]">
           <div className="space-y-6">
             <div className="rounded-3xl bg-white p-6 shadow-sm">
-              <h2 className="text-xl font-semibold text-slate-900">Horse Info</h2>
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-xl font-semibold text-slate-900">Horse Info</h2>
+                {!editingHorse ? (
+                  <button
+                    onClick={() => setEditingHorse(true)}
+                    className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+                  >
+                    Edit
+                  </button>
+                ) : null}
+              </div>
 
-              <div className="mt-4 space-y-3 text-sm text-slate-700">
-                <InfoRow label="Owner" value={horse?.owners?.full_name || '—'} />
-                <InfoRow label="Phone" value={horse?.owners?.phone || '—'} />
-                <InfoRow label="Email" value={horse?.owners?.email || '—'} />
-                <InfoRow label="Breed" value={horse?.breed || '—'} />
-                <InfoRow label="Discipline" value={horse?.discipline || '—'} />
-                <InfoRow label="Barn" value={horse?.barn_location || '—'} />
+              {!editingHorse ? (
+                <div className="mt-4 space-y-3 text-sm text-slate-700">
+                  <InfoRow label="Horse Name" value={horse?.name || '—'} />
+                  <InfoRow label="Breed" value={horse?.breed || '—'} />
+                  <InfoRow label="Discipline" value={horse?.discipline || '—'} />
+                  <InfoRow label="Barn" value={horse?.barn_location || '—'} />
+                  <InfoRow label="Owner" value={horse?.owners?.full_name || '—'} />
+                </div>
+              ) : (
+                <div className="mt-4 grid gap-4">
+                  <Field label="Horse Name">
+                    <input
+                      value={horseNameEdit}
+                      onChange={(e) => setHorseNameEdit(e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                      placeholder="Horse name"
+                    />
+                  </Field>
+
+                  <Field label="Owner">
+                    <select
+                      value={horseOwnerIdEdit}
+                      onChange={(e) => setHorseOwnerIdEdit(e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                    >
+                      <option value="">Select owner</option>
+                      {owners.map((owner) => (
+                        <option key={owner.id} value={owner.id}>
+                          {owner.full_name}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+
+                  <Field label="Breed">
+                    <input
+                      value={horseBreedEdit}
+                      onChange={(e) => setHorseBreedEdit(e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                      placeholder="Breed"
+                    />
+                  </Field>
+
+                  <Field label="Discipline">
+                    <input
+                      value={horseDisciplineEdit}
+                      onChange={(e) => setHorseDisciplineEdit(e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                      placeholder="Discipline"
+                    />
+                  </Field>
+
+                  <Field label="Barn Location">
+                    <input
+                      value={horseBarnLocationEdit}
+                      onChange={(e) => setHorseBarnLocationEdit(e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                      placeholder="Barn location"
+                    />
+                  </Field>
+
+                  <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
+                    New owner after save: <span className="font-semibold">{currentHorseOwnerName}</span>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={saveHorseInfo}
+                      className="rounded-xl bg-slate-900 px-4 py-3 text-sm text-white"
+                    >
+                      Save Horse Info
+                    </button>
+                    <button
+                      onClick={cancelHorseEdit}
+                      className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-3xl bg-white p-6 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-xl font-semibold text-slate-900">Owner Info</h2>
+                {!editingOwner ? (
+                  <button
+                    onClick={() => setEditingOwner(true)}
+                    className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+                  >
+                    Edit
+                  </button>
+                ) : null}
+              </div>
+
+              {!editingOwner ? (
+                <div className="mt-4 space-y-3 text-sm text-slate-700">
+                  <InfoRow label="Owner" value={horse?.owners?.full_name || '—'} />
+                  <InfoRow label="Phone" value={horse?.owners?.phone || '—'} />
+                  <InfoRow label="Email" value={horse?.owners?.email || '—'} />
+                  <InfoRow label="Address" value={horse?.owners?.address || '—'} />
+                </div>
+              ) : (
+                <div className="mt-4 grid gap-4">
+                  <Field label="Owner Name">
+                    <input
+                      value={ownerNameEdit}
+                      onChange={(e) => setOwnerNameEdit(e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                      placeholder="Owner name"
+                    />
+                  </Field>
+
+                  <Field label="Phone">
+                    <input
+                      value={ownerPhoneEdit}
+                      onChange={(e) => setOwnerPhoneEdit(e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                      placeholder="Phone"
+                    />
+                  </Field>
+
+                  <Field label="Email">
+                    <input
+                      value={ownerEmailEdit}
+                      onChange={(e) => setOwnerEmailEdit(e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                      placeholder="Email"
+                    />
+                  </Field>
+
+                  <Field label="Address">
+                    <textarea
+                      value={ownerAddressEdit}
+                      onChange={(e) => setOwnerAddressEdit(e.target.value)}
+                      className="min-h-[96px] w-full rounded-xl border border-slate-300 px-4 py-3"
+                      placeholder="Owner address"
+                    />
+                  </Field>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={saveOwnerInfo}
+                      className="rounded-xl bg-slate-900 px-4 py-3 text-sm text-white"
+                    >
+                      Save Owner Info
+                    </button>
+                    <button
+                      onClick={cancelOwnerEdit}
+                      className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-5 border-t border-slate-200 pt-5">
+                <Field label="Other Horses For This Owner">
+                  <select
+                    value={selectedOwnerHorseId}
+                    onChange={(e) => handleOwnerHorseJump(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                  >
+                    <option value="">Select a horse</option>
+                    {ownerOtherHorses.map((ownerHorse) => (
+                      <option key={ownerHorse.id} value={ownerHorse.id}>
+                        {ownerHorse.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
               </div>
             </div>
 
@@ -536,8 +929,7 @@ export default function HorseDetailPage() {
                     <option value="">No visit selected</option>
                     {visits.map((visit) => (
                       <option key={visit.id} value={visit.id}>
-                        {visit.visit_date || 'No date'} -{' '}
-                        {visit.reason_for_visit || 'Visit'}
+                        {visit.visit_date || 'No date'} - {visit.reason_for_visit || 'Visit'}
                       </option>
                     ))}
                   </select>
@@ -792,12 +1184,10 @@ recommend 2 light days`}
                       </div>
 
                       <p className="mt-2 text-sm text-slate-700">
-                        <span className="font-medium">Location:</span>{' '}
-                        {visit.location || '—'}
+                        <span className="font-medium">Location:</span> {visit.location || '—'}
                       </p>
                       <p className="text-sm text-slate-700">
-                        <span className="font-medium">Provider:</span>{' '}
-                        {visit.provider_name || '—'}
+                        <span className="font-medium">Provider:</span> {visit.provider_name || '—'}
                       </p>
 
                       <div className="mt-3 grid gap-3 md:grid-cols-2">
@@ -809,18 +1199,15 @@ recommend 2 light days`}
 
                       <div className="mt-3 grid gap-3 md:grid-cols-2">
                         <p className="text-sm text-slate-700">
-                          <span className="font-medium">Treated Areas:</span>{' '}
-                          {visit.treated_areas || '—'}
+                          <span className="font-medium">Treated Areas:</span> {visit.treated_areas || '—'}
                         </p>
                         <p className="text-sm text-slate-700">
-                          <span className="font-medium">Follow Up:</span>{' '}
-                          {visit.follow_up || '—'}
+                          <span className="font-medium">Follow Up:</span> {visit.follow_up || '—'}
                         </p>
                       </div>
 
                       <p className="mt-2 text-sm text-slate-700">
-                        <span className="font-medium">Recommendations:</span>{' '}
-                        {visit.recommendations || '—'}
+                        <span className="font-medium">Recommendations:</span> {visit.recommendations || '—'}
                       </p>
                     </div>
                   ))
@@ -840,28 +1227,18 @@ recommend 2 light days`}
                       key={photo.id}
                       className="overflow-hidden rounded-2xl border border-slate-200"
                     >
-{photo.signed_url ? (
-  <div>
-    <img
-      src={photo.signed_url}
-      alt={photo.caption || 'Horse photo'}
-      className="h-56 w-full object-cover"
-      onError={() => console.error('IMG failed to load:', photo.signed_url)}
-    />
-    <a
-      href={photo.signed_url}
-      target="_blank"
-      rel="noreferrer"
-      className="mt-2 block break-all text-xs text-blue-600 underline"
-    >
-      Open signed image directly
-    </a>
-  </div>
-) : (
-  <div className="flex h-56 items-center justify-center bg-slate-100 text-slate-400">
-    Private image unavailable
-  </div>
-)}
+                      {photo.signed_url ? (
+                        <img
+                          src={photo.signed_url}
+                          alt={photo.caption || 'Horse photo'}
+                          className="h-56 w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-56 items-center justify-center bg-slate-100 text-slate-400">
+                          Image unavailable
+                        </div>
+                      )}
+
                       <div className="p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div>

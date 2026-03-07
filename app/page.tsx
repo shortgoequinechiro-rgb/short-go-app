@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
@@ -10,6 +11,8 @@ type Owner = {
   full_name: string
   phone: string | null
   email: string | null
+  address: string | null
+  archived: boolean
   created_at: string
 }
 
@@ -20,6 +23,7 @@ type Horse = {
   breed: string | null
   discipline: string | null
   barn_location: string | null
+  archived: boolean
   created_at: string
   owners?: {
     full_name: string
@@ -27,6 +31,9 @@ type Horse = {
 }
 
 type SearchMode = 'owner' | 'horse'
+
+const RECENT_OWNER_IDS_KEY = 'shortgo_recent_owner_ids'
+const RECENT_HORSE_IDS_KEY = 'shortgo_recent_horse_ids'
 
 export default function Home() {
   const router = useRouter()
@@ -43,6 +50,7 @@ export default function Home() {
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
+  const [address, setAddress] = useState('')
 
   const [selectedOwnerIdForAdd, setSelectedOwnerIdForAdd] = useState('')
   const [horseName, setHorseName] = useState('')
@@ -53,6 +61,15 @@ export default function Home() {
   const [searchMode, setSearchMode] = useState<SearchMode>('owner')
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedOwnerId, setSelectedOwnerId] = useState<string | null>(null)
+
+  const [editingOwner, setEditingOwner] = useState(false)
+  const [ownerNameEdit, setOwnerNameEdit] = useState('')
+  const [ownerPhoneEdit, setOwnerPhoneEdit] = useState('')
+  const [ownerEmailEdit, setOwnerEmailEdit] = useState('')
+  const [ownerAddressEdit, setOwnerAddressEdit] = useState('')
+
+  const [recentOwnerIds, setRecentOwnerIds] = useState<string[]>([])
+  const [recentHorseIds, setRecentHorseIds] = useState<string[]>([])
 
   async function checkUser() {
     const {
@@ -78,6 +95,7 @@ export default function Home() {
     const { data, error } = await supabase
       .from('owners')
       .select('*')
+      .eq('archived', false)
       .order('full_name', { ascending: true })
 
     if (error) {
@@ -85,7 +103,7 @@ export default function Home() {
       return
     }
 
-    const ownerData = data || []
+    const ownerData = (data || []) as Owner[]
     setOwners(ownerData)
 
     if (!selectedOwnerIdForAdd && ownerData.length > 0) {
@@ -104,6 +122,7 @@ export default function Home() {
         )
       `
       )
+      .eq('archived', false)
       .order('name', { ascending: true })
 
     if (error) {
@@ -111,7 +130,7 @@ export default function Home() {
       return
     }
 
-    setHorses(data || [])
+    setHorses((data || []) as Horse[])
   }
 
   async function loadVisitCount() {
@@ -140,6 +159,36 @@ export default function Home() {
     setPhotoCount(count || 0)
   }
 
+  function loadRecentItems() {
+    if (typeof window === 'undefined') return
+
+    try {
+      const storedOwnerIds = window.localStorage.getItem(RECENT_OWNER_IDS_KEY)
+      const storedHorseIds = window.localStorage.getItem(RECENT_HORSE_IDS_KEY)
+
+      setRecentOwnerIds(storedOwnerIds ? JSON.parse(storedOwnerIds) : [])
+      setRecentHorseIds(storedHorseIds ? JSON.parse(storedHorseIds) : [])
+    } catch {
+      setRecentOwnerIds([])
+      setRecentHorseIds([])
+    }
+  }
+
+  function saveRecentOwner(ownerId: string) {
+    if (typeof window === 'undefined') return
+
+    try {
+      const existing = window.localStorage.getItem(RECENT_OWNER_IDS_KEY)
+      const parsed: string[] = existing ? JSON.parse(existing) : []
+      const updated = [ownerId, ...parsed.filter((id) => id !== ownerId)].slice(0, 3)
+
+      window.localStorage.setItem(RECENT_OWNER_IDS_KEY, JSON.stringify(updated))
+      setRecentOwnerIds(updated)
+    } catch {
+      // ignore localStorage issues
+    }
+  }
+
   async function addOwner() {
     setMessage('')
 
@@ -153,6 +202,8 @@ export default function Home() {
         full_name: fullName,
         phone: phone || null,
         email: email || null,
+        address: address || null,
+        archived: false,
       },
     ])
 
@@ -165,6 +216,7 @@ export default function Home() {
     setFullName('')
     setPhone('')
     setEmail('')
+    setAddress('')
     await loadOwners()
   }
 
@@ -188,6 +240,7 @@ export default function Home() {
         breed: horseBreed || null,
         discipline: horseDiscipline || null,
         barn_location: barnLocation || null,
+        archived: false,
       },
     ])
 
@@ -204,17 +257,125 @@ export default function Home() {
     await loadHorses()
   }
 
+  async function saveOwnerInfo() {
+    setMessage('')
+
+    if (!selectedOwnerId) {
+      setMessage('Select an owner first.')
+      return
+    }
+
+    if (!ownerNameEdit.trim()) {
+      setMessage('Owner name is required.')
+      return
+    }
+
+    const { error } = await supabase
+      .from('owners')
+      .update({
+        full_name: ownerNameEdit,
+        phone: ownerPhoneEdit || null,
+        email: ownerEmailEdit || null,
+        address: ownerAddressEdit || null,
+      })
+      .eq('id', selectedOwnerId)
+
+    if (error) {
+      setMessage(`Error updating owner: ${error.message}`)
+      return
+    }
+
+    setEditingOwner(false)
+    setMessage('Owner updated successfully.')
+    await loadOwners()
+  }
+
+  async function archiveOwner() {
+    setMessage('')
+
+    if (!selectedOwnerId || !selectedOwner) {
+      setMessage('Select an owner first.')
+      return
+    }
+
+    const assignedHorses = horses.filter((horse) => horse.owner_id === selectedOwnerId)
+    const horseNames = assignedHorses.map((horse) => `"${horse.name}"`)
+
+    let warningMessage = `Archive owner "${selectedOwner.full_name}"?`
+
+    if (assignedHorses.length === 1) {
+      warningMessage = `${horseNames[0]} is assigned to ${selectedOwner.full_name}.\n\nArchiving ${selectedOwner.full_name} will archive the horse record as well.\n\nVisits and photos will be preserved.\n\nDo you want to continue?`
+    }
+
+    if (assignedHorses.length > 1) {
+      warningMessage = `${horseNames.join(', ')} are assigned to ${selectedOwner.full_name}.\n\nArchiving ${selectedOwner.full_name} will archive those horse records as well.\n\nVisits and photos will be preserved.\n\nDo you want to continue?`
+    }
+
+    const confirmed = window.confirm(warningMessage)
+    if (!confirmed) return
+
+    const { error: ownerError } = await supabase
+      .from('owners')
+      .update({ archived: true })
+      .eq('id', selectedOwnerId)
+
+    if (ownerError) {
+      setMessage(`Error archiving owner: ${ownerError.message}`)
+      return
+    }
+
+    const { error: horseError } = await supabase
+      .from('horses')
+      .update({ archived: true })
+      .eq('owner_id', selectedOwnerId)
+
+    if (horseError) {
+      setMessage(`Error archiving horses: ${horseError.message}`)
+      return
+    }
+
+    setEditingOwner(false)
+    setSelectedOwnerId(null)
+    setOwnerNameEdit('')
+    setOwnerPhoneEdit('')
+    setOwnerEmailEdit('')
+    setOwnerAddressEdit('')
+    setMessage('Owner and related horses archived successfully.')
+
+    await loadOwners()
+    await loadHorses()
+    await loadVisitCount()
+    await loadPhotoCount()
+  }
+
+  function startOwnerEdit(owner: Owner) {
+    setEditingOwner(true)
+    setOwnerNameEdit(owner.full_name || '')
+    setOwnerPhoneEdit(owner.phone || '')
+    setOwnerEmailEdit(owner.email || '')
+    setOwnerAddressEdit(owner.address || '')
+  }
+
+  function cancelOwnerEdit() {
+    setEditingOwner(false)
+    setOwnerNameEdit(selectedOwner?.full_name || '')
+    setOwnerPhoneEdit(selectedOwner?.phone || '')
+    setOwnerEmailEdit(selectedOwner?.email || '')
+    setOwnerAddressEdit(selectedOwner?.address || '')
+  }
+
   const filteredOwners = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
 
-    if (searchMode !== 'owner') return owners
+    if (searchMode !== 'owner') return []
     if (!query) return owners
 
     return owners.filter((owner) => {
       return (
         owner.full_name.toLowerCase().includes(query) ||
         (owner.phone || '').toLowerCase().includes(query) ||
-        (owner.email || '').toLowerCase().includes(query)
+        (owner.email || '').toLowerCase().includes(query) ||
+        (owner.address || '').toLowerCase().includes(query)
       )
     })
   }, [owners, searchTerm, searchMode])
@@ -223,7 +384,7 @@ export default function Home() {
     const query = searchTerm.trim().toLowerCase()
 
     if (searchMode === 'horse') {
-      if (!query) return horses
+      if (!query) return []
 
       return horses.filter((horse) => {
         return (
@@ -246,6 +407,18 @@ export default function Home() {
     return owners.find((owner) => owner.id === selectedOwnerId) || null
   }, [owners, selectedOwnerId])
 
+  const recentOwners = useMemo(() => {
+    return recentOwnerIds
+      .map((id) => owners.find((owner) => owner.id === id))
+      .filter((owner): owner is Owner => Boolean(owner))
+  }, [recentOwnerIds, owners])
+
+  const recentHorses = useMemo(() => {
+    return recentHorseIds
+      .map((id) => horses.find((horse) => horse.id === id))
+      .filter((horse): horse is Horse => Boolean(horse))
+  }, [recentHorseIds, horses])
+
   useEffect(() => {
     async function init() {
       const isLoggedIn = await checkUser()
@@ -255,6 +428,7 @@ export default function Home() {
       await loadHorses()
       await loadVisitCount()
       await loadPhotoCount()
+      loadRecentItems()
     }
 
     init()
@@ -263,13 +437,24 @@ export default function Home() {
   useEffect(() => {
     if (searchMode === 'horse') {
       setSelectedOwnerId(null)
+      setEditingOwner(false)
     }
   }, [searchMode])
 
+  useEffect(() => {
+    if (selectedOwner) {
+      setOwnerNameEdit(selectedOwner.full_name || '')
+      setOwnerPhoneEdit(selectedOwner.phone || '')
+      setOwnerEmailEdit(selectedOwner.email || '')
+      setOwnerAddressEdit(selectedOwner.address || '')
+      saveRecentOwner(selectedOwner.id)
+    }
+  }, [selectedOwner])
+
   if (checkingAuth) {
     return (
-      <main className="min-h-screen bg-slate-100 p-4 md:p-8">
-        <div className="mx-auto max-w-4xl rounded-3xl bg-white p-6 shadow-sm">
+      <main className="min-h-screen bg-slate-400 p-4 md:p-8">
+        <div className="mx-auto max-w-7xl rounded-3xl bg-white p-6 shadow-sm">
           <p className="text-slate-700">Checking login...</p>
         </div>
       </main>
@@ -277,24 +462,35 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-100 p-4 md:p-6 xl:p-8">
+    <main className="min-h-screen bg-slate-400 p-4 md:p-6 xl:p-8">
       <div className="mx-auto max-w-7xl">
         <div className="rounded-3xl bg-white p-5 shadow-sm md:p-6">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-            <div>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-[140px_1fr_260px] md:items-center">
+            <div className="flex justify-center md:justify-start">
+              <div className="relative h-20 w-20 overflow-hidden rounded-2xl bg-slate-100">
+                <Image
+                  src="/logo.png"
+                  alt="Short-Go logo"
+                  fill
+                  className="object-contain p-2"
+                />
+              </div>
+            </div>
+
+            <div className="text-center">
               <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">
                 Short-Go Equine Chiropractic
               </p>
               <h1 className="mt-2 text-3xl font-bold text-slate-900 md:text-4xl">
                 Client Dashboard
               </h1>
-              <p className="mt-2 max-w-2xl text-sm text-slate-600 md:text-base">
+              <p className="mt-2 text-sm text-slate-600 md:text-base">
                 Search by owner or horse, then open the full horse record.
               </p>
             </div>
 
-            <div className="flex flex-col gap-3 xl:items-end">
-              <p className="text-sm text-slate-500 break-all">
+            <div className="flex flex-col items-center gap-3 md:items-end">
+              <p className="text-sm text-slate-500 break-all text-center md:text-right">
                 Signed in as: {userEmail || 'Unknown user'}
               </p>
               <button
@@ -314,6 +510,84 @@ export default function Home() {
           <StatCard label="Photos" value={photoCount} />
         </div>
 
+        <div className="mt-5 grid gap-5 xl:grid-cols-2">
+          <div className="rounded-3xl bg-white p-5 shadow-sm md:p-6">
+            <h2 className="text-xl font-semibold text-slate-900 md:text-2xl">
+              Recent Owners
+            </h2>
+
+            <div className="mt-4 space-y-3">
+              {recentOwners.length === 0 ? (
+                <p className="text-sm text-slate-500">No recent owners yet.</p>
+              ) : (
+                recentOwners.map((owner) => {
+                  const isSelected = selectedOwnerId === owner.id
+
+                  return (
+                    <button
+                      key={owner.id}
+                      onClick={() => {
+                        setSearchMode('owner')
+                        setSelectedOwnerId(owner.id)
+                        setEditingOwner(false)
+                      }}
+                      className={`w-full rounded-2xl border p-4 text-left transition ${
+                        isSelected
+                          ? 'border-slate-900 bg-slate-900 text-white'
+                          : 'border-slate-200 bg-white hover:border-slate-300'
+                      }`}
+                    >
+                      <p className="font-semibold">{owner.full_name}</p>
+                      <p
+                        className={`mt-1 text-sm ${
+                          isSelected ? 'text-slate-300' : 'text-slate-500'
+                        }`}
+                      >
+                        {owner.phone || 'No phone'}
+                      </p>
+                      <p
+                        className={`text-sm ${
+                          isSelected ? 'text-slate-300' : 'text-slate-500'
+                        }`}
+                      >
+                        {owner.email || 'No email'}
+                      </p>
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-3xl bg-white p-5 shadow-sm md:p-6">
+            <h2 className="text-xl font-semibold text-slate-900 md:text-2xl">
+              Recent Horses
+            </h2>
+
+            <div className="mt-4 space-y-3">
+              {recentHorses.length === 0 ? (
+                <p className="text-sm text-slate-500">No recent horses yet.</p>
+              ) : (
+                recentHorses.map((horse) => (
+                  <Link
+                    key={horse.id}
+                    href={`/horses/${horse.id}`}
+                    className="block rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300"
+                  >
+                    <p className="font-semibold text-slate-900">{horse.name}</p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Owner: {horse.owners?.full_name || '—'}
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      {horse.discipline || 'No discipline'}
+                    </p>
+                  </Link>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
         <div className="mt-5 rounded-3xl bg-white p-5 shadow-sm md:p-6">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
@@ -321,7 +595,7 @@ export default function Home() {
                 Find Records
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                Search by owner first or jump straight to a horse.
+                Owner results are scrollable. Horse results appear through search.
               </p>
             </div>
 
@@ -350,7 +624,7 @@ export default function Home() {
                   className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
                   placeholder={
                     searchMode === 'owner'
-                      ? 'Search owner name, phone, or email...'
+                      ? 'Search owner name, phone, email, or address...'
                       : 'Search horse, owner, breed, discipline, barn...'
                   }
                 />
@@ -359,12 +633,12 @@ export default function Home() {
           </div>
 
           <div className="mt-6 grid gap-6 xl:grid-cols-[340px_1fr]">
-            <div className="rounded-3xl bg-slate-50 p-4 md:p-5">
+            <div className="rounded-3xl bg-slate-100 p-4 md:p-5">
               <h3 className="text-lg font-semibold text-slate-900">
-                {searchMode === 'owner' ? 'Owners' : 'Horse Results'}
+                {searchMode === 'owner' ? 'Owner Results' : 'Horse Results'}
               </h3>
 
-              <div className="mt-4 space-y-3">
+              <div className="mt-4 max-h-[520px] space-y-3 overflow-y-auto pr-2">
                 {searchMode === 'owner' ? (
                   filteredOwners.length === 0 ? (
                     <p className="text-sm text-slate-500">No owners found.</p>
@@ -375,7 +649,10 @@ export default function Home() {
                       return (
                         <button
                           key={owner.id}
-                          onClick={() => setSelectedOwnerId(owner.id)}
+                          onClick={() => {
+                            setSelectedOwnerId(owner.id)
+                            setEditingOwner(false)
+                          }}
                           className={`w-full rounded-2xl border p-4 text-left transition ${
                             isSelected
                               ? 'border-slate-900 bg-slate-900 text-white'
@@ -402,7 +679,7 @@ export default function Home() {
                     })
                   )
                 ) : filteredHorses.length === 0 ? (
-                  <p className="text-sm text-slate-500">No horses found.</p>
+                  <p className="text-sm text-slate-500">Search to find a horse.</p>
                 ) : (
                   filteredHorses.map((horse) => (
                     <Link
@@ -423,7 +700,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="rounded-3xl bg-white border border-slate-200 p-5 md:p-6">
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 md:p-6">
               {searchMode === 'owner' ? (
                 !selectedOwner ? (
                   <div className="flex min-h-[300px] items-center justify-center rounded-2xl border border-dashed border-slate-300">
@@ -431,16 +708,93 @@ export default function Home() {
                   </div>
                 ) : (
                   <div>
-                    <div className="rounded-2xl bg-slate-50 p-4">
-                      <h3 className="text-xl font-semibold text-slate-900">
-                        {selectedOwner.full_name}
-                      </h3>
-                      <p className="mt-1 text-sm text-slate-600">
-                        Phone: {selectedOwner.phone || '—'}
-                      </p>
-                      <p className="text-sm text-slate-600">
-                        Email: {selectedOwner.email || '—'}
-                      </p>
+                    <div className="rounded-2xl bg-slate-100 p-4">
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div>
+                          <h3 className="text-xl font-semibold text-slate-900">
+                            {selectedOwner.full_name}
+                          </h3>
+                          <p className="mt-1 text-sm text-slate-600">
+                            Phone: {selectedOwner.phone || '—'}
+                          </p>
+                          <p className="text-sm text-slate-600">
+                            Email: {selectedOwner.email || '—'}
+                          </p>
+                          <p className="text-sm text-slate-600">
+                            Address: {selectedOwner.address || '—'}
+                          </p>
+                        </div>
+
+                        {!editingOwner ? (
+                          <button
+                            onClick={() => startOwnerEdit(selectedOwner)}
+                            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+                          >
+                            Edit Owner
+                          </button>
+                        ) : null}
+                      </div>
+
+                      {editingOwner ? (
+                        <div className="mt-4 grid gap-4">
+                          <Field label="Owner Name">
+                            <input
+                              value={ownerNameEdit}
+                              onChange={(e) => setOwnerNameEdit(e.target.value)}
+                              className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                              placeholder="Owner name"
+                            />
+                          </Field>
+
+                          <Field label="Phone">
+                            <input
+                              value={ownerPhoneEdit}
+                              onChange={(e) => setOwnerPhoneEdit(e.target.value)}
+                              className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                              placeholder="Phone"
+                            />
+                          </Field>
+
+                          <Field label="Email">
+                            <input
+                              value={ownerEmailEdit}
+                              onChange={(e) => setOwnerEmailEdit(e.target.value)}
+                              className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                              placeholder="Email"
+                            />
+                          </Field>
+
+                          <Field label="Address">
+                            <textarea
+                              value={ownerAddressEdit}
+                              onChange={(e) => setOwnerAddressEdit(e.target.value)}
+                              className="min-h-[96px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                              placeholder="Owner address"
+                            />
+                          </Field>
+
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              onClick={saveOwnerInfo}
+                              className="rounded-2xl bg-slate-900 px-4 py-3 text-sm text-white"
+                            >
+                              Save Owner Info
+                            </button>
+                            <button
+                              onClick={cancelOwnerEdit}
+                              className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={archiveOwner}
+                              className="rounded-2xl border border-amber-300 bg-white px-4 py-3 text-sm text-amber-700"
+                            >
+                              Archive Owner
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
 
                     <div className="mt-5">
@@ -576,6 +930,15 @@ export default function Home() {
                   onChange={(e) => setEmail(e.target.value)}
                   className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
                   placeholder="Email address"
+                />
+              </Field>
+
+              <Field label="Address">
+                <textarea
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="min-h-[96px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                  placeholder="Owner address"
                 />
               </Field>
 
