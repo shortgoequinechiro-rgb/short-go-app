@@ -99,6 +99,9 @@ export default function HorseDetailPage() {
   const [selectedOwnerHorseId, setSelectedOwnerHorseId] = useState('')
   const [visits, setVisits] = useState<Visit[]>([])
   const [photos, setPhotos] = useState<PhotoWithSignedUrl[]>([])
+  const [anatomyRegionCounts, setAnatomyRegionCounts] = useState<
+    Record<string, number>
+  >({})
 
   const [editingHorse, setEditingHorse] = useState(false)
   const [horseNameEdit, setHorseNameEdit] = useState('')
@@ -269,7 +272,35 @@ export default function HorseDetailPage() {
       return
     }
 
-    setVisits((data || []) as Visit[])
+    const visitData = (data || []) as Visit[]
+    setVisits(visitData)
+
+    if (visitData.length === 0) {
+      setAnatomyRegionCounts({})
+      return
+    }
+
+    const { data: anatomyData, error: anatomyError } = await supabase
+      .from('visit_anatomy_regions')
+      .select('visit_id, region_key')
+      .in(
+        'visit_id',
+        visitData.map((visit) => visit.id)
+      )
+
+    if (anatomyError) {
+      setMessage(`Error loading anatomy note counts: ${anatomyError.message}`)
+      return
+    }
+
+    const counts: Record<string, number> = {}
+
+    for (const row of anatomyData || []) {
+      const visitId = row.visit_id as string
+      counts[visitId] = (counts[visitId] || 0) + 1
+    }
+
+    setAnatomyRegionCounts(counts)
   }
 
   async function loadPhotos() {
@@ -1165,9 +1196,29 @@ recommend 2 light days`}
                           <p className="text-sm text-slate-500">
                             {visit.visit_date || 'No date'}
                           </p>
+
+                          <div className="mt-2">
+                            {anatomyRegionCounts[visit.id] ? (
+                              <span className="inline-flex rounded-2xl bg-slate-900 px-3 py-1 text-xs font-medium text-white">
+                                Anatomy Notes: {anatomyRegionCounts[visit.id]} region
+                                {anatomyRegionCounts[visit.id] === 1 ? '' : 's'}
+                              </span>
+                            ) : (
+                              <span className="inline-flex rounded-2xl bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                                No anatomy notes yet
+                              </span>
+                            )}
+                          </div>
                         </div>
 
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
+                          <Link
+                            href={`/anatomy?visitId=${visit.id}&horseName=${encodeURIComponent(horse?.name || '')}`}
+                            className="rounded-xl border border-slate-900 bg-slate-900 px-3 py-2 text-sm text-white"
+                          >
+                            Open Anatomy
+                          </Link>
+
                           <button
                             onClick={() => startEditVisit(visit)}
                             className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
