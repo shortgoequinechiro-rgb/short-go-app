@@ -273,7 +273,7 @@ function CameraAnimator({
   return null
 }
 
-export default function AnatomyPage() {
+function AnatomyContent() {
   const searchParams = useSearchParams()
   const visitId = searchParams.get('visitId') || ''
   const horseName = searchParams.get('horseName') || ''
@@ -822,3 +822,10 @@ export default function AnatomyPage() {
 }
 
 useGLTF.preload('/models/horse_anatomy_final.glb')
+export default function AnatomyPage() {
+  return (
+    <Suspense fallback={<div className="p-6">Loading anatomy...</div>}>
+      <AnatomyContent />
+    </Suspense>
+  )
+}
