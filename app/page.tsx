@@ -26,6 +26,8 @@ type Horse = {
   } | null
 }
 
+type SearchMode = 'owner' | 'horse'
+
 export default function Home() {
   const router = useRouter()
 
@@ -42,14 +44,15 @@ export default function Home() {
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
 
-  const [selectedOwnerId, setSelectedOwnerId] = useState('')
+  const [selectedOwnerIdForAdd, setSelectedOwnerIdForAdd] = useState('')
   const [horseName, setHorseName] = useState('')
   const [horseBreed, setHorseBreed] = useState('')
   const [horseDiscipline, setHorseDiscipline] = useState('')
   const [barnLocation, setBarnLocation] = useState('')
 
+  const [searchMode, setSearchMode] = useState<SearchMode>('owner')
   const [searchTerm, setSearchTerm] = useState('')
-  const [disciplineFilter, setDisciplineFilter] = useState('all')
+  const [selectedOwnerId, setSelectedOwnerId] = useState<string | null>(null)
 
   async function checkUser() {
     const {
@@ -75,7 +78,7 @@ export default function Home() {
     const { data, error } = await supabase
       .from('owners')
       .select('*')
-      .order('created_at', { ascending: false })
+      .order('full_name', { ascending: true })
 
     if (error) {
       setMessage(`Error loading owners: ${error.message}`)
@@ -85,8 +88,8 @@ export default function Home() {
     const ownerData = data || []
     setOwners(ownerData)
 
-    if (!selectedOwnerId && ownerData.length > 0) {
-      setSelectedOwnerId(ownerData[0].id)
+    if (!selectedOwnerIdForAdd && ownerData.length > 0) {
+      setSelectedOwnerIdForAdd(ownerData[0].id)
     }
   }
 
@@ -101,7 +104,7 @@ export default function Home() {
         )
       `
       )
-      .order('created_at', { ascending: false })
+      .order('name', { ascending: true })
 
     if (error) {
       setMessage(`Error loading horses: ${error.message}`)
@@ -168,7 +171,7 @@ export default function Home() {
   async function addHorse() {
     setMessage('')
 
-    if (!selectedOwnerId) {
+    if (!selectedOwnerIdForAdd) {
       setMessage('Please select an owner.')
       return
     }
@@ -180,7 +183,7 @@ export default function Home() {
 
     const { error } = await supabase.from('horses').insert([
       {
-        owner_id: selectedOwnerId,
+        owner_id: selectedOwnerIdForAdd,
         name: horseName,
         breed: horseBreed || null,
         discipline: horseDiscipline || null,
@@ -201,37 +204,47 @@ export default function Home() {
     await loadHorses()
   }
 
-  const disciplineOptions = useMemo(() => {
-    const values = Array.from(
-      new Set(
-        horses
-          .map((horse) => horse.discipline?.trim())
-          .filter((value): value is string => Boolean(value))
-      )
-    ).sort((a, b) => a.localeCompare(b))
+  const filteredOwners = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase()
 
-    return values
-  }, [horses])
+    if (searchMode !== 'owner') return owners
+    if (!query) return owners
+
+    return owners.filter((owner) => {
+      return (
+        owner.full_name.toLowerCase().includes(query) ||
+        (owner.phone || '').toLowerCase().includes(query) ||
+        (owner.email || '').toLowerCase().includes(query)
+      )
+    })
+  }, [owners, searchTerm, searchMode])
 
   const filteredHorses = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
 
-    return horses.filter((horse) => {
-      const matchesSearch =
-        !query ||
-        horse.name.toLowerCase().includes(query) ||
-        (horse.owners?.full_name || '').toLowerCase().includes(query) ||
-        (horse.breed || '').toLowerCase().includes(query) ||
-        (horse.barn_location || '').toLowerCase().includes(query) ||
-        (horse.discipline || '').toLowerCase().includes(query)
+    if (searchMode === 'horse') {
+      if (!query) return horses
 
-      const matchesDiscipline =
-        disciplineFilter === 'all' ||
-        (horse.discipline || '').toLowerCase() === disciplineFilter.toLowerCase()
+      return horses.filter((horse) => {
+        return (
+          horse.name.toLowerCase().includes(query) ||
+          (horse.owners?.full_name || '').toLowerCase().includes(query) ||
+          (horse.breed || '').toLowerCase().includes(query) ||
+          (horse.discipline || '').toLowerCase().includes(query) ||
+          (horse.barn_location || '').toLowerCase().includes(query)
+        )
+      })
+    }
 
-      return matchesSearch && matchesDiscipline
-    })
-  }, [horses, searchTerm, disciplineFilter])
+    if (!selectedOwnerId) return []
+
+    return horses.filter((horse) => horse.owner_id === selectedOwnerId)
+  }, [horses, searchTerm, searchMode, selectedOwnerId])
+
+  const selectedOwner = useMemo(() => {
+    if (!selectedOwnerId) return null
+    return owners.find((owner) => owner.id === selectedOwnerId) || null
+  }, [owners, selectedOwnerId])
 
   useEffect(() => {
     async function init() {
@@ -246,6 +259,12 @@ export default function Home() {
 
     init()
   }, [])
+
+  useEffect(() => {
+    if (searchMode === 'horse') {
+      setSelectedOwnerId(null)
+    }
+  }, [searchMode])
 
   if (checkingAuth) {
     return (
@@ -270,7 +289,7 @@ export default function Home() {
                 Client Dashboard
               </h1>
               <p className="mt-2 max-w-2xl text-sm text-slate-600 md:text-base">
-                iPad-first and phone-safe horse records, visit notes, and photos.
+                Search by owner or horse, then open the full horse record.
               </p>
             </div>
 
@@ -293,6 +312,237 @@ export default function Home() {
           <StatCard label="Horses" value={horses.length} />
           <StatCard label="Visits" value={visitCount} />
           <StatCard label="Photos" value={photoCount} />
+        </div>
+
+        <div className="mt-5 rounded-3xl bg-white p-5 shadow-sm md:p-6">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-slate-900 md:text-2xl">
+                Find Records
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Search by owner first or jump straight to a horse.
+              </p>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-[180px_1fr] xl:min-w-[560px]">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Search By
+                </label>
+                <select
+                  value={searchMode}
+                  onChange={(e) => setSearchMode(e.target.value as SearchMode)}
+                  className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                >
+                  <option value="owner">Owner</option>
+                  <option value="horse">Horse</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Search
+                </label>
+                <input
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                  placeholder={
+                    searchMode === 'owner'
+                      ? 'Search owner name, phone, or email...'
+                      : 'Search horse, owner, breed, discipline, barn...'
+                  }
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-6 xl:grid-cols-[340px_1fr]">
+            <div className="rounded-3xl bg-slate-50 p-4 md:p-5">
+              <h3 className="text-lg font-semibold text-slate-900">
+                {searchMode === 'owner' ? 'Owners' : 'Horse Results'}
+              </h3>
+
+              <div className="mt-4 space-y-3">
+                {searchMode === 'owner' ? (
+                  filteredOwners.length === 0 ? (
+                    <p className="text-sm text-slate-500">No owners found.</p>
+                  ) : (
+                    filteredOwners.map((owner) => {
+                      const isSelected = selectedOwnerId === owner.id
+
+                      return (
+                        <button
+                          key={owner.id}
+                          onClick={() => setSelectedOwnerId(owner.id)}
+                          className={`w-full rounded-2xl border p-4 text-left transition ${
+                            isSelected
+                              ? 'border-slate-900 bg-slate-900 text-white'
+                              : 'border-slate-200 bg-white hover:border-slate-300'
+                          }`}
+                        >
+                          <p className="font-semibold">{owner.full_name}</p>
+                          <p
+                            className={`mt-1 text-sm ${
+                              isSelected ? 'text-slate-300' : 'text-slate-500'
+                            }`}
+                          >
+                            {owner.phone || 'No phone'}
+                          </p>
+                          <p
+                            className={`text-sm ${
+                              isSelected ? 'text-slate-300' : 'text-slate-500'
+                            }`}
+                          >
+                            {owner.email || 'No email'}
+                          </p>
+                        </button>
+                      )
+                    })
+                  )
+                ) : filteredHorses.length === 0 ? (
+                  <p className="text-sm text-slate-500">No horses found.</p>
+                ) : (
+                  filteredHorses.map((horse) => (
+                    <Link
+                      key={horse.id}
+                      href={`/horses/${horse.id}`}
+                      className="block rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300"
+                    >
+                      <p className="font-semibold text-slate-900">{horse.name}</p>
+                      <p className="mt-1 text-sm text-slate-500">
+                        Owner: {horse.owners?.full_name || '—'}
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        {horse.discipline || 'No discipline'}
+                      </p>
+                    </Link>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-3xl bg-white border border-slate-200 p-5 md:p-6">
+              {searchMode === 'owner' ? (
+                !selectedOwner ? (
+                  <div className="flex min-h-[300px] items-center justify-center rounded-2xl border border-dashed border-slate-300">
+                    <p className="text-slate-500">Select an owner to view horses.</p>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="rounded-2xl bg-slate-50 p-4">
+                      <h3 className="text-xl font-semibold text-slate-900">
+                        {selectedOwner.full_name}
+                      </h3>
+                      <p className="mt-1 text-sm text-slate-600">
+                        Phone: {selectedOwner.phone || '—'}
+                      </p>
+                      <p className="text-sm text-slate-600">
+                        Email: {selectedOwner.email || '—'}
+                      </p>
+                    </div>
+
+                    <div className="mt-5">
+                      <h4 className="text-lg font-semibold text-slate-900">
+                        Horses
+                      </h4>
+
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        {filteredHorses.length === 0 ? (
+                          <p className="text-sm text-slate-500">
+                            No horses for this owner yet.
+                          </p>
+                        ) : (
+                          filteredHorses.map((horse) => (
+                            <Link
+                              key={horse.id}
+                              href={`/horses/${horse.id}`}
+                              className="rounded-3xl border border-slate-200 p-5 transition hover:border-slate-400 hover:bg-slate-50"
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <p className="text-xl font-semibold text-slate-900">
+                                    {horse.name}
+                                  </p>
+                                  <p className="mt-1 text-sm text-slate-600">
+                                    Breed: {horse.breed || '—'}
+                                  </p>
+                                </div>
+
+                                {horse.discipline ? (
+                                  <span className="rounded-2xl bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                                    {horse.discipline}
+                                  </span>
+                                ) : null}
+                              </div>
+
+                              <div className="mt-4 text-sm text-slate-600">
+                                <p>Barn: {horse.barn_location || '—'}</p>
+                              </div>
+
+                              <div className="mt-5 inline-flex min-h-[44px] items-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white">
+                                Open Horse Record
+                              </div>
+                            </Link>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              ) : (
+                <div>
+                  <h3 className="text-xl font-semibold text-slate-900">
+                    Matching Horses
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Click a horse to open info, visits, and pictures.
+                  </p>
+
+                  <div className="mt-5 grid gap-4 md:grid-cols-2">
+                    {filteredHorses.length === 0 ? (
+                      <p className="text-sm text-slate-500">No horses found.</p>
+                    ) : (
+                      filteredHorses.map((horse) => (
+                        <Link
+                          key={horse.id}
+                          href={`/horses/${horse.id}`}
+                          className="rounded-3xl border border-slate-200 p-5 transition hover:border-slate-400 hover:bg-slate-50"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-xl font-semibold text-slate-900">
+                                {horse.name}
+                              </p>
+                              <p className="mt-1 text-sm text-slate-600">
+                                Owner: {horse.owners?.full_name || '—'}
+                              </p>
+                            </div>
+
+                            {horse.discipline ? (
+                              <span className="rounded-2xl bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                                {horse.discipline}
+                              </span>
+                            ) : null}
+                          </div>
+
+                          <div className="mt-4 grid gap-1 text-sm text-slate-600">
+                            <p>Breed: {horse.breed || '—'}</p>
+                            <p>Barn: {horse.barn_location || '—'}</p>
+                          </div>
+
+                          <div className="mt-5 inline-flex min-h-[44px] items-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white">
+                            Open Horse Record
+                          </div>
+                        </Link>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="mt-5 grid gap-5 xl:grid-cols-2">
@@ -346,8 +596,8 @@ export default function Home() {
             <div className="mt-4 grid gap-4">
               <Field label="Owner">
                 <select
-                  value={selectedOwnerId}
-                  onChange={(e) => setSelectedOwnerId(e.target.value)}
+                  value={selectedOwnerIdForAdd}
+                  onChange={(e) => setSelectedOwnerIdForAdd(e.target.value)}
                   className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
                 >
                   <option value="">Select an owner</option>
@@ -412,111 +662,6 @@ export default function Home() {
             {message}
           </div>
         ) : null}
-
-        <div className="mt-5 rounded-3xl bg-white p-5 shadow-sm md:p-6">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-slate-900 md:text-2xl">
-                Horse Records
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Fast lookup for iPad in the barn, but still easy on phone.
-              </p>
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-2 xl:min-w-[520px]">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Search
-                </label>
-                <input
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
-                  placeholder="Horse, owner, breed, barn, discipline..."
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Discipline
-                </label>
-                <select
-                  value={disciplineFilter}
-                  onChange={(e) => setDisciplineFilter(e.target.value)}
-                  className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
-                >
-                  <option value="all">All disciplines</option>
-                  {disciplineOptions.map((discipline) => (
-                    <option key={discipline} value={discipline}>
-                      {discipline}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className="rounded-2xl bg-slate-100 px-3 py-2 text-sm text-slate-700">
-              Showing {filteredHorses.length} of {horses.length} horses
-            </span>
-
-            {(searchTerm || disciplineFilter !== 'all') && (
-              <button
-                onClick={() => {
-                  setSearchTerm('')
-                  setDisciplineFilter('all')
-                }}
-                className="rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
-              >
-                Clear Filters
-              </button>
-            )}
-          </div>
-
-          <div className="mt-6 grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-            {filteredHorses.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-slate-500">
-                No horses match your search or filter.
-              </div>
-            ) : (
-              filteredHorses.map((horse) => (
-                <Link
-                  key={horse.id}
-                  href={`/horses/${horse.id}`}
-                  className="rounded-3xl border border-slate-200 p-5 transition hover:border-slate-400 hover:bg-slate-50"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xl font-semibold text-slate-900">
-                        {horse.name}
-                      </p>
-                      <p className="mt-1 text-sm text-slate-600">
-                        Owner: {horse.owners?.full_name || '—'}
-                      </p>
-                    </div>
-
-                    {horse.discipline ? (
-                      <span className="rounded-2xl bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                        {horse.discipline}
-                      </span>
-                    ) : null}
-                  </div>
-
-                  <div className="mt-4 grid gap-2 text-sm text-slate-600">
-                    <p>Breed: {horse.breed || '—'}</p>
-                    <p>Barn: {horse.barn_location || '—'}</p>
-                  </div>
-
-                  <div className="mt-5 inline-flex min-h-[44px] items-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white">
-                    Open Record
-                  </div>
-                </Link>
-              ))
-            )}
-          </div>
-        </div>
       </div>
     </main>
   )

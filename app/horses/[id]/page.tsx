@@ -51,6 +51,10 @@ type Photo = {
   } | null
 }
 
+type PhotoWithSignedUrl = Photo & {
+  signed_url?: string | null
+}
+
 const emptyVisitForm = {
   visitDate: '',
   visitLocation: '',
@@ -77,7 +81,7 @@ export default function HorseDetailPage() {
 
   const [horse, setHorse] = useState<Horse | null>(null)
   const [visits, setVisits] = useState<Visit[]>([])
-  const [photos, setPhotos] = useState<Photo[]>([])
+  const [photos, setPhotos] = useState<PhotoWithSignedUrl[]>([])
 
   const [editingVisitId, setEditingVisitId] = useState<string | null>(null)
   const [generatingSoap, setGeneratingSoap] = useState(false)
@@ -180,7 +184,32 @@ export default function HorseDetailPage() {
       return
     }
 
-    setPhotos(data || [])
+    const photoData = (data || []) as Photo[]
+
+    const signedPhotos = await Promise.all(
+      photoData.map(async (photo) => {
+        if (!photo.image_path) {
+          return { ...photo, signed_url: null }
+        }
+
+        const { data: signedUrlData, error: signedUrlError } =
+          await supabase.storage
+            .from('horse-photos')
+            .createSignedUrl(photo.image_path, 60 * 60)
+
+        if (signedUrlError) {
+          console.error('Signed URL error:', signedUrlError.message, photo.image_path)
+          return { ...photo, signed_url: null }
+        }
+
+        return {
+          ...photo,
+          signed_url: signedUrlData.signedUrl,
+        }
+      })
+    )
+
+    setPhotos(signedPhotos)
   }
 
   function resetVisitForm() {
@@ -359,12 +388,6 @@ export default function HorseDetailPage() {
         return
       }
 
-      const { data: publicUrlData } = supabase.storage
-        .from('horse-photos')
-        .getPublicUrl(filePath)
-
-      const imageUrl = publicUrlData.publicUrl
-
       const { error: insertError } = await supabase.from('photos').insert([
         {
           horse_id: horseId,
@@ -372,7 +395,7 @@ export default function HorseDetailPage() {
           caption: photoCaption || null,
           body_area: photoBodyArea || null,
           taken_at: photoTakenAt || null,
-          image_url: imageUrl,
+          image_url: null,
           image_path: filePath,
         },
       ])
@@ -394,7 +417,7 @@ export default function HorseDetailPage() {
     }
   }
 
-  async function deletePhoto(photo: Photo) {
+  async function deletePhoto(photo: PhotoWithSignedUrl) {
     const confirmed = window.confirm('Delete this photo?')
     if (!confirmed) return
 
@@ -817,18 +840,28 @@ recommend 2 light days`}
                       key={photo.id}
                       className="overflow-hidden rounded-2xl border border-slate-200"
                     >
-                      {photo.image_url ? (
-                        <img
-                          src={photo.image_url}
-                          alt={photo.caption || 'Horse photo'}
-                          className="h-56 w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-56 items-center justify-center bg-slate-100 text-slate-400">
-                          No image
-                        </div>
-                      )}
-
+{photo.signed_url ? (
+  <div>
+    <img
+      src={photo.signed_url}
+      alt={photo.caption || 'Horse photo'}
+      className="h-56 w-full object-cover"
+      onError={() => console.error('IMG failed to load:', photo.signed_url)}
+    />
+    <a
+      href={photo.signed_url}
+      target="_blank"
+      rel="noreferrer"
+      className="mt-2 block break-all text-xs text-blue-600 underline"
+    >
+      Open signed image directly
+    </a>
+  </div>
+) : (
+  <div className="flex h-56 items-center justify-center bg-slate-100 text-slate-400">
+    Private image unavailable
+  </div>
+)}
                       <div className="p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div>
