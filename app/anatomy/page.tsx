@@ -39,10 +39,10 @@ type LandmarkInfo = {
 
 const NOTES_STORAGE_KEY = 'shortgo_anatomy_region_notes'
 const CENTER_TARGET: [number, number, number] = [0, 0, 0]
-const DEFAULT_CAMERA_POSITION: [number, number, number] = [3.0, 0.25, 0]
+const DEFAULT_CAMERA_POSITION: [number, number, number] = [0, 0.25, 3.0]
 
 const INITIAL_LAYERS: LayerState = {
-  Skin: true,
+  Skin: false,
   Muscles: true,
   Skeleton: false,
   Nerves: false,
@@ -778,7 +778,7 @@ function AnatomyContent() {
           <div className="rounded-3xl bg-white p-3 shadow-sm md:p-4">
             <div className="h-[72vh] min-h-[600px] overflow-hidden rounded-2xl bg-slate-100">
 <Canvas
-  camera={{ position: [3.0, 0.25, 0], fov: 35, near: 0.01, far: 100 }}
+  camera={{ position: [0, 0.25, 3.0], fov: 35, near: 0.01, far: 100 }}
   gl={{ preserveDrawingBuffer: true }}
   onCreated={({ gl }) => {
     canvasRef.current = gl.domElement
