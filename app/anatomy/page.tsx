@@ -178,7 +178,7 @@ function HorseModel({ layers }: { layers: LayerState }) {
 
   return (
     <group>
-      <primitive object={clonedScene} scale={1.1} />
+      <primitive object={clonedScene} scale={2.5} />
     </group>
   )
 }
