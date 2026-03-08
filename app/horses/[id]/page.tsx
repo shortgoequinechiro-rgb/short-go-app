@@ -19,6 +19,8 @@ type Horse = {
   owner_id: string | null
   name: string
   breed: string | null
+  sex: string | null
+  age: string | null
   discipline: string | null
   barn_location: string | null
   archived: boolean
@@ -66,13 +68,25 @@ type PhotoWithSignedUrl = Photo & {
   signed_url?: string | null
 }
 
+type VisitAnatomyRegionRow = {
+  visit_id: string
+  region_key: string
+  notes: string | null
+}
+
+type VisitAnatomySummaryItem = {
+  regionKey: string
+  regionLabel: string
+  notes: string
+}
+
 const RECENT_HORSE_IDS_KEY = 'shortgo_recent_horse_ids'
 const RECENT_OWNER_IDS_KEY = 'shortgo_recent_owner_ids'
 
 const emptyVisitForm = {
   visitDate: '',
   visitLocation: '',
-  providerName: 'Drew Leo',
+  providerName: 'Dr. Andrew Leo',
   reasonForVisit: '',
   quickNotes: '',
   subjective: '',
@@ -82,6 +96,14 @@ const emptyVisitForm = {
   treatedAreas: '',
   recommendations: '',
   followUp: '',
+}
+
+const REGION_LABELS: Record<string, string> = {
+  pollAtlas: 'Poll / Atlas',
+  withers: 'Withers',
+  thoracolumbar: 'Thoracolumbar',
+  siJoint: 'SI Joint',
+  hock: 'Hock',
 }
 
 export default function HorseDetailPage() {
@@ -99,13 +121,17 @@ export default function HorseDetailPage() {
   const [selectedOwnerHorseId, setSelectedOwnerHorseId] = useState('')
   const [visits, setVisits] = useState<Visit[]>([])
   const [photos, setPhotos] = useState<PhotoWithSignedUrl[]>([])
-  const [anatomyRegionCounts, setAnatomyRegionCounts] = useState<
-    Record<string, number>
-  >({})
+
+  const [anatomyRegionCounts, setAnatomyRegionCounts] = useState<Record<string, number>>({})
+  const [anatomyRegionNamesByVisit, setAnatomyRegionNamesByVisit] = useState<Record<string, string[]>>({})
+  const [anatomyNotesByVisit, setAnatomyNotesByVisit] = useState<Record<string, VisitAnatomySummaryItem[]>>({})
+  const [expandedAnatomyVisits, setExpandedAnatomyVisits] = useState<Record<string, boolean>>({})
 
   const [editingHorse, setEditingHorse] = useState(false)
   const [horseNameEdit, setHorseNameEdit] = useState('')
   const [horseBreedEdit, setHorseBreedEdit] = useState('')
+  const [horseSexEdit, setHorseSexEdit] = useState('')
+  const [horseAgeEdit, setHorseAgeEdit] = useState('')
   const [horseDisciplineEdit, setHorseDisciplineEdit] = useState('')
   const [horseBarnLocationEdit, setHorseBarnLocationEdit] = useState('')
   const [horseOwnerIdEdit, setHorseOwnerIdEdit] = useState('')
@@ -118,10 +144,12 @@ export default function HorseDetailPage() {
 
   const [editingVisitId, setEditingVisitId] = useState<string | null>(null)
   const [generatingSoap, setGeneratingSoap] = useState(false)
+  const [emailingVisitId, setEmailingVisitId] = useState<string | null>(null)
+  const [autoEmailAfterSave, setAutoEmailAfterSave] = useState(false)
 
   const [visitDate, setVisitDate] = useState('')
   const [visitLocation, setVisitLocation] = useState('')
-  const [providerName, setProviderName] = useState('Drew Leo')
+  const [providerName, setProviderName] = useState('Dr. Andrew Leo')
   const [reasonForVisit, setReasonForVisit] = useState('')
   const [quickNotes, setQuickNotes] = useState('')
   const [subjective, setSubjective] = useState('')
@@ -161,21 +189,17 @@ export default function HorseDetailPage() {
 
   function saveRecentHorse(id: string) {
     if (typeof window === 'undefined') return
-
     const existing = window.localStorage.getItem(RECENT_HORSE_IDS_KEY)
     const parsed: string[] = existing ? JSON.parse(existing) : []
     const updated = [id, ...parsed.filter((item) => item !== id)].slice(0, 3)
-
     window.localStorage.setItem(RECENT_HORSE_IDS_KEY, JSON.stringify(updated))
   }
 
   function saveRecentOwner(id: string) {
     if (typeof window === 'undefined') return
-
     const existing = window.localStorage.getItem(RECENT_OWNER_IDS_KEY)
     const parsed: string[] = existing ? JSON.parse(existing) : []
     const updated = [id, ...parsed.filter((item) => item !== id)].slice(0, 3)
-
     window.localStorage.setItem(RECENT_OWNER_IDS_KEY, JSON.stringify(updated))
   }
 
@@ -197,8 +221,7 @@ export default function HorseDetailPage() {
   async function loadHorse() {
     const { data, error } = await supabase
       .from('horses')
-      .select(
-        `
+      .select(`
         *,
         owners (
           full_name,
@@ -206,8 +229,7 @@ export default function HorseDetailPage() {
           email,
           address
         )
-      `
-      )
+      `)
       .eq('id', horseId)
       .eq('archived', false)
       .single()
@@ -221,6 +243,8 @@ export default function HorseDetailPage() {
 
     setHorseNameEdit(data.name || '')
     setHorseBreedEdit(data.breed || '')
+    setHorseSexEdit(data.sex || '')
+    setHorseAgeEdit(data.age || '')
     setHorseDisciplineEdit(data.discipline || '')
     setHorseBarnLocationEdit(data.barn_location || '')
     setHorseOwnerIdEdit(data.owner_id || '')
@@ -230,9 +254,7 @@ export default function HorseDetailPage() {
     setOwnerEmailEdit(data.owners?.email || '')
     setOwnerAddressEdit(data.owners?.address || '')
 
-    if (data.owner_id) {
-      saveRecentOwner(data.owner_id)
-    }
+    if (data.owner_id) saveRecentOwner(data.owner_id)
     saveRecentHorse(data.id)
   }
 
@@ -245,7 +267,7 @@ export default function HorseDetailPage() {
 
     const { data, error } = await supabase
       .from('horses')
-      .select('id, owner_id, name, breed, discipline, barn_location, archived')
+      .select('id, owner_id, name, breed, sex, age, discipline, barn_location, archived')
       .eq('owner_id', currentOwnerId)
       .eq('archived', false)
       .order('name', { ascending: true })
@@ -255,8 +277,7 @@ export default function HorseDetailPage() {
       return
     }
 
-    const horsesForOwner = (data || []) as Horse[]
-    setOwnerOtherHorses(horsesForOwner)
+    setOwnerOtherHorses((data || []) as Horse[])
     setSelectedOwnerHorseId(horseId)
   }
 
@@ -277,43 +298,59 @@ export default function HorseDetailPage() {
 
     if (visitData.length === 0) {
       setAnatomyRegionCounts({})
+      setAnatomyRegionNamesByVisit({})
+      setAnatomyNotesByVisit({})
+      setExpandedAnatomyVisits({})
       return
     }
 
     const { data: anatomyData, error: anatomyError } = await supabase
       .from('visit_anatomy_regions')
-      .select('visit_id, region_key')
-      .in(
-        'visit_id',
-        visitData.map((visit) => visit.id)
-      )
+      .select('visit_id, region_key, notes')
+      .in('visit_id', visitData.map((visit) => visit.id))
 
     if (anatomyError) {
-      setMessage(`Error loading anatomy note counts: ${anatomyError.message}`)
+      setMessage(`Error loading anatomy note data: ${anatomyError.message}`)
       return
     }
 
     const counts: Record<string, number> = {}
+    const namesByVisit: Record<string, string[]> = {}
+    const notesByVisit: Record<string, VisitAnatomySummaryItem[]> = {}
 
-    for (const row of anatomyData || []) {
-      const visitId = row.visit_id as string
+    for (const row of (anatomyData || []) as VisitAnatomyRegionRow[]) {
+      const visitId = row.visit_id
+      const regionLabel = REGION_LABELS[row.region_key] || row.region_key
+
       counts[visitId] = (counts[visitId] || 0) + 1
+
+      if (!namesByVisit[visitId]) namesByVisit[visitId] = []
+      if (!namesByVisit[visitId].includes(regionLabel)) {
+        namesByVisit[visitId].push(regionLabel)
+      }
+
+      if (!notesByVisit[visitId]) notesByVisit[visitId] = []
+      notesByVisit[visitId].push({
+        regionKey: row.region_key,
+        regionLabel,
+        notes: row.notes || '',
+      })
     }
 
     setAnatomyRegionCounts(counts)
+    setAnatomyRegionNamesByVisit(namesByVisit)
+    setAnatomyNotesByVisit(notesByVisit)
   }
 
   async function loadPhotos() {
     const { data, error } = await supabase
       .from('photos')
-      .select(
-        `
+      .select(`
         *,
         visits (
           visit_date
         )
-      `
-      )
+      `)
       .eq('horse_id', horseId)
       .order('created_at', { ascending: false })
 
@@ -326,9 +363,7 @@ export default function HorseDetailPage() {
 
     const signedPhotos = await Promise.all(
       photoData.map(async (photo) => {
-        if (!photo.image_path) {
-          return { ...photo, signed_url: null }
-        }
+        if (!photo.image_path) return { ...photo, signed_url: null }
 
         const { data: signedUrlData, error: signedUrlError } = await supabase.storage
           .from('horse-photos')
@@ -339,10 +374,7 @@ export default function HorseDetailPage() {
           return { ...photo, signed_url: null }
         }
 
-        return {
-          ...photo,
-          signed_url: signedUrlData.signedUrl,
-        }
+        return { ...photo, signed_url: signedUrlData.signedUrl }
       })
     )
 
@@ -368,6 +400,8 @@ export default function HorseDetailPage() {
         owner_id: horseOwnerIdEdit,
         name: horseNameEdit,
         breed: horseBreedEdit || null,
+        sex: horseSexEdit || null,
+        age: horseAgeEdit || null,
         discipline: horseDisciplineEdit || null,
         barn_location: horseBarnLocationEdit || null,
       })
@@ -390,6 +424,8 @@ export default function HorseDetailPage() {
     setEditingHorse(false)
     setHorseNameEdit(horse?.name || '')
     setHorseBreedEdit(horse?.breed || '')
+    setHorseSexEdit(horse?.sex || '')
+    setHorseAgeEdit(horse?.age || '')
     setHorseDisciplineEdit(horse?.discipline || '')
     setHorseBarnLocationEdit(horse?.barn_location || '')
     setHorseOwnerIdEdit(horse?.owner_id || '')
@@ -451,24 +487,40 @@ export default function HorseDetailPage() {
     setTreatedAreas(emptyVisitForm.treatedAreas)
     setRecommendations(emptyVisitForm.recommendations)
     setFollowUp(emptyVisitForm.followUp)
+    setAutoEmailAfterSave(false)
   }
 
   function startEditVisit(visit: Visit) {
+    const derivedTreatedAreas =
+      anatomyRegionNamesByVisit[visit.id]?.length
+        ? anatomyRegionNamesByVisit[visit.id].join(', ')
+        : ''
+
     setEditingVisitId(visit.id)
     setVisitDate(visit.visit_date || '')
     setVisitLocation(visit.location || '')
-    setProviderName(visit.provider_name || 'Drew Leo')
+    setProviderName(visit.provider_name || 'Dr. Andrew Leo')
     setReasonForVisit(visit.reason_for_visit || '')
     setQuickNotes('')
     setSubjective(visit.subjective || '')
     setObjective(visit.objective || '')
     setAssessment(visit.assessment || '')
     setPlan(visit.plan || '')
-    setTreatedAreas(visit.treated_areas || '')
+    setTreatedAreas(visit.treated_areas || derivedTreatedAreas || '')
     setRecommendations(visit.recommendations || '')
     setFollowUp(visit.follow_up || '')
+    setAutoEmailAfterSave(false)
 
     window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function useAnatomyRegionsForTreatedAreas() {
+    if (!editingVisitId) return
+    const derivedTreatedAreas =
+      anatomyRegionNamesByVisit[editingVisitId]?.length
+        ? anatomyRegionNamesByVisit[editingVisitId].join(', ')
+        : ''
+    setTreatedAreas(derivedTreatedAreas)
   }
 
   async function generateSoap() {
@@ -479,18 +531,24 @@ export default function HorseDetailPage() {
       return
     }
 
+    const anatomyContext =
+      editingVisitId && anatomyNotesByVisit[editingVisitId]?.length
+        ? anatomyNotesByVisit[editingVisitId]
+            .map((item) => `${item.regionLabel}: ${item.notes || 'No notes provided.'}`)
+            .join('\n')
+        : ''
+
     try {
       setGeneratingSoap(true)
 
       const response = await fetch('/api/generate-soap', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           quickNotes,
           horseName: horse?.name || '',
           discipline: horse?.discipline || '',
+          anatomyContext,
         }),
       })
 
@@ -505,12 +563,27 @@ export default function HorseDetailPage() {
       setObjective(data.objective || '')
       setAssessment(data.assessment || '')
       setPlan(data.plan || '')
-      setMessage('SOAP draft generated.')
+      setMessage(anatomyContext ? 'SOAP draft generated with anatomy notes.' : 'SOAP draft generated.')
     } catch (error) {
       console.error(error)
       setMessage('Failed to generate SOAP.')
     } finally {
       setGeneratingSoap(false)
+    }
+  }
+
+  async function sendVisitEmail(visitId: string) {
+    const response = await fetch(`/api/visits/${visitId}/email`, {
+      method: 'POST',
+    })
+
+    let data: any = null
+    try {
+      data = await response.json()
+    } catch {}
+
+    if (!response.ok) {
+      throw new Error(data?.error || 'Failed to email PDF.')
     }
   }
 
@@ -543,6 +616,8 @@ export default function HorseDetailPage() {
       follow_up: followUp || null,
     }
 
+    let savedVisitId: string | null = editingVisitId
+
     if (editingVisitId) {
       const { error } = await supabase
         .from('visits')
@@ -556,14 +631,29 @@ export default function HorseDetailPage() {
 
       setMessage('Visit updated successfully.')
     } else {
-      const { error } = await supabase.from('visits').insert([payload])
+      const { data, error } = await supabase
+        .from('visits')
+        .insert([payload])
+        .select('id')
+        .single()
 
       if (error) {
         setMessage(`Error saving visit: ${error.message}`)
         return
       }
 
+      savedVisitId = data.id
       setMessage('Visit saved successfully.')
+    }
+
+    if (autoEmailAfterSave && savedVisitId) {
+      try {
+        setMessage('Visit saved. Sending PDF to owner...')
+        await sendVisitEmail(savedVisitId)
+        setMessage('Visit saved and PDF emailed successfully.')
+      } catch (error: any) {
+        setMessage(`Visit saved, but email failed: ${error?.message || 'Unknown error'}`)
+      }
     }
 
     resetVisitForm()
@@ -581,9 +671,7 @@ export default function HorseDetailPage() {
       return
     }
 
-    if (editingVisitId === visitId) {
-      resetVisitForm()
-    }
+    if (editingVisitId === visitId) resetVisitForm()
 
     setMessage('Visit deleted successfully.')
     await loadVisits()
@@ -673,10 +761,20 @@ export default function HorseDetailPage() {
     setSelectedFile(file)
   }
 
-  function handleOwnerHorseJump(nextHorseId: string) {
-    setSelectedOwnerHorseId(nextHorseId)
-    if (!nextHorseId || nextHorseId === horseId) return
-    router.push(`/horses/${nextHorseId}`)
+  async function emailVisitPdf(visitId: string) {
+    try {
+      setEmailingVisitId(visitId)
+      setMessage('Sending PDF...')
+
+      await sendVisitEmail(visitId)
+
+      setMessage('PDF emailed successfully.')
+    } catch (error: any) {
+      console.error(error)
+      setMessage(error?.message || 'Failed to email PDF.')
+    } finally {
+      setEmailingVisitId(null)
+    }
   }
 
   const currentHorseOwnerName = useMemo(() => {
@@ -686,6 +784,110 @@ export default function HorseDetailPage() {
       '—'
     )
   }, [owners, horseOwnerIdEdit, horse])
+
+  const hasUnsavedChanges = useMemo(() => {
+    const horseDirty =
+      editingHorse &&
+      (
+        horseNameEdit !== (horse?.name || '') ||
+        horseBreedEdit !== (horse?.breed || '') ||
+        horseSexEdit !== (horse?.sex || '') ||
+        horseAgeEdit !== (horse?.age || '') ||
+        horseDisciplineEdit !== (horse?.discipline || '') ||
+        horseBarnLocationEdit !== (horse?.barn_location || '') ||
+        horseOwnerIdEdit !== (horse?.owner_id || '')
+      )
+
+    const ownerDirty =
+      editingOwner &&
+      (
+        ownerNameEdit !== (horse?.owners?.full_name || '') ||
+        ownerPhoneEdit !== (horse?.owners?.phone || '') ||
+        ownerEmailEdit !== (horse?.owners?.email || '') ||
+        ownerAddressEdit !== (horse?.owners?.address || '')
+      )
+
+    const visitDirty =
+      visitDate !== emptyVisitForm.visitDate ||
+      visitLocation !== emptyVisitForm.visitLocation ||
+      providerName !== emptyVisitForm.providerName ||
+      reasonForVisit !== emptyVisitForm.reasonForVisit ||
+      quickNotes !== emptyVisitForm.quickNotes ||
+      subjective !== emptyVisitForm.subjective ||
+      objective !== emptyVisitForm.objective ||
+      assessment !== emptyVisitForm.assessment ||
+      plan !== emptyVisitForm.plan ||
+      treatedAreas !== emptyVisitForm.treatedAreas ||
+      recommendations !== emptyVisitForm.recommendations ||
+      followUp !== emptyVisitForm.followUp
+
+    const photoDirty =
+      selectedPhotoVisitId !== '' ||
+      photoCaption !== '' ||
+      photoBodyArea !== '' ||
+      photoTakenAt !== '' ||
+      selectedFile !== null
+
+    return horseDirty || ownerDirty || visitDirty || photoDirty
+  }, [
+    editingHorse,
+    horseNameEdit,
+    horseBreedEdit,
+    horseSexEdit,
+    horseAgeEdit,
+    horseDisciplineEdit,
+    horseBarnLocationEdit,
+    horseOwnerIdEdit,
+    horse,
+    editingOwner,
+    ownerNameEdit,
+    ownerPhoneEdit,
+    ownerEmailEdit,
+    ownerAddressEdit,
+    visitDate,
+    visitLocation,
+    providerName,
+    reasonForVisit,
+    quickNotes,
+    subjective,
+    objective,
+    assessment,
+    plan,
+    treatedAreas,
+    recommendations,
+    followUp,
+    selectedPhotoVisitId,
+    photoCaption,
+    photoBodyArea,
+    photoTakenAt,
+    selectedFile,
+  ])
+
+  const activeVisitAnatomyCount = editingVisitId ? anatomyRegionCounts[editingVisitId] || 0 : 0
+  const activeVisitRegionNames = editingVisitId ? anatomyRegionNamesByVisit[editingVisitId] || [] : []
+
+  function handleOwnerHorseJump(nextHorseId: string) {
+    if (!nextHorseId) return
+
+    if (nextHorseId === horseId) {
+      setSelectedOwnerHorseId(nextHorseId)
+      return
+    }
+
+    if (hasUnsavedChanges) {
+      const confirmed = window.confirm(
+        'You have unsaved changes on this record. Press OK to leave this horse without saving, or Cancel to stay here and save first.'
+      )
+
+      if (!confirmed) {
+        setSelectedOwnerHorseId(horseId)
+        return
+      }
+    }
+
+    setSelectedOwnerHorseId(nextHorseId)
+    router.push(`/horses/${nextHorseId}`)
+  }
 
   useEffect(() => {
     async function init() {
@@ -709,6 +911,10 @@ export default function HorseDetailPage() {
       setSelectedOwnerHorseId('')
     }
   }, [horse?.owner_id])
+
+  useEffect(() => {
+    setSelectedOwnerHorseId(horseId)
+  }, [horseId])
 
   if (checkingAuth) {
     return (
@@ -738,7 +944,7 @@ export default function HorseDetailPage() {
               </h1>
 
               <p className="mt-2 text-slate-600">
-                {horse?.breed || '—'} • {horse?.discipline || '—'} • {horse?.barn_location || '—'}
+                {horse?.breed || '—'} • {horse?.sex || '—'} • {horse?.age || '—'} • {horse?.discipline || '—'} • {horse?.barn_location || '—'}
               </p>
             </div>
 
@@ -775,6 +981,8 @@ export default function HorseDetailPage() {
                 <div className="mt-4 space-y-3 text-sm text-slate-700">
                   <InfoRow label="Horse Name" value={horse?.name || '—'} />
                   <InfoRow label="Breed" value={horse?.breed || '—'} />
+                  <InfoRow label="Sex" value={horse?.sex || '—'} />
+                  <InfoRow label="Age" value={horse?.age || '—'} />
                   <InfoRow label="Discipline" value={horse?.discipline || '—'} />
                   <InfoRow label="Barn" value={horse?.barn_location || '—'} />
                   <InfoRow label="Owner" value={horse?.owners?.full_name || '—'} />
@@ -811,6 +1019,30 @@ export default function HorseDetailPage() {
                       onChange={(e) => setHorseBreedEdit(e.target.value)}
                       className="w-full rounded-xl border border-slate-300 px-4 py-3"
                       placeholder="Breed"
+                    />
+                  </Field>
+
+                  <Field label="Sex">
+                    <select
+                      value={horseSexEdit}
+                      onChange={(e) => setHorseSexEdit(e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                    >
+                      <option value="">Select sex</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Gelding">Gelding</option>
+                      <option value="Mare">Mare</option>
+                      <option value="Stallion">Stallion</option>
+                    </select>
+                  </Field>
+
+                  <Field label="Age">
+                    <input
+                      value={horseAgeEdit}
+                      onChange={(e) => setHorseAgeEdit(e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                      placeholder="Age"
                     />
                   </Field>
 
@@ -1021,14 +1253,36 @@ export default function HorseDetailPage() {
                 </h2>
 
                 {editingVisitId ? (
-                  <button
-                    onClick={resetVisitForm}
-                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-900"
-                  >
-                    Cancel Edit
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={resetVisitForm}
+                      className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-900"
+                    >
+                      Cancel Edit
+                    </button>
+
+                    <Link
+                      href={`/anatomy?visitId=${editingVisitId}&horseName=${encodeURIComponent(horse?.name || '')}`}
+                      className="rounded-xl border border-slate-900 bg-slate-900 px-4 py-2 text-sm text-white"
+                    >
+                      Open Anatomy For This Visit
+                    </Link>
+                  </div>
                 ) : null}
               </div>
+
+              {editingVisitId && activeVisitAnatomyCount > 0 ? (
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm font-semibold text-slate-900">
+                    Using saved anatomy notes from this visit
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {activeVisitAnatomyCount} region
+                    {activeVisitAnatomyCount === 1 ? '' : 's'} documented
+                    {activeVisitRegionNames.length ? ` • ${activeVisitRegionNames.join(', ')}` : ''}
+                  </p>
+                </div>
+              ) : null}
 
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <Field label="Visit Date">
@@ -1131,12 +1385,23 @@ recommend 2 light days`}
                 </Field>
 
                 <Field label="Treated Areas">
-                  <input
-                    value={treatedAreas}
-                    onChange={(e) => setTreatedAreas(e.target.value)}
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3"
-                    placeholder="Shoulder, thoracic, cervical, etc."
-                  />
+                  <div className="space-y-2">
+                    <input
+                      value={treatedAreas}
+                      onChange={(e) => setTreatedAreas(e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                      placeholder="Shoulder, thoracic, cervical, etc."
+                    />
+                    {editingVisitId && activeVisitRegionNames.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={useAnatomyRegionsForTreatedAreas}
+                        className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-900"
+                      >
+                        Use Anatomy Regions
+                      </button>
+                    ) : null}
+                  </div>
                 </Field>
 
                 <Field label="Follow Up">
@@ -1157,6 +1422,25 @@ recommend 2 light days`}
                       placeholder="Rest, stretches, light work, etc."
                     />
                   </Field>
+                </div>
+
+                <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <label className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={autoEmailAfterSave}
+                      onChange={(e) => setAutoEmailAfterSave(e.target.checked)}
+                      className="mt-1 h-4 w-4 rounded border-slate-300"
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">
+                        Auto-email PDF to owner after saving visit
+                      </p>
+                      <p className="mt-1 text-sm text-slate-600">
+                        Uses the owner email saved on this horse record.
+                      </p>
+                    </div>
+                  </label>
                 </div>
 
                 <div className="md:col-span-2">
@@ -1183,85 +1467,156 @@ recommend 2 light days`}
                 {visits.length === 0 ? (
                   <p className="text-slate-500">No visits yet.</p>
                 ) : (
-                  visits.map((visit) => (
-                    <div
-                      key={visit.id}
-                      className="rounded-2xl border border-slate-200 p-4"
-                    >
-                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                        <div>
-                          <p className="font-semibold text-slate-900">
-                            {visit.reason_for_visit || 'Visit'}
-                          </p>
-                          <p className="text-sm text-slate-500">
-                            {visit.visit_date || 'No date'}
-                          </p>
+                  visits.map((visit) => {
+                    const visitAnatomyItems = anatomyNotesByVisit[visit.id] || []
+                    const isExpanded = expandedAnatomyVisits[visit.id] || false
 
-                          <div className="mt-2">
-                            {anatomyRegionCounts[visit.id] ? (
-                              <span className="inline-flex rounded-2xl bg-slate-900 px-3 py-1 text-xs font-medium text-white">
-                                Anatomy Notes: {anatomyRegionCounts[visit.id]} region
-                                {anatomyRegionCounts[visit.id] === 1 ? '' : 's'}
-                              </span>
-                            ) : (
-                              <span className="inline-flex rounded-2xl bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
-                                No anatomy notes yet
-                              </span>
-                            )}
+                    return (
+                      <div
+                        key={visit.id}
+                        className="rounded-2xl border border-slate-200 p-4"
+                      >
+                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                          <div>
+                            <p className="font-semibold text-slate-900">
+                              {visit.reason_for_visit || 'Visit'}
+                            </p>
+                            <p className="text-sm text-slate-500">
+                              {visit.visit_date || 'No date'}
+                            </p>
+
+                            <div className="mt-2">
+                              {anatomyRegionCounts[visit.id] ? (
+                                <span className="inline-flex rounded-2xl bg-slate-900 px-3 py-1 text-xs font-medium text-white">
+                                  Anatomy Notes: {anatomyRegionCounts[visit.id]} region
+                                  {anatomyRegionCounts[visit.id] === 1 ? '' : 's'}
+                                </span>
+                              ) : (
+                                <span className="inline-flex rounded-2xl bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                                  No anatomy notes yet
+                                </span>
+                              )}
+                            </div>
+
+                            {anatomyRegionNamesByVisit[visit.id]?.length ? (
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {anatomyRegionNamesByVisit[visit.id].map((regionName) => (
+                                  <span
+                                    key={`${visit.id}-${regionName}`}
+                                    className="inline-flex rounded-2xl bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700"
+                                  >
+                                    {regionName}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            <Link
+                              href={`/anatomy?visitId=${visit.id}&horseName=${encodeURIComponent(horse?.name || '')}`}
+                              className="rounded-xl border border-slate-900 bg-slate-900 px-3 py-2 text-sm text-white"
+                            >
+                              Open Anatomy
+                            </Link>
+
+                            <a
+                              href={`/api/visits/${visit.id}/pdf`}
+                              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+                            >
+                              Export PDF
+                            </a>
+
+                            <button
+                              onClick={() => emailVisitPdf(visit.id)}
+                              disabled={emailingVisitId === visit.id}
+                              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 disabled:opacity-50"
+                            >
+                              {emailingVisitId === visit.id ? 'Emailing PDF...' : 'Email PDF'}
+                            </button>
+
+                            <button
+                              onClick={() => startEditVisit(visit)}
+                              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+                            >
+                              Edit
+                            </button>
+
+                            <button
+                              onClick={() => deleteVisit(visit.id)}
+                              className="rounded-xl border border-red-300 bg-white px-3 py-2 text-sm text-red-700"
+                            >
+                              Delete
+                            </button>
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap gap-2">
-                          <Link
-                            href={`/anatomy?visitId=${visit.id}&horseName=${encodeURIComponent(horse?.name || '')}`}
-                            className="rounded-xl border border-slate-900 bg-slate-900 px-3 py-2 text-sm text-white"
-                          >
-                            Open Anatomy
-                          </Link>
+                        {visitAnatomyItems.length > 0 ? (
+                          <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <p className="text-sm font-semibold text-slate-900">
+                                Anatomy Note Summaries
+                              </p>
+                              <button
+                                onClick={() => setExpandedAnatomyVisits((prev) => ({
+                                  ...prev,
+                                  [visit.id]: !prev[visit.id],
+                                }))}
+                                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-900"
+                              >
+                                {isExpanded ? 'Hide Anatomy Notes' : 'View Anatomy Notes'}
+                              </button>
+                            </div>
 
-                          <button
-                            onClick={() => startEditVisit(visit)}
-                            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => deleteVisit(visit.id)}
-                            className="rounded-xl border border-red-300 bg-white px-3 py-2 text-sm text-red-700"
-                          >
-                            Delete
-                          </button>
+                            {isExpanded ? (
+                              <div className="mt-3 space-y-3">
+                                {visitAnatomyItems.map((item) => (
+                                  <div
+                                    key={`${visit.id}-${item.regionKey}`}
+                                    className="rounded-xl bg-white p-3"
+                                  >
+                                    <p className="text-sm font-semibold text-slate-900">
+                                      {item.regionLabel}
+                                    </p>
+                                    <p className="mt-1 text-sm leading-6 text-slate-700">
+                                      {item.notes || 'No notes saved for this region.'}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
+
+                        <p className="mt-2 text-sm text-slate-700">
+                          <span className="font-medium">Location:</span> {visit.location || '—'}
+                        </p>
+                        <p className="text-sm text-slate-700">
+                          <span className="font-medium">Provider:</span> {visit.provider_name || '—'}
+                        </p>
+
+                        <div className="mt-3 grid gap-3 md:grid-cols-2">
+                          <NoteBlock label="Subjective" value={visit.subjective} />
+                          <NoteBlock label="Objective" value={visit.objective} />
+                          <NoteBlock label="Assessment" value={visit.assessment} />
+                          <NoteBlock label="Plan" value={visit.plan} />
                         </div>
-                      </div>
 
-                      <p className="mt-2 text-sm text-slate-700">
-                        <span className="font-medium">Location:</span> {visit.location || '—'}
-                      </p>
-                      <p className="text-sm text-slate-700">
-                        <span className="font-medium">Provider:</span> {visit.provider_name || '—'}
-                      </p>
+                        <div className="mt-3 grid gap-3 md:grid-cols-2">
+                          <p className="text-sm text-slate-700">
+                            <span className="font-medium">Treated Areas:</span> {visit.treated_areas || '—'}
+                          </p>
+                          <p className="text-sm text-slate-700">
+                            <span className="font-medium">Follow Up:</span> {visit.follow_up || '—'}
+                          </p>
+                        </div>
 
-                      <div className="mt-3 grid gap-3 md:grid-cols-2">
-                        <NoteBlock label="Subjective" value={visit.subjective} />
-                        <NoteBlock label="Objective" value={visit.objective} />
-                        <NoteBlock label="Assessment" value={visit.assessment} />
-                        <NoteBlock label="Plan" value={visit.plan} />
-                      </div>
-
-                      <div className="mt-3 grid gap-3 md:grid-cols-2">
-                        <p className="text-sm text-slate-700">
-                          <span className="font-medium">Treated Areas:</span> {visit.treated_areas || '—'}
-                        </p>
-                        <p className="text-sm text-slate-700">
-                          <span className="font-medium">Follow Up:</span> {visit.follow_up || '—'}
+                        <p className="mt-2 text-sm text-slate-700">
+                          <span className="font-medium">Recommendations:</span> {visit.recommendations || '—'}
                         </p>
                       </div>
-
-                      <p className="mt-2 text-sm text-slate-700">
-                        <span className="font-medium">Recommendations:</span> {visit.recommendations || '—'}
-                      </p>
-                    </div>
-                  ))
+                    )
+                  })
                 )}
               </div>
             </div>

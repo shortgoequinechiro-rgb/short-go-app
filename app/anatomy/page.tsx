@@ -278,6 +278,9 @@ function AnatomyContent() {
   const visitId = searchParams.get('visitId') || ''
   const horseName = searchParams.get('horseName') || ''
 
+  const [horseId, setHorseId] = useState('')
+  const [loadingHorseLink, setLoadingHorseLink] = useState(true)
+
   const [layers, setLayers] = useState<LayerState>(INITIAL_LAYERS)
   const [selectedLandmark, setSelectedLandmark] = useState<LandmarkInfo | null>(
     null
@@ -294,6 +297,34 @@ function AnatomyContent() {
     [number, number, number]
   >(DEFAULT_CAMERA_POSITION)
   const [isAnimating, setIsAnimating] = useState(false)
+
+  async function loadHorseIdForVisit(activeVisitId: string) {
+    if (!activeVisitId) {
+      setHorseId('')
+      setLoadingHorseLink(false)
+      return
+    }
+
+    const { data, error } = await supabase
+      .from('visits')
+      .select('horse_id')
+      .eq('id', activeVisitId)
+      .single()
+
+    if (error) {
+      console.error('Error loading horse id for anatomy back link:', error.message)
+      setHorseId('')
+      setLoadingHorseLink(false)
+      return
+    }
+
+    setHorseId(data?.horse_id || '')
+    setLoadingHorseLink(false)
+  }
+
+  useEffect(() => {
+    loadHorseIdForVisit(visitId)
+  }, [visitId])
 
   useEffect(() => {
     async function loadNotes() {
@@ -533,12 +564,21 @@ function AnatomyContent() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Link
-                href="/"
-                className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-900"
-              >
-                Back to Dashboard
-              </Link>
+              {horseId ? (
+                <Link
+                  href={`/horses/${horseId}`}
+                  className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-900"
+                >
+                  ← Back to Horse Record
+                </Link>
+              ) : (
+                <Link
+                  href="/"
+                  className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-900"
+                >
+                  {loadingHorseLink ? 'Loading...' : '← Back to Dashboard'}
+                </Link>
+              )}
               <button
                 onClick={resetView}
                 className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-900"
@@ -822,6 +862,7 @@ function AnatomyContent() {
 }
 
 useGLTF.preload('/models/horse_anatomy_final.glb')
+
 export default function AnatomyPage() {
   return (
     <Suspense fallback={<div className="p-6">Loading anatomy...</div>}>

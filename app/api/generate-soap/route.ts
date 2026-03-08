@@ -1,75 +1,99 @@
-import OpenAI from 'openai'
 import { NextResponse } from 'next/server'
+import OpenAI from 'openai'
 
-const openai = new OpenAI({
+const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
 export async function POST(req: Request) {
   try {
-    const { quickNotes, horseName, discipline } = await req.json()
+    const body = await req.json()
 
-    if (!quickNotes || !String(quickNotes).trim()) {
+    const quickNotes = body.quickNotes?.trim() || ''
+    const horseName = body.horseName?.trim() || 'Horse'
+    const discipline = body.discipline?.trim() || 'Unknown discipline'
+    const anatomyContext = body.anatomyContext?.trim() || ''
+
+    if (!quickNotes) {
       return NextResponse.json(
         { error: 'Quick notes are required.' },
         { status: 400 }
       )
     }
 
-    const response = await openai.responses.create({
-      model: 'gpt-5-mini',
-      input: [
-        {
-          role: 'system',
-          content:
-            'You are assisting an equine chiropractor with internal charting. Write concise, clinically grounded SOAP notes. Do not invent extreme findings.',
-        },
-        {
-          role: 'user',
-          content: `
-Horse Name: ${horseName || 'Unknown horse'}
-Discipline: ${discipline || 'Unknown discipline'}
+    const anatomySection = anatomyContext
+      ? `Saved anatomy region notes for this visit:
+${anatomyContext}
+`
+      : 'No saved anatomy region notes were provided for this visit.\n'
 
-Quick Notes:
+    const prompt = `
+You are helping draft an equine chiropractic SOAP note.
+
+Horse name: ${horseName}
+Discipline: ${discipline}
+
+Quick notes from provider:
 ${quickNotes}
-          `,
-        },
-      ],
-      text: {
-        format: {
-          type: 'json_schema',
-          name: 'soap_note',
-          strict: true,
-          schema: {
-            type: 'object',
-            additionalProperties: false,
-            properties: {
-              subjective: { type: 'string' },
-              objective: { type: 'string' },
-              assessment: { type: 'string' },
-              plan: { type: 'string' },
-            },
-            required: ['subjective', 'objective', 'assessment', 'plan'],
-          },
-        },
-      },
+
+${anatomySection}
+
+Return valid JSON with exactly these keys:
+subjective
+objective
+assessment
+plan
+
+Rules:
+- Keep it professional, concise, and clinically useful.
+- Use equine chiropractic language when appropriate.
+- If anatomy region notes are provided, incorporate them naturally into objective and assessment when relevant.
+- Do not invent diagnoses with excessive certainty.
+- Do not include markdown fences.
+- Output JSON only.
+`.trim()
+
+    const response = await client.responses.create({
+      model: 'gpt-5-mini',
+      input: prompt,
     })
 
-    const content = response.output_text?.trim()
+    const text = response.output_text?.trim()
 
-    if (!content) {
+    if (!text) {
       return NextResponse.json(
-        { error: 'Model returned no content.' },
+        { error: 'No response generated.' },
         { status: 500 }
       )
     }
 
-    const parsed = JSON.parse(content)
-    return NextResponse.json(parsed)
+    let parsed: {
+      subjective?: string
+      objective?: string
+      assessment?: string
+      plan?: string
+    }
+
+    try {
+      parsed = JSON.parse(text)
+    } catch (parseError) {
+      console.error('generate-soap JSON parse error:', parseError, text)
+      return NextResponse.json(
+        { error: 'Model returned invalid JSON.' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({
+      subjective: parsed.subjective || '',
+      objective: parsed.objective || '',
+      assessment: parsed.assessment || '',
+      plan: parsed.plan || '',
+    })
   } catch (error) {
-    console.error('SOAP generation error:', error)
+    console.error('generate-soap error:', error)
     return NextResponse.json(
-      { error: 'Failed to generate SOAP' },
+      { error: 'Failed to generate SOAP.' },
       { status: 500 }
     )
   }
