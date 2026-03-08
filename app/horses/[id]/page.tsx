@@ -1172,7 +1172,7 @@ export default function HorseDetailPage() {
                     <option value="">No visit selected</option>
                     {visits.map((visit) => (
                       <option key={visit.id} value={visit.id}>
-                        {visit.visit_date || 'No date'} - {visit.reason_for_visit || 'Visit'}
+                        {visit.visit_date || 'No date'} - {toTitleCase(visit.reason_for_visit)}
                       </option>
                     ))}
                   </select>
@@ -1459,7 +1459,7 @@ recommend 2 light days`}
                         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                           <div>
                             <p className="font-semibold text-slate-900">
-                              {visit.reason_for_visit || 'Visit'}
+                              {toTitleCase(visit.reason_for_visit)}
                             </p>
                             <p className="text-sm text-slate-500">
                               {visit.visit_date || 'No date'}
@@ -1575,12 +1575,18 @@ recommend 2 light days`}
                           <span className="font-medium">Provider:</span> {visit.provider_name || '—'}
                         </p>
 
-                        <div className="mt-3 grid gap-3 md:grid-cols-2">
-                          <NoteBlock label="Subjective" value={visit.subjective} />
-                          <NoteBlock label="Objective" value={visit.objective} />
-                          <NoteBlock label="Assessment" value={visit.assessment} />
-                          <NoteBlock label="Plan" value={visit.plan} />
-                        </div>
+                        {visit.subjective || visit.objective || visit.assessment || visit.plan ? (
+                          <div className="mt-3 grid gap-3 md:grid-cols-2">
+                            <NoteBlock label="Subjective" value={visit.subjective} />
+                            <NoteBlock label="Objective" value={visit.objective} />
+                            <NoteBlock label="Assessment" value={visit.assessment} />
+                            <NoteBlock label="Plan" value={visit.plan} />
+                          </div>
+                        ) : (
+                          <p className="mt-3 text-sm italic text-slate-400">
+                            No SOAP notes recorded — use Edit to add notes.
+                          </p>
+                        )}
 
                         <div className="mt-3 grid gap-3 md:grid-cols-2">
                           <p className="text-sm text-slate-700">
@@ -1686,6 +1692,15 @@ function InfoRow({ label, value }: { label: string; value: string }) {
       <p className="mt-1 text-sm text-slate-800">{value}</p>
     </div>
   )
+}
+
+function toTitleCase(str: string | null | undefined): string {
+  if (!str) return 'Visit'
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
 }
 
 function NoteBlock({
