@@ -58,6 +58,13 @@ export default function Home() {
 
   const findRecordsRef = useRef<HTMLDivElement>(null)
 
+  function handleStatCardClick(mode: SearchMode) {
+    setSearchMode(mode)
+    setTimeout(() => {
+      findRecordsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 50)
+  }
+
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
@@ -590,10 +597,10 @@ export default function Home() {
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-4 xl:grid-cols-4">
-          <StatCard label="Owners" value={owners.length} />
-          <StatCard label="Horses" value={horses.length} />
-          <StatCard label="Visits" value={visitCount} />
-          <StatCard label="Photos" value={photoCount} />
+          <StatCard label="Owners" value={owners.length} onClick={() => handleStatCardClick('owner')} />
+          <StatCard label="Horses" value={horses.length} onClick={() => handleStatCardClick('horse')} />
+          <StatCard label="Visits" value={visitCount} onClick={() => handleStatCardClick('horse')} />
+          <StatCard label="Photos" value={photoCount} onClick={() => handleStatCardClick('horse')} />
         </div>
 
         <div className="mt-5 grid gap-5 xl:grid-cols-2">
@@ -1141,9 +1148,24 @@ export default function Home() {
   )
 }
 
-function StatCard({ label, value }: { label: string; value: number }) {
+function StatCard({
+  label,
+  value,
+  onClick,
+}: {
+  label: string
+  value: number
+  onClick?: () => void
+}) {
   return (
-    <div className="rounded-3xl bg-white p-4 shadow-sm md:p-5">
+    <div
+      onClick={onClick}
+      className={`rounded-3xl bg-white p-4 shadow-sm md:p-5 ${
+        onClick
+          ? 'cursor-pointer transition-all hover:shadow-md hover:scale-[1.02] active:scale-[0.99]'
+          : ''
+      }`}
+    >
       <p className="text-sm text-slate-500">{label}</p>
       <p className="mt-2 text-3xl font-bold text-slate-900 md:text-4xl">
         {value}
