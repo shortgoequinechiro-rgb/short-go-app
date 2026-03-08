@@ -123,6 +123,7 @@ export default function HorseDetailPage() {
   const [checkingAuth, setCheckingAuth] = useState(true)
   const [userEmail, setUserEmail] = useState('')
   const [message, setMessage] = useState('')
+  const [activeTab, setActiveTab] = useState<'info' | 'visits' | 'photos'>('visits')
 
   const [owners, setOwners] = useState<Owner[]>([])
   const [horse, setHorse] = useState<Horse | null>(null)
@@ -940,9 +941,37 @@ export default function HorseDetailPage() {
           <p className="mt-2 text-slate-600">
             {horse?.breed || '—'} • {horse?.sex || '—'} • {horse?.age || '—'} • {horse?.discipline || '—'} • {horse?.barn_location || '—'}
           </p>
+          {horse?.medical_alerts && (
+            <div className="mt-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+              <span className="mt-0.5 text-lg leading-none">⚠️</span>
+              <div>
+                <p className="text-sm font-semibold text-amber-900">Medical Alerts</p>
+                <p className="mt-0.5 text-sm text-amber-800">{horse.medical_alerts}</p>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-[340px_1fr]">
+        {/* Tab navigation */}
+        <div className="mt-6 flex gap-1 rounded-2xl bg-white p-1.5 shadow-sm">
+          {(['visits', 'info', 'photos'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 rounded-xl py-2 text-sm font-medium transition-colors ${
+                activeTab === tab
+                  ? 'bg-slate-900 text-white'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              {tab === 'info' ? 'Info' : tab === 'visits' ? 'Visits' : 'Photos'}
+            </button>
+          ))}
+        </div>
+
+        {/* Info Tab */}
+        {activeTab === 'info' && (
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
           <div className="space-y-6">
             <div className="rounded-3xl bg-white p-6 shadow-sm">
               <div className="flex items-center justify-between gap-3">
@@ -1065,7 +1094,9 @@ export default function HorseDetailPage() {
                 </div>
               )}
             </div>
+          </div>
 
+          <div className="space-y-6">
             <div className="rounded-3xl bg-white p-6 shadow-sm">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-xl font-semibold text-slate-900">Owner Info</h2>
@@ -1158,74 +1189,13 @@ export default function HorseDetailPage() {
                 </Field>
               </div>
             </div>
-
-            <div className="rounded-3xl bg-white p-6 shadow-sm">
-              <h2 className="text-xl font-semibold text-slate-900">Upload Photo</h2>
-
-              <div className="mt-4 grid gap-4">
-                <Field label="Link to Visit (optional)">
-                  <select
-                    value={selectedPhotoVisitId}
-                    onChange={(e) => setSelectedPhotoVisitId(e.target.value)}
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3"
-                  >
-                    <option value="">No visit selected</option>
-                    {visits.map((visit) => (
-                      <option key={visit.id} value={visit.id}>
-                        {visit.visit_date || 'No date'} - {toTitleCase(visit.reason_for_visit)}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-
-                <Field label="Caption">
-                  <input
-                    value={photoCaption}
-                    onChange={(e) => setPhotoCaption(e.target.value)}
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3"
-                    placeholder="Before adjustment, left shoulder, etc."
-                  />
-                </Field>
-
-                <Field label="Body Area">
-                  <input
-                    value={photoBodyArea}
-                    onChange={(e) => setPhotoBodyArea(e.target.value)}
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3"
-                    placeholder="Shoulder, back, neck, hind end"
-                  />
-                </Field>
-
-                <Field label="Date Taken">
-                  <input
-                    type="date"
-                    value={photoTakenAt}
-                    onChange={(e) => setPhotoTakenAt(e.target.value)}
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3"
-                  />
-                </Field>
-
-                <Field label="Image File">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3"
-                  />
-                </Field>
-
-                <button
-                  onClick={addPhoto}
-                  disabled={uploadingPhoto}
-                  className="rounded-xl bg-slate-900 px-5 py-3 text-white disabled:opacity-50"
-                >
-                  {uploadingPhoto ? 'Uploading Photo...' : 'Upload Photo'}
-                </button>
-              </div>
-            </div>
           </div>
+        </div>
+        )}
 
-          <div className="space-y-6">
+        {/* Visits Tab */}
+        {activeTab === 'visits' && (
+        <div className="mt-6 space-y-6">
             <div className="rounded-3xl bg-white p-6 shadow-sm">
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <h2 className="text-2xl font-semibold text-slate-900">
@@ -1462,7 +1432,7 @@ recommend 2 light days`}
                               {toTitleCase(visit.reason_for_visit)}
                             </p>
                             <p className="text-sm text-slate-500">
-                              {visit.visit_date || 'No date'}
+                              {formatDate(visit.visit_date)}
                             </p>
 
                             <div className="mt-2">
@@ -1606,6 +1576,76 @@ recommend 2 light days`}
                 )}
               </div>
             </div>
+        </div>
+        )}
+
+        {/* Photos Tab */}
+        {activeTab === 'photos' && (
+        <div className="mt-6 space-y-6">
+            <div className="rounded-3xl bg-white p-6 shadow-sm">
+              <h2 className="text-xl font-semibold text-slate-900">Upload Photo</h2>
+
+              <div className="mt-4 grid gap-4">
+                <Field label="Link to Visit (optional)">
+                  <select
+                    value={selectedPhotoVisitId}
+                    onChange={(e) => setSelectedPhotoVisitId(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                  >
+                    <option value="">No visit selected</option>
+                    {visits.map((visit) => (
+                      <option key={visit.id} value={visit.id}>
+                        {formatDate(visit.visit_date)} - {toTitleCase(visit.reason_for_visit)}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+
+                <Field label="Caption">
+                  <input
+                    value={photoCaption}
+                    onChange={(e) => setPhotoCaption(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                    placeholder="Before adjustment, left shoulder, etc."
+                  />
+                </Field>
+
+                <Field label="Body Area">
+                  <input
+                    value={photoBodyArea}
+                    onChange={(e) => setPhotoBodyArea(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                    placeholder="Shoulder, back, neck, hind end"
+                  />
+                </Field>
+
+                <Field label="Date Taken">
+                  <input
+                    type="date"
+                    value={photoTakenAt}
+                    onChange={(e) => setPhotoTakenAt(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                  />
+                </Field>
+
+                <Field label="Image File">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                  />
+                </Field>
+
+                <button
+                  onClick={addPhoto}
+                  disabled={uploadingPhoto}
+                  className="rounded-xl bg-slate-900 px-5 py-3 text-white disabled:opacity-50"
+                >
+                  {uploadingPhoto ? 'Uploading Photo...' : 'Upload Photo'}
+                </button>
+              </div>
+            </div>
 
             <div className="rounded-3xl bg-white p-6 shadow-sm">
               <h2 className="text-2xl font-semibold text-slate-900">Photo Gallery</h2>
@@ -1641,10 +1681,10 @@ recommend 2 light days`}
                               Body Area: {photo.body_area || '—'}
                             </p>
                             <p className="text-sm text-slate-600">
-                              Date Taken: {photo.taken_at || '—'}
+                              Date Taken: {formatDate(photo.taken_at)}
                             </p>
                             <p className="text-sm text-slate-600">
-                              Visit Date: {photo.visits?.visit_date || '—'}
+                              Visit Date: {formatDate(photo.visits?.visit_date)}
                             </p>
                           </div>
 
@@ -1661,8 +1701,8 @@ recommend 2 light days`}
                 )}
               </div>
             </div>
-          </div>
         </div>
+        )}
       </div>
     </main>
   )
@@ -1692,6 +1732,16 @@ function InfoRow({ label, value }: { label: string; value: string }) {
       <p className="mt-1 text-sm text-slate-800">{value}</p>
     </div>
   )
+}
+
+function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return 'No date'
+  const [year, month, day] = dateStr.split('-').map(Number)
+  return new Date(year, month - 1, day).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
 }
 
 function toTitleCase(str: string | null | undefined): string {
