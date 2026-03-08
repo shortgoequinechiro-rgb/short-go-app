@@ -606,11 +606,11 @@ function AnatomyContent() {
                 Drag to rotate. Scroll to zoom. Toggle anatomy layers and jump
                 to preset views.
               </p>
-              <p className="mt-2 text-sm text-slate-500">
-                {visitId
-                  ? `Visit Mode${horseName ? ` • ${horseName}` : ''}`
-                  : 'Local Draft Mode'}
-              </p>
+              {visitId ? (
+                <p className="mt-2 text-sm text-slate-500">
+                  {`Visit Mode${horseName ? ` • ${horseName}` : ''}`}
+                </p>
+              ) : null}
             </div>
 
             <div className="flex flex-wrap gap-2">

@@ -83,6 +83,15 @@ type VisitAnatomySummaryItem = {
 const RECENT_HORSE_IDS_KEY = 'shortgo_recent_horse_ids'
 const RECENT_OWNER_IDS_KEY = 'shortgo_recent_owner_ids'
 
+function formatPhone(phone: string | null | undefined): string {
+  if (!phone) return '—'
+  const digits = phone.replace(/\D/g, '')
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+  }
+  return phone
+}
+
 const emptyVisitForm = {
   visitDate: '',
   visitLocation: '',
@@ -1102,7 +1111,7 @@ export default function HorseDetailPage() {
               {!editingOwner ? (
                 <div className="mt-4 space-y-3 text-sm text-slate-700">
                   <InfoRow label="Owner" value={horse?.owners?.full_name || '—'} />
-                  <InfoRow label="Phone" value={horse?.owners?.phone || '—'} />
+                  <InfoRow label="Phone" value={formatPhone(horse?.owners?.phone)} />
                   <InfoRow label="Email" value={horse?.owners?.email || '—'} />
                   <InfoRow label="Address" value={horse?.owners?.address || '—'} />
                 </div>

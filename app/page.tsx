@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from './lib/supabase'
 
 type Owner = {
@@ -35,6 +35,15 @@ type SearchMode = 'owner' | 'horse'
 const RECENT_OWNER_IDS_KEY = 'shortgo_recent_owner_ids'
 const RECENT_HORSE_IDS_KEY = 'shortgo_recent_horse_ids'
 
+function formatPhone(phone: string | null | undefined): string {
+  if (!phone) return 'No phone'
+  const digits = phone.replace(/\D/g, '')
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+  }
+  return phone
+}
+
 export default function Home() {
   const router = useRouter()
 
@@ -46,6 +55,8 @@ export default function Home() {
   const [horses, setHorses] = useState<Horse[]>([])
   const [visitCount, setVisitCount] = useState(0)
   const [photoCount, setPhotoCount] = useState(0)
+
+  const findRecordsRef = useRef<HTMLDivElement>(null)
 
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
@@ -638,6 +649,9 @@ export default function Home() {
                         setSearchMode('owner')
                         setSelectedOwnerId(owner.id)
                         setEditingOwner(false)
+                        setTimeout(() => {
+                          findRecordsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                        }, 50)
                       }}
                       className={`w-full rounded-2xl border p-4 text-left transition ${
                         isSelected
@@ -651,7 +665,7 @@ export default function Home() {
                           isSelected ? 'text-slate-300' : 'text-slate-500'
                         }`}
                       >
-                        {owner.phone || 'No phone'}
+                        {formatPhone(owner.phone)}
                       </p>
                       <p
                         className={`text-sm ${
@@ -696,7 +710,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="mt-5 rounded-3xl bg-white p-5 shadow-sm md:p-6">
+        <div ref={findRecordsRef} className="mt-5 rounded-3xl bg-white p-5 shadow-sm md:p-6">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
               <h2 className="text-xl font-semibold text-slate-900 md:text-2xl">
@@ -781,7 +795,7 @@ export default function Home() {
                                 isSelected ? 'text-slate-300' : 'text-slate-500'
                               }`}
                             >
-                              {owner.phone || 'No phone'}
+                              {formatPhone(owner.phone)}
                             </p>
                             <p
                               className={`text-sm ${
@@ -839,7 +853,7 @@ export default function Home() {
                             {selectedOwner.full_name}
                           </h3>
                           <p className="mt-1 text-sm text-slate-600">
-                            Phone: {selectedOwner.phone || '—'}
+                            Phone: {selectedOwner.phone ? formatPhone(selectedOwner.phone) : '—'}
                           </p>
                           <p className="text-sm text-slate-600">
                             Email: {selectedOwner.email || '—'}
