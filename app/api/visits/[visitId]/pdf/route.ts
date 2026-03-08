@@ -90,7 +90,7 @@ async function embedLogo(pdfDoc: PDFDocument) {
 }
 
 async function downloadVisitPhotoBytes(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   imagePath: string
 ) {
   try {
