@@ -30,7 +30,20 @@ type Horse = {
   } | null
 }
 
-type SearchMode = 'owner' | 'horse'
+type Visit = {
+  id: string
+  horse_id: string
+  visit_date: string | null
+  reason_for_visit: string | null
+  horses?: {
+    name: string
+    owners?: {
+      full_name: string
+    } | null
+  } | null
+}
+
+type SearchMode = 'owner' | 'horse' | 'visit'
 
 const RECENT_OWNER_IDS_KEY = 'shortgo_recent_owner_ids'
 const RECENT_HORSE_IDS_KEY = 'shortgo_recent_horse_ids'
@@ -55,6 +68,8 @@ export default function Home() {
   const [horses, setHorses] = useState<Horse[]>([])
   const [visitCount, setVisitCount] = useState(0)
   const [photoCount, setPhotoCount] = useState(0)
+  const [visitCountsByHorse, setVisitCountsByHorse] = useState<Record<string, number>>({})
+  const [recentVisits, setRecentVisits] = useState<Visit[]>([])
 
   const findRecordsRef = useRef<HTMLDivElement>(null)
 
@@ -170,6 +185,36 @@ export default function Home() {
     }
 
     setPhotoCount(count || 0)
+  }
+
+  async function loadVisitData() {
+    const { data, error } = await supabase
+      .from('visits')
+      .select(`
+        id,
+        horse_id,
+        visit_date,
+        reason_for_visit,
+        horses (
+          name,
+          owners (
+            full_name
+          )
+        )
+      `)
+      .order('visit_date', { ascending: false })
+      .limit(100)
+
+    if (error) return
+
+    const visitData = (data || []) as unknown as Visit[]
+
+    const counts: Record<string, number> = {}
+    for (const visit of visitData) {
+      counts[visit.horse_id] = (counts[visit.horse_id] || 0) + 1
+    }
+    setVisitCountsByHorse(counts)
+    setRecentVisits(visitData.slice(0, 15))
   }
 
   function loadRecentItems() {
@@ -530,6 +575,20 @@ export default function Home() {
       .filter((horse): horse is Horse => Boolean(horse))
   }, [recentHorseIds, horses])
 
+  const filteredVisits = useMemo(() => {
+    if (searchMode !== 'visit') return []
+    const query = searchTerm.trim().toLowerCase()
+    if (!query) return recentVisits
+    return recentVisits.filter((visit) => {
+      return (
+        (visit.reason_for_visit || '').toLowerCase().includes(query) ||
+        (visit.visit_date || '').includes(query) ||
+        (visit.horses?.name || '').toLowerCase().includes(query) ||
+        (visit.horses?.owners?.full_name || '').toLowerCase().includes(query)
+      )
+    })
+  }, [recentVisits, searchTerm, searchMode])
+
   useEffect(() => {
     async function init() {
       const isLoggedIn = await checkUser()
@@ -539,6 +598,7 @@ export default function Home() {
       await loadHorses()
       await loadVisitCount()
       await loadPhotoCount()
+      await loadVisitData()
       loadRecentItems()
     }
 
@@ -668,19 +728,55 @@ export default function Home() {
                   <Link
                     key={horse.id}
                     href={`/horses/${horse.id}`}
-                    className="block rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300"
+                    className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300"
                   >
-                    <p className="font-semibold text-slate-900">{horse.name}</p>
-                    <p className="mt-1 text-sm text-slate-500">
-                      Owner: {horse.owners?.full_name || '—'}
-                    </p>
-                    <p className="text-sm text-slate-500">
-                      {horse.discipline || 'No discipline'}
-                    </p>
+                    <div>
+                      <p className="font-semibold text-slate-900">{horse.name}</p>
+                      <p className="mt-1 text-sm text-slate-500">
+                        {horse.owners?.full_name || '—'}
+                      </p>
+                    </div>
+                    <span className="rounded-2xl bg-slate-900 px-3 py-1 text-xs font-medium text-white">
+                      {visitCountsByHorse[horse.id] || 0} visit{(visitCountsByHorse[horse.id] || 0) === 1 ? '' : 's'}
+                    </span>
                   </Link>
                 ))
               )}
             </div>
+          </div>
+        </div>
+
+        <div className="mt-5 rounded-3xl bg-white p-5 shadow-sm md:p-6">
+          <h2 className="text-xl font-semibold text-slate-900 md:text-2xl">Recent Visits</h2>
+          <p className="mt-1 text-sm text-slate-500">Last 15 visits across all horses.</p>
+
+          <div className="mt-4 space-y-3">
+            {recentVisits.length === 0 ? (
+              <p className="text-sm text-slate-500">No visits recorded yet.</p>
+            ) : (
+              recentVisits.map((visit) => (
+                <Link
+                  key={visit.id}
+                  href={`/horses/${visit.horse_id}`}
+                  className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:bg-slate-50"
+                >
+                  <div>
+                    <p className="font-semibold text-slate-900">
+                      {visit.horses?.name || '—'}
+                    </p>
+                    <p className="mt-0.5 text-sm text-slate-500">
+                      {visit.reason_for_visit || 'No reason noted'}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {visit.horses?.owners?.full_name || '—'}
+                    </p>
+                  </div>
+                  <span className="ml-4 shrink-0 rounded-2xl bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                    {formatDate(visit.visit_date)}
+                  </span>
+                </Link>
+              ))
+            )}
           </div>
         </div>
 
@@ -707,6 +803,7 @@ export default function Home() {
                 >
                   <option value="owner">Owner</option>
                   <option value="horse">Horse</option>
+                  <option value="visit">Visit</option>
                 </select>
               </div>
 
@@ -721,7 +818,9 @@ export default function Home() {
                   placeholder={
                     searchMode === 'owner'
                       ? 'Search owner name, phone, email, or address...'
-                      : 'Search horse, owner, breed, discipline, barn...'
+                      : searchMode === 'horse'
+                      ? 'Search horse, owner, breed, discipline, barn...'
+                      : 'Search visit by horse, owner, date (2026-03-07), or reason...'
                   }
                 />
               </div>
@@ -732,12 +831,14 @@ export default function Home() {
             <div className="rounded-3xl bg-slate-100 p-4 md:p-5">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-lg font-semibold text-slate-900">
-                  {searchMode === 'owner' ? 'Owner Results' : 'Horse Results'}
+                  {searchMode === 'owner' ? 'Owner Results' : searchMode === 'horse' ? 'Horse Results' : 'Visit Results'}
                 </h3>
                 <span className="text-xs text-slate-500">
                   {searchMode === 'owner'
                     ? `${filteredOwners.length} result${filteredOwners.length === 1 ? '' : 's'}`
-                    : `${filteredHorses.length} result${filteredHorses.length === 1 ? '' : 's'}`}
+                    : searchMode === 'horse'
+                    ? `${filteredHorses.length} result${filteredHorses.length === 1 ? '' : 's'}`
+                    : `${filteredVisits.length} result${filteredVisits.length === 1 ? '' : 's'}`}
                 </span>
               </div>
 
@@ -789,21 +890,46 @@ export default function Home() {
                         )
                       })
                     )
-                  ) : filteredHorses.length === 0 ? (
-                    <p className="text-sm text-slate-500">Search to find a horse.</p>
+                  ) : searchMode === 'horse' ? (
+                    filteredHorses.length === 0 ? (
+                      <p className="text-sm text-slate-500">Search to find a horse.</p>
+                    ) : (
+                      filteredHorses.map((horse) => (
+                        <Link
+                          key={horse.id}
+                          href={`/horses/${horse.id}`}
+                          className="block rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300"
+                        >
+                          <p className="font-semibold text-slate-900">{horse.name}</p>
+                          <p className="mt-1 text-sm text-slate-500">
+                            Owner: {horse.owners?.full_name || '—'}
+                          </p>
+                          <p className="text-sm text-slate-500">
+                            {horse.discipline || 'No discipline'}
+                          </p>
+                        </Link>
+                      ))
+                    )
+                  ) : filteredVisits.length === 0 ? (
+                    <p className="text-sm text-slate-500">No visits found.</p>
                   ) : (
-                    filteredHorses.map((horse) => (
+                    filteredVisits.map((visit) => (
                       <Link
-                        key={horse.id}
-                        href={`/horses/${horse.id}`}
+                        key={visit.id}
+                        href={`/horses/${visit.horse_id}`}
                         className="block rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300"
                       >
-                        <p className="font-semibold text-slate-900">{horse.name}</p>
+                        <p className="font-semibold text-slate-900">
+                          {visit.horses?.name || '—'}
+                        </p>
                         <p className="mt-1 text-sm text-slate-500">
-                          Owner: {horse.owners?.full_name || '—'}
+                          {formatDate(visit.visit_date)}
                         </p>
                         <p className="text-sm text-slate-500">
-                          {horse.discipline || 'No discipline'}
+                          {visit.reason_for_visit || 'No reason noted'}
+                        </p>
+                        <p className="text-sm text-slate-400">
+                          {visit.horses?.owners?.full_name || '—'}
                         </p>
                       </Link>
                     ))
@@ -813,7 +939,13 @@ export default function Home() {
             </div>
 
             <div className="rounded-3xl border border-slate-200 bg-white p-5 md:p-6">
-              {searchMode === 'owner' ? (
+              {searchMode === 'visit' ? (
+                <div className="flex min-h-[300px] items-center justify-center rounded-2xl border border-dashed border-slate-300">
+                  <p className="text-center text-slate-500">
+                    Click any visit to open the horse record.
+                  </p>
+                </div>
+              ) : searchMode === 'owner' ? (
                 !selectedOwner ? (
                   <div className="flex min-h-[300px] items-center justify-center rounded-2xl border border-dashed border-slate-300">
                     <p className="text-slate-500">Select an owner to view horses.</p>
@@ -942,11 +1074,16 @@ export default function Home() {
                                   </p>
                                 </div>
 
-                                {horse.discipline ? (
-                                  <span className="rounded-2xl bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                                    {horse.discipline}
+                                <div className="flex flex-col items-end gap-1">
+                                  {horse.discipline ? (
+                                    <span className="rounded-2xl bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                                      {horse.discipline}
+                                    </span>
+                                  ) : null}
+                                  <span className="rounded-2xl bg-slate-900 px-3 py-1 text-xs font-medium text-white">
+                                    {visitCountsByHorse[horse.id] || 0} visit{(visitCountsByHorse[horse.id] || 0) === 1 ? '' : 's'}
                                   </span>
-                                ) : null}
+                                </div>
                               </div>
 
                               <div className="mt-4 text-sm text-slate-600">
@@ -992,11 +1129,16 @@ export default function Home() {
                               </p>
                             </div>
 
-                            {horse.discipline ? (
-                              <span className="rounded-2xl bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                                {horse.discipline}
+                            <div className="flex flex-col items-end gap-1">
+                              {horse.discipline ? (
+                                <span className="rounded-2xl bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                                  {horse.discipline}
+                                </span>
+                              ) : null}
+                              <span className="rounded-2xl bg-slate-900 px-3 py-1 text-xs font-medium text-white">
+                                {visitCountsByHorse[horse.id] || 0} visit{(visitCountsByHorse[horse.id] || 0) === 1 ? '' : 's'}
                               </span>
-                            ) : null}
+                            </div>
                           </div>
 
                           <div className="mt-4 grid gap-1 text-sm text-slate-600">
@@ -1172,6 +1314,16 @@ function StatCard({
       </p>
     </div>
   )
+}
+
+function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return 'No date'
+  const [year, month, day] = dateStr.split('-').map(Number)
+  return new Date(year, month - 1, day).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  })
 }
 
 function Field({
