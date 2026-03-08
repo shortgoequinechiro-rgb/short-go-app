@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
+import { PDFDocument, StandardFonts, rgb, type PDFImage } from 'pdf-lib'
 import { createClient } from '@supabase/supabase-js'
 import fs from 'fs'
 import path from 'path'
@@ -20,10 +20,21 @@ type VisitPhotoRow = {
   image_path: string | null
 }
 
-function wrapText(text: string, maxChars = 95) {
+function getAdminSupabase() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error('Missing Supabase server environment variables.')
+  }
+
+  return createClient(supabaseUrl, serviceRoleKey)
+}
+
+function wrapText(text: string, maxChars = 90) {
   if (!text) return ['—']
 
-  const words = text.split(' ')
+  const words = text.split(/\s+/)
   const lines: string[] = []
   let current = ''
 
@@ -39,17 +50,6 @@ function wrapText(text: string, maxChars = 95) {
 
   if (current) lines.push(current)
   return lines.length ? lines : ['—']
-}
-
-function getAdminSupabase() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error('Missing Supabase server environment variables.')
-  }
-
-  return createClient(supabaseUrl, serviceRoleKey)
 }
 
 async function loadLogoFile() {
@@ -89,10 +89,7 @@ async function embedLogo(pdfDoc: PDFDocument) {
   }
 }
 
-async function downloadVisitPhotoBytes(
-  supabase: any,
-  imagePath: string
-) {
+async function downloadVisitPhotoBytes(supabase: any, imagePath: string) {
   try {
     const { data, error } = await supabase.storage
       .from('horse-photos')
@@ -137,6 +134,8 @@ export async function GET(
           id,
           name,
           breed,
+          sex,
+          age,
           discipline,
           barn_location,
           owners (
@@ -161,7 +160,6 @@ export async function GET(
       .eq('visit_id', visitId)
 
     if (anatomyError) {
-      console.error('Anatomy query error:', anatomyError)
       return NextResponse.json(
         { error: `Error loading anatomy notes: ${anatomyError.message}` },
         { status: 500 }
@@ -175,7 +173,6 @@ export async function GET(
       .order('taken_at', { ascending: true })
 
     if (photosError) {
-      console.error('Visit photos query error:', photosError)
       return NextResponse.json(
         { error: `Error loading visit photos: ${photosError.message}` },
         { status: 500 }
@@ -184,129 +181,321 @@ export async function GET(
 
     const pdfDoc = await PDFDocument.create()
     let page = pdfDoc.addPage([612, 792])
+
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
     const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
     const logoImage = await embedLogo(pdfDoc)
 
-    const { width, height } = page.getSize()
-    const margin = 48
-    let y = height - margin
-
-    function newPage() {
-      page = pdfDoc.addPage([612, 792])
-      y = height - margin
-    }
-
-    function ensureSpace(linesNeeded = 2) {
-      if (y < margin + linesNeeded * 18) {
-        newPage()
-      }
-    }
-
-    function drawLine(text: string, x = margin, size = 11, isBold = false) {
-      ensureSpace()
-      page.drawText(text, {
-        x,
-        y,
-        size,
-        font: isBold ? bold : font,
-        color: rgb(0.15, 0.15, 0.15),
-      })
-      y -= size + 6
-    }
-
-    function drawSectionTitle(title: string) {
-      y -= 8
-      ensureSpace()
-      page.drawText(title, {
-        x: margin,
-        y,
-        size: 14,
-        font: bold,
-        color: rgb(0.08, 0.08, 0.08),
-      })
-      y -= 22
-    }
-
-    function drawParagraph(label: string, value: string | null | undefined) {
-      drawLine(label, margin, 11, true)
-      const lines = wrapText(value || '—')
-      for (const line of lines) {
-        drawLine(line, margin + 12, 10, false)
-      }
-      y -= 6
-    }
+    const pageWidth = 612
+    const pageHeight = 792
+    const margin = 44
+    const contentWidth = pageWidth - margin * 2
+    let y = pageHeight - margin
 
     const horse = visit.horses as any
     const owner = horse?.owners as any
 
-    if (logoImage) {
-      const dims = logoImage.scale(1)
-      const maxWidth = 140
-      const maxHeight = 60
-      const scale = Math.min(maxWidth / dims.width, maxHeight / dims.height)
-      const drawWidth = dims.width * scale
-      const drawHeight = dims.height * scale
-
-      page.drawImage(logoImage, {
-        x: margin,
-        y: y - drawHeight + 10,
-        width: drawWidth,
-        height: drawHeight,
-      })
-
-      page.drawText('Short-Go Equine Chiropractic', {
-        x: margin + drawWidth + 16,
-        y: y - 8,
-        size: 18,
-        font: bold,
-        color: rgb(0.08, 0.08, 0.08),
-      })
-
-      page.drawText('Visit Report', {
-        x: margin + drawWidth + 16,
-        y: y - 30,
-        size: 12,
-        font,
-        color: rgb(0.25, 0.25, 0.25),
-      })
-
-      y -= Math.max(drawHeight, 52) + 8
-    } else {
-      drawLine('Short-Go Equine Chiropractic', margin, 18, true)
-      drawLine('Visit Report', margin, 12, false)
-      y -= 8
+    const colors = {
+      text: rgb(0.14, 0.14, 0.14),
+      muted: rgb(0.42, 0.42, 0.42),
+      line: rgb(0.85, 0.86, 0.88),
+      soft: rgb(0.95, 0.96, 0.97),
+      dark: rgb(0.08, 0.08, 0.08),
     }
 
-    page.drawLine({
-      start: { x: margin, y },
-      end: { x: width - margin, y },
-      thickness: 1,
-      color: rgb(0.85, 0.85, 0.85),
-    })
-    y -= 20
+    function newPage() {
+      page = pdfDoc.addPage([pageWidth, pageHeight])
+      y = pageHeight - margin
+    }
+
+    function ensureSpace(heightNeeded: number) {
+      if (y - heightNeeded < margin) newPage()
+    }
+
+    function drawTextLine(
+      text: string,
+      x: number,
+      yy: number,
+      size = 10,
+      useBold = false,
+      color = colors.text
+    ) {
+      page.drawText(text, {
+        x,
+        y: yy,
+        size,
+        font: useBold ? bold : font,
+        color,
+      })
+    }
+
+    function drawDivider(spacingTop = 8, spacingBottom = 14) {
+      y -= spacingTop
+      page.drawLine({
+        start: { x: margin, y },
+        end: { x: pageWidth - margin, y },
+        thickness: 1,
+        color: colors.line,
+      })
+      y -= spacingBottom
+    }
+
+    function drawSectionTitle(title: string) {
+  y -= 10
+  ensureSpace(40)
+  drawTextLine(title, margin, y, 13, true, colors.dark)
+  y -= 28
+}
+    function drawParagraph(label: string, value: string | null | undefined) {
+      const lines = wrapText(value || '—', 88)
+      ensureSpace(20 + lines.length * 14)
+
+      drawTextLine(label, margin, y, 10, true, colors.muted)
+      y -= 14
+
+      for (const line of lines) {
+        drawTextLine(line, margin, y, 10, false, colors.text)
+        y -= 13
+      }
+
+      y -= 6
+    }
+
+    function drawInfoGrid(items: Array<{ label: string; value: string }>) {
+      const colGap = 18
+      const colWidth = (contentWidth - colGap) / 2
+
+      for (let i = 0; i < items.length; i += 2) {
+        const left = items[i]
+        const right = items[i + 1]
+        ensureSpace(40)
+
+        page.drawRectangle({
+          x: margin,
+          y: y - 34,
+          width: colWidth,
+          height: 34,
+          color: colors.soft,
+          borderColor: colors.line,
+          borderWidth: 0.75,
+        })
+
+        drawTextLine(left.label.toUpperCase(), margin + 10, y - 10, 7.5, true, colors.muted)
+        drawTextLine(left.value || '—', margin + 10, y - 24, 10, false, colors.text)
+
+        if (right) {
+          const rightX = margin + colWidth + colGap
+
+          page.drawRectangle({
+            x: rightX,
+            y: y - 34,
+            width: colWidth,
+            height: 34,
+            color: colors.soft,
+            borderColor: colors.line,
+            borderWidth: 0.75,
+          })
+
+          drawTextLine(right.label.toUpperCase(), rightX + 10, y - 10, 7.5, true, colors.muted)
+          drawTextLine(right.value || '—', rightX + 10, y - 24, 10, false, colors.text)
+        }
+
+        y -= 44
+      }
+    }
+
+    function drawHeader() {
+      ensureSpace(90)
+
+      if (logoImage) {
+        const dims = logoImage.scale(1)
+        const maxWidth = 84
+        const maxHeight = 50
+        const scale = Math.min(maxWidth / dims.width, maxHeight / dims.height)
+        const drawWidth = dims.width * scale
+        const drawHeight = dims.height * scale
+
+        page.drawImage(logoImage, {
+          x: margin,
+          y: y - drawHeight + 8,
+          width: drawWidth,
+          height: drawHeight,
+        })
+
+        drawTextLine('Short-Go Equine Chiropractic', margin + drawWidth + 14, y - 2, 19, true, colors.dark)
+        drawTextLine('Equine Chiropractic Visit Report', margin + drawWidth + 14, y - 22, 11, false, colors.muted)
+      } else {
+        drawTextLine('Short-Go Equine Chiropractic', margin, y - 2, 19, true, colors.dark)
+        drawTextLine('Equine Chiropractic Visit Report', margin, y - 22, 11, false, colors.muted)
+      }
+
+      const generatedText = `Generated: ${new Date().toLocaleDateString()}`
+      const horseText = `Horse: ${horse?.name || '—'}`
+      drawTextLine(generatedText, pageWidth - margin - 120, y - 2, 9, false, colors.muted)
+      drawTextLine(horseText, pageWidth - margin - 120, y - 18, 9, true, colors.text)
+
+      y -= 58
+      drawDivider(0, 18)
+    }
+
+    function drawSummaryCard() {
+      ensureSpace(108)
+
+      const cardHeight = 92
+      page.drawRectangle({
+        x: margin,
+        y: y - cardHeight,
+        width: contentWidth,
+        height: cardHeight,
+        color: colors.soft,
+        borderColor: colors.line,
+        borderWidth: 1,
+      })
+
+      drawTextLine('VISIT SUMMARY', margin + 14, y - 14, 8, true, colors.muted)
+
+      const leftX = margin + 14
+      const rightX = margin + contentWidth / 2 + 8
+      const line1Y = y - 32
+      const line2Y = y - 52
+      const line3Y = y - 72
+
+      drawTextLine(`Visit Date: ${visit.visit_date || '—'}`, leftX, line1Y, 10, true)
+      drawTextLine(`Provider: ${visit.provider_name || '—'}`, leftX, line2Y, 10, false)
+      drawTextLine(`Follow Up: ${visit.follow_up || '—'}`, leftX, line3Y, 10, false)
+
+      drawTextLine(`Reason: ${visit.reason_for_visit || '—'}`, rightX, line1Y, 10, true)
+      drawTextLine(`Treated Areas: ${visit.treated_areas || '—'}`, rightX, line2Y, 10, false)
+      drawTextLine(`Location: ${visit.location || '—'}`, rightX, line3Y, 10, false)
+
+      y -= cardHeight + 18
+    }
+
+    async function embedImageForPhoto(photo: VisitPhotoRow): Promise<PDFImage | null> {
+      if (!photo.image_path) return null
+      const photoFile = await downloadVisitPhotoBytes(supabase, photo.image_path)
+      if (!photoFile) return null
+
+      try {
+        return photoFile.kind === 'jpg'
+          ? await pdfDoc.embedJpg(photoFile.bytes)
+          : await pdfDoc.embedPng(photoFile.bytes)
+      } catch (error) {
+        console.error('Photo embed error:', error, photo.image_path)
+        return null
+      }
+    }
+
+    async function drawPhotos() {
+      if (!visitPhotos || visitPhotos.length === 0) return
+
+      drawSectionTitle('Visit Photos')
+
+      const photoItems: Array<{
+        embedded: PDFImage
+        captionLines: string[]
+      }> = []
+
+      for (const photo of visitPhotos as VisitPhotoRow[]) {
+        const embedded = await embedImageForPhoto(photo)
+        if (!embedded) continue
+
+        const captionParts = [
+          photo.caption || null,
+          photo.body_area ? `Area: ${photo.body_area}` : null,
+          photo.taken_at ? `Date: ${photo.taken_at}` : null,
+        ].filter(Boolean)
+
+        photoItems.push({
+          embedded,
+          captionLines: captionParts.length ? wrapText(captionParts.join(' • '), 38) : [],
+        })
+      }
+
+      if (photoItems.length === 0) {
+        drawTextLine('No embeddable visit photos were found.', margin, y, 10, false, colors.muted)
+        y -= 18
+        return
+      }
+
+      const gap = 16
+      const boxWidth = (contentWidth - gap) / 2
+
+      for (let i = 0; i < photoItems.length; i += 2) {
+        const row = photoItems.slice(i, i + 2)
+
+        const heights = row.map((item) => {
+          const dims = item.embedded.scale(1)
+          const scale = Math.min(boxWidth / dims.width, 150 / dims.height)
+          const imageHeight = dims.height * scale
+          const captionHeight = Math.max(item.captionLines.length, 1) * 12 + 14
+          return { imageHeight, scale }
+        })
+
+        const rowHeight = Math.max(...heights.map((h) => h.imageHeight + 34 + 18))
+        ensureSpace(rowHeight + 10)
+
+        row.forEach((item, idx) => {
+          const x = idx === 0 ? margin : margin + boxWidth + gap
+          const dims = item.embedded.scale(1)
+          const scale = heights[idx].scale
+          const drawWidth = dims.width * scale
+          const drawHeight = dims.height * scale
+
+          page.drawRectangle({
+            x,
+            y: y - (drawHeight + 34),
+            width: boxWidth,
+            height: drawHeight + 34,
+            color: rgb(1, 1, 1),
+            borderColor: colors.line,
+            borderWidth: 0.8,
+          })
+
+          page.drawImage(item.embedded, {
+            x: x + (boxWidth - drawWidth) / 2,
+            y: y - drawHeight - 8,
+            width: drawWidth,
+            height: drawHeight,
+          })
+
+          let captionY = y - drawHeight - 20
+          if (item.captionLines.length === 0) {
+            drawTextLine('Visit photo', x + 8, captionY, 9, false, colors.muted)
+          } else {
+            for (const line of item.captionLines.slice(0, 3)) {
+              drawTextLine(line, x + 8, captionY, 8.5, false, colors.muted)
+              captionY -= 10
+            }
+          }
+        })
+
+        y -= rowHeight + 10
+      }
+    }
+
+    drawHeader()
+    drawSummaryCard()
 
     drawSectionTitle('Horse Information')
-    drawLine(`Horse: ${horse?.name || '—'}`)
-    drawLine(`Breed: ${horse?.breed || '—'}`)
-    drawLine(`Discipline: ${horse?.discipline || '—'}`)
-    drawLine(`Barn Location: ${horse?.barn_location || '—'}`)
+    drawInfoGrid([
+      { label: 'Horse Name', value: horse?.name || '—' },
+      { label: 'Breed', value: horse?.breed || '—' },
+      { label: 'Sex', value: horse?.sex || '—' },
+      { label: 'Age', value: horse?.age || '—' },
+      { label: 'Discipline', value: horse?.discipline || '—' },
+      { label: 'Barn Location', value: horse?.barn_location || '—' },
+    ])
 
     drawSectionTitle('Owner Information')
-    drawLine(`Owner: ${owner?.full_name || '—'}`)
-    drawLine(`Phone: ${owner?.phone || '—'}`)
-    drawLine(`Email: ${owner?.email || '—'}`)
-    drawParagraph('Address', owner?.address || '—')
+    drawInfoGrid([
+      { label: 'Owner', value: owner?.full_name || '—' },
+      { label: 'Phone', value: owner?.phone || '—' },
+      { label: 'Email', value: owner?.email || '—' },
+      { label: 'Address', value: owner?.address || '—' },
+    ])
 
-    drawSectionTitle('Visit Information')
-    drawLine(`Visit Date: ${visit.visit_date || '—'}`)
-    drawLine(`Location: ${visit.location || '—'}`)
-    drawLine(`Provider: ${visit.provider_name || '—'}`)
-    drawLine(`Reason for Visit: ${visit.reason_for_visit || '—'}`)
-    drawLine(`Treated Areas: ${visit.treated_areas || '—'}`)
-    drawLine(`Follow Up: ${visit.follow_up || '—'}`)
-
-    drawSectionTitle('SOAP')
+    drawSectionTitle('SOAP Notes')
     drawParagraph('Subjective', visit.subjective)
     drawParagraph('Objective', visit.objective)
     drawParagraph('Assessment', visit.assessment)
@@ -315,7 +504,8 @@ export async function GET(
 
     drawSectionTitle('Anatomy Notes')
     if (!anatomyRows || anatomyRows.length === 0) {
-      drawLine('No anatomy notes saved for this visit.')
+      drawTextLine('No anatomy notes saved for this visit.', margin, y, 10, false, colors.muted)
+      y -= 18
     } else {
       for (const row of anatomyRows) {
         const label = REGION_LABELS[row.region_key] || row.region_key
@@ -323,101 +513,25 @@ export async function GET(
       }
     }
 
-    if (visitPhotos && visitPhotos.length > 0) {
-      drawSectionTitle('Visit Photos')
+    await drawPhotos()
 
-      for (const photo of visitPhotos as VisitPhotoRow[]) {
-        if (!photo.image_path) continue
+    drawDivider(8, 18)
+    ensureSpace(70)
 
-        const photoFile = await downloadVisitPhotoBytes(supabase, photo.image_path)
-        if (!photoFile) continue
-
-        let embeddedImage
-        try {
-          embeddedImage =
-            photoFile.kind === 'jpg'
-              ? await pdfDoc.embedJpg(photoFile.bytes)
-              : await pdfDoc.embedPng(photoFile.bytes)
-        } catch (error) {
-          console.error('Photo embed error:', error, photo.image_path)
-          continue
-        }
-
-        const captionBits = [
-          photo.caption || null,
-          photo.body_area ? `Area: ${photo.body_area}` : null,
-          photo.taken_at ? `Date: ${photo.taken_at}` : null,
-        ].filter(Boolean)
-
-        const imageMaxWidth = width - margin * 2
-        const imageMaxHeight = 220
-        const dims = embeddedImage.scale(1)
-        const scale = Math.min(imageMaxWidth / dims.width, imageMaxHeight / dims.height)
-        const drawWidth = dims.width * scale
-        const drawHeight = dims.height * scale
-
-        const captionLines = captionBits.length
-          ? wrapText(captionBits.join(' • '), 90)
-          : []
-
-        const neededHeight = drawHeight + captionLines.length * 16 + 24
-        if (y < margin + neededHeight) {
-          newPage()
-        }
-
-        page.drawImage(embeddedImage, {
-          x: margin,
-          y: y - drawHeight,
-          width: drawWidth,
-          height: drawHeight,
-        })
-
-        y -= drawHeight + 8
-
-        for (const line of captionLines) {
-          page.drawText(line, {
-            x: margin,
-            y,
-            size: 10,
-            font,
-            color: rgb(0.25, 0.25, 0.25),
-          })
-          y -= 14
-        }
-
-        y -= 10
-      }
-    }
-
-    y -= 8
-    ensureSpace(5)
-    page.drawLine({
-      start: { x: margin, y },
-      end: { x: width - margin, y },
-      thickness: 1,
-      color: rgb(0.85, 0.85, 0.85),
-    })
-    y -= 22
-
-    page.drawText('Provider Signature', {
-      x: margin,
-      y,
-      size: 11,
-      font: bold,
-      color: rgb(0.15, 0.15, 0.15),
-    })
-    y -= 28
+    drawTextLine('Provider Signature', margin, y, 10, true, colors.muted)
+    y -= 24
 
     page.drawLine({
       start: { x: margin, y },
-      end: { x: margin + 220, y },
+      end: { x: margin + 230, y },
       thickness: 1,
       color: rgb(0.45, 0.45, 0.45),
     })
-    y -= 16
 
-    drawLine('Dr. Andrew Leo D.C., M.S., cAVCA', margin, 11, true)
-    drawLine('Short-Go Equine Chiropractic', margin, 10, false)
+    y -= 16
+    drawTextLine('Dr. Andrew Leo D.C., M.S., cAVCA', margin, y, 11, true, colors.text)
+    y -= 14
+    drawTextLine('Short-Go Equine Chiropractic', margin, y, 10, false, colors.muted)
 
     const pdfBytes = await pdfDoc.save()
     const fileName = `${horse?.name || 'horse'}-visit-${visit.visit_date || 'report'}.pdf`

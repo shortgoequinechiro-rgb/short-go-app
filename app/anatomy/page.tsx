@@ -293,6 +293,7 @@ function AnatomyContent() {
   const [loadingVisitNotes, setLoadingVisitNotes] = useState(false)
 
   const controlsRef = useRef<OrbitControlsImpl | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [desiredPosition, setDesiredPosition] = useState<
     [number, number, number]
   >(DEFAULT_CAMERA_POSITION)
@@ -520,6 +521,55 @@ function AnatomyContent() {
     setNoteMessage('Region notes cleared.')
   }
 
+  async function captureAnatomyScreenshot() {
+    if (!canvasRef.current) {
+      alert('Canvas not ready yet.')
+      return
+    }
+
+    if (!visitId) {
+      alert('Screenshot only saves in Visit Mode.')
+      return
+    }
+
+    if (!horseId) {
+      alert('Horse record not loaded yet.')
+      return
+    }
+
+    const dataUrl = canvasRef.current.toDataURL('image/png')
+    const blob = await (await fetch(dataUrl)).blob()
+
+    const fileName = `anatomy-${visitId}-${Date.now()}.png`
+    const filePath = `anatomy/${fileName}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('horse-photos')
+      .upload(filePath, blob)
+
+    if (uploadError) {
+      alert(`Upload failed: ${uploadError.message}`)
+      return
+    }
+
+    const { error: insertError } = await supabase.from('photos').insert([
+      {
+        horse_id: horseId,
+        visit_id: visitId,
+        caption: 'Anatomy Screenshot',
+        body_area: selectedLandmark?.title || null,
+        image_path: filePath,
+      },
+    ])
+
+    if (insertError) {
+      alert(`Database save failed: ${insertError.message}`)
+      return
+    }
+
+    alert('Screenshot saved to visit.')
+  }
+
   function frontView() {
     setView([4, 0.25, 0])
   }
@@ -591,6 +641,14 @@ function AnatomyContent() {
               >
                 Show All Layers
               </button>
+              {visitId ? (
+                <button
+                  onClick={captureAnatomyScreenshot}
+                  className="rounded-2xl border border-slate-900 bg-slate-900 px-4 py-3 text-sm font-medium text-white"
+                >
+                  Save Screenshot
+                </button>
+              ) : null}
             </div>
           </div>
         </div>
@@ -722,10 +780,13 @@ function AnatomyContent() {
 
           <div className="rounded-3xl bg-white p-3 shadow-sm md:p-4">
             <div className="h-[72vh] min-h-[600px] overflow-hidden rounded-2xl bg-slate-100">
-              <Canvas
-                camera={{ position: [4, 0.25, 0], fov: 35, near: 0.01, far: 100 }}
-              >
-                <ambientLight intensity={1.2} />
+<Canvas
+  camera={{ position: [4, 0.25, 0], fov: 35, near: 0.01, far: 100 }}
+  gl={{ preserveDrawingBuffer: true }}
+  onCreated={({ gl }) => {
+    canvasRef.current = gl.domElement
+  }}
+>                <ambientLight intensity={1.2} />
                 <directionalLight position={[8, 8, 5]} intensity={1.6} />
                 <directionalLight position={[-8, 4, -5]} intensity={0.7} />
 
