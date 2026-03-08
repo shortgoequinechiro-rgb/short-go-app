@@ -97,11 +97,6 @@ export default function Home() {
     return true
   }
 
-  async function handleSignOut() {
-    await supabase.auth.signOut()
-    router.push('/login')
-  }
-
   async function loadOwners() {
     const { data, error } = await supabase
       .from('owners')
@@ -574,50 +569,22 @@ export default function Home() {
     <main className="min-h-screen bg-slate-400 p-4 md:p-6 xl:p-8">
       <div className="mx-auto max-w-7xl">
         <div className="rounded-3xl bg-white p-5 shadow-sm md:p-6">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-[180px_1fr_320px] md:items-center">
-            <div className="flex justify-center md:justify-start">
-              <div className="relative h-28 w-28 overflow-hidden rounded-2xl bg-slate-100 md:h-32 md:w-32">
-                <Image
-                  src="/logo.png"
-                  alt="Short-Go logo"
-                  fill
-                  className="object-contain p-1"
-                />
-              </div>
+          <div className="flex items-center gap-5">
+            <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-2xl bg-slate-100">
+              <Image
+                src="/logo.png"
+                alt="Short-Go logo"
+                fill
+                className="object-contain p-1"
+              />
             </div>
-
-            <div className="text-center">
-              <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">
-                Short-Go Equine Chiropractic
-              </p>
-              <h1 className="mt-2 text-3xl font-bold text-slate-900 md:text-4xl">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">
                 Client Dashboard
               </h1>
-              <p className="mt-2 text-sm text-slate-600 md:text-base">
+              <p className="mt-1 text-sm text-slate-600 md:text-base">
                 Search by owner or horse, then open the full horse record.
               </p>
-            </div>
-
-            <div className="flex flex-col items-center gap-3 md:items-end">
-              <p className="break-all text-center text-sm text-slate-500 md:text-right">
-                Signed in as: {userEmail || 'Unknown user'}
-              </p>
-
-              <div className="flex flex-wrap justify-center gap-2 md:justify-end">
-                <Link
-                  href="/anatomy"
-                  className="min-h-[44px] rounded-2xl border border-slate-900 bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
-                >
-                  Anatomy Viewer
-                </Link>
-
-                <button
-                  onClick={handleSignOut}
-                  className="min-h-[44px] rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-900"
-                >
-                  Sign Out
-                </button>
-              </div>
             </div>
           </div>
         </div>

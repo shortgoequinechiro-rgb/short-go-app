@@ -596,10 +596,7 @@ function AnatomyContent() {
         <div className="rounded-3xl bg-white p-5 shadow-sm md:p-6">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
-              <p className="text-xs font-medium uppercase tracking-[0.22em] text-slate-500">
-                Short-Go Equine Chiropractic
-              </p>
-              <h1 className="mt-2 text-3xl font-bold text-slate-900 md:text-4xl">
+              <h1 className="text-3xl font-bold text-slate-900 md:text-4xl">
                 Horse Anatomy Viewer
               </h1>
               <p className="mt-2 text-sm text-slate-600 md:text-base">

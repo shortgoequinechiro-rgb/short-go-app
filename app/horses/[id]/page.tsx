@@ -191,11 +191,6 @@ export default function HorseDetailPage() {
     return true
   }
 
-  async function handleSignOut() {
-    await supabase.auth.signOut()
-    router.push('/login')
-  }
-
   function saveRecentHorse(id: string) {
     if (typeof window === 'undefined') return
     const existing = window.localStorage.getItem(RECENT_HORSE_IDS_KEY)
@@ -939,36 +934,12 @@ export default function HorseDetailPage() {
     <main className="min-h-screen bg-slate-100 p-6 md:p-8">
       <div className="mx-auto max-w-7xl">
         <div className="rounded-3xl bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div>
-              <Link
-                href="/"
-                className="text-sm font-medium text-slate-500 hover:text-slate-900"
-              >
-                ← Back to Dashboard
-              </Link>
-
-              <h1 className="mt-3 text-3xl font-bold text-slate-900">
-                {horse?.name || 'Horse Record'}
-              </h1>
-
-              <p className="mt-2 text-slate-600">
-                {horse?.breed || '—'} • {horse?.sex || '—'} • {horse?.age || '—'} • {horse?.discipline || '—'} • {horse?.barn_location || '—'}
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-2 md:items-end">
-              <p className="text-sm text-slate-500">
-                Signed in as: {userEmail || 'Unknown user'}
-              </p>
-              <button
-                onClick={handleSignOut}
-                className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-900"
-              >
-                Sign Out
-              </button>
-            </div>
-          </div>
+          <h1 className="text-3xl font-bold text-slate-900">
+            {horse?.name || 'Horse Record'}
+          </h1>
+          <p className="mt-2 text-slate-600">
+            {horse?.breed || '—'} • {horse?.sex || '—'} • {horse?.age || '—'} • {horse?.discipline || '—'} • {horse?.barn_location || '—'}
+          </p>
         </div>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[340px_1fr]">
