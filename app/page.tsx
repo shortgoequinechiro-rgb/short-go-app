@@ -662,7 +662,7 @@ export default function Home() {
 
         <div className="mt-5 grid grid-cols-2 gap-4 xl:grid-cols-4">
           <StatCard label="Owners" value={owners.length} onClick={() => handleStatCardClick('owner')} />
-          <StatCard label="Horses" value={horses.length} onClick={() => handleStatCardClick('horse')} />
+          <StatCard label="Patients" value={horses.length} onClick={() => handleStatCardClick('horse')} />
           <StatCard label="Visits" value={visitCount} onClick={() => handleStatCardClick('horse')} />
           <StatCard label="Photos" value={photoCount} onClick={() => handleStatCardClick('horse')} />
         </div>
