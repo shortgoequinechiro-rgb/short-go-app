@@ -129,6 +129,18 @@ export default function HorseDetailPage() {
   const [horse, setHorse] = useState<Horse | null>(null)
   const [ownerOtherHorses, setOwnerOtherHorses] = useState<Horse[]>([])
   const [selectedOwnerHorseId, setSelectedOwnerHorseId] = useState('')
+  const [consentOnFile, setConsentOnFile] = useState<{ signed_at: string; signed_name: string } | null | undefined>(undefined)
+  const [upcomingAppointments, setUpcomingAppointments] = useState<{ id: string; appointment_date: string; appointment_time: string | null; reason: string | null; status: string }[]>([])
+
+  // Multi-contact roles
+  type HorseContact = { id: string; horse_id: string; name: string; role: string; phone: string | null; email: string | null; notes: string | null }
+  const [contacts, setContacts] = useState<HorseContact[]>([])
+  const [contactsNoTable, setContactsNoTable] = useState(false)
+  const [showContactForm, setShowContactForm] = useState(false)
+  const [editingContactId, setEditingContactId] = useState<string | null>(null)
+  const [contactForm, setContactForm] = useState({ name: '', role: 'Trainer', phone: '', email: '', notes: '' })
+  const [savingContact, setSavingContact] = useState(false)
+  const [contactMsg, setContactMsg] = useState('')
   const [visits, setVisits] = useState<Visit[]>([])
   const [photos, setPhotos] = useState<PhotoWithSignedUrl[]>([])
 
@@ -770,15 +782,30 @@ export default function HorseDetailPage() {
     try {
       setEmailingVisitId(visitId)
       setMessage('Sending PDF...')
-
       await sendVisitEmail(visitId)
-
       setMessage('PDF emailed successfully.')
     } catch (error: any) {
       console.error(error)
       setMessage(error?.message || 'Failed to email PDF.')
     } finally {
       setEmailingVisitId(null)
+    }
+  }
+
+  const [sendingOwnerSummaryId, setSendingOwnerSummaryId] = useState<string | null>(null)
+
+  async function sendOwnerSummary(visitId: string) {
+    setSendingOwnerSummaryId(visitId)
+    setMessage('Generating & sending owner summary…')
+    try {
+      const res = await fetch(`/api/visits/${visitId}/owner-summary`, { method: 'POST' })
+      const json = await res.json()
+      if (!res.ok) setMessage(json.error || 'Failed to send owner summary.')
+      else setMessage('Owner summary emailed successfully.')
+    } catch {
+      setMessage('Failed to send owner summary.')
+    } finally {
+      setSendingOwnerSummaryId(null)
     }
   }
 
@@ -911,11 +938,93 @@ export default function HorseDetailPage() {
   useEffect(() => {
     if (horse?.owner_id) {
       loadOwnerOtherHorses(horse.owner_id)
+
+      // Load consent status for this owner
+      async function loadConsent() {
+        try {
+          const { data } = await supabase
+            .from('consent_forms')
+            .select('signed_at, signed_name')
+            .eq('owner_id', horse!.owner_id!)
+            .order('signed_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+          setConsentOnFile(data ?? null)
+        } catch {
+          setConsentOnFile(null)
+        }
+      }
+      loadConsent()
     } else {
       setOwnerOtherHorses([])
       setSelectedOwnerHorseId('')
+      setConsentOnFile(null)
     }
   }, [horse?.owner_id])
+
+  // Load upcoming appointments for this horse
+  useEffect(() => {
+    if (!horseId) return
+    async function loadAppts() {
+      const today = new Date().toISOString().split('T')[0]
+      try {
+        const { data } = await supabase
+          .from('appointments')
+          .select('id, appointment_date, appointment_time, reason, status')
+          .eq('horse_id', horseId)
+          .gte('appointment_date', today)
+          .neq('status', 'cancelled')
+          .order('appointment_date', { ascending: true })
+          .limit(3)
+        setUpcomingAppointments(data || [])
+      } catch {
+        setUpcomingAppointments([])
+      }
+    }
+    loadAppts()
+  }, [horseId])
+
+  // Load horse contacts
+  async function loadContacts() {
+    try {
+      const { data, error } = await supabase
+        .from('horse_contacts')
+        .select('*')
+        .eq('horse_id', horseId)
+        .order('role')
+      if (error) {
+        if (error.code === '42P01') setContactsNoTable(true)
+        return
+      }
+      setContacts(data || [])
+    } catch {
+      setContacts([])
+    }
+  }
+
+  useEffect(() => {
+    if (horseId) loadContacts()
+  }, [horseId])
+
+  async function saveContact() {
+    if (!contactForm.name.trim()) { setContactMsg('Name is required.'); return }
+    setSavingContact(true); setContactMsg('')
+    const payload = { horse_id: horseId, name: contactForm.name.trim(), role: contactForm.role, phone: contactForm.phone || null, email: contactForm.email || null, notes: contactForm.notes || null }
+    const { error } = editingContactId
+      ? await supabase.from('horse_contacts').update(payload).eq('id', editingContactId)
+      : await supabase.from('horse_contacts').insert(payload)
+    setSavingContact(false)
+    if (error) { setContactMsg(`Error: ${error.message}`); return }
+    await loadContacts()
+    setShowContactForm(false); setEditingContactId(null)
+    setContactForm({ name: '', role: 'Trainer', phone: '', email: '', notes: '' })
+  }
+
+  async function deleteContact(id: string) {
+    if (!confirm('Remove this contact?')) return
+    await supabase.from('horse_contacts').delete().eq('id', id)
+    await loadContacts()
+  }
 
   useEffect(() => {
     setSelectedOwnerHorseId(horseId)
@@ -1116,6 +1225,38 @@ export default function HorseDetailPage() {
                   <InfoRow label="Phone" value={formatPhone(horse?.owners?.phone)} />
                   <InfoRow label="Email" value={horse?.owners?.email || '—'} />
                   <InfoRow label="Address" value={horse?.owners?.address || '—'} />
+
+                  {/* Consent status */}
+                  {horse?.owner_id && consentOnFile !== undefined && (
+                    <div className="pt-2 border-t border-slate-100">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          {consentOnFile ? (
+                            <>
+                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 text-xs font-bold">✓</span>
+                              <div>
+                                <p className="text-xs font-semibold text-emerald-700">Consent on file</p>
+                                <p className="text-xs text-slate-400">
+                                  Signed {new Date(consentOnFile.signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                </p>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-600 text-xs font-bold">!</span>
+                              <p className="text-xs font-semibold text-amber-700">No consent on file</p>
+                            </>
+                          )}
+                        </div>
+                        <Link
+                          href={`/consent/${horse.owner_id}?horseId=${horseId}`}
+                          className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 transition"
+                        >
+                          {consentOnFile ? 'View / Renew' : 'Get Consent →'}
+                        </Link>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="mt-4 grid gap-4">
@@ -1189,15 +1330,142 @@ export default function HorseDetailPage() {
                 </Field>
               </div>
             </div>
+
+            {/* ── Additional Contacts Card ── */}
+            <div className="rounded-3xl bg-white p-6 shadow-md">
+                <div className="flex items-center justify-between gap-2 mb-4">
+                  <h2 className="text-xl font-semibold text-slate-900">Additional Contacts</h2>
+                  <button
+                    onClick={() => { setEditingContactId(null); setContactForm({ name: '', role: 'Trainer', phone: '', email: '', notes: '' }); setContactMsg(''); setShowContactForm(v => !v) }}
+                    className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 hover:bg-slate-50 transition"
+                  >
+                    {showContactForm && !editingContactId ? 'Cancel' : '+ Add'}
+                  </button>
+                </div>
+
+                {/* Setup hint */}
+                {contactsNoTable && (
+                  <pre className="overflow-x-auto rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-slate-700 leading-relaxed">{`CREATE TABLE horse_contacts (\n  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,\n  horse_id uuid REFERENCES horses(id) ON DELETE CASCADE NOT NULL,\n  name text NOT NULL,\n  role text NOT NULL DEFAULT 'Other',\n  phone text,\n  email text,\n  notes text,\n  created_at timestamptz DEFAULT now()\n);\nCREATE INDEX ON horse_contacts(horse_id);`}</pre>
+                )}
+
+                {/* Inline add/edit form */}
+                {showContactForm && (
+                  <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="mb-1 block text-xs font-semibold text-slate-600">Name *</label>
+                        <input value={contactForm.name} onChange={e => setContactForm(f => ({ ...f, name: e.target.value }))} placeholder="Full name" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-semibold text-slate-600">Role</label>
+                        <select value={contactForm.role} onChange={e => setContactForm(f => ({ ...f, role: e.target.value }))} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm">
+                          {['Trainer', 'Barn Manager', 'Veterinarian', 'Farrier', 'Emergency Contact', 'Other'].map(r => <option key={r}>{r}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="mb-1 block text-xs font-semibold text-slate-600">Phone</label>
+                        <input value={contactForm.phone} onChange={e => setContactForm(f => ({ ...f, phone: e.target.value }))} placeholder="Phone" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-semibold text-slate-600">Email</label>
+                        <input value={contactForm.email} onChange={e => setContactForm(f => ({ ...f, email: e.target.value }))} placeholder="Email" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold text-slate-600">Notes</label>
+                      <input value={contactForm.notes} onChange={e => setContactForm(f => ({ ...f, notes: e.target.value }))} placeholder="e.g. Primary trainer, prefers texts" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                    </div>
+                    {contactMsg && <p className="text-xs text-red-500">{contactMsg}</p>}
+                    <div className="flex gap-2">
+                      <button onClick={saveContact} disabled={savingContact} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40">
+                        {savingContact ? 'Saving…' : editingContactId ? 'Update' : 'Save Contact'}
+                      </button>
+                      <button onClick={() => { setShowContactForm(false); setEditingContactId(null) }} className="rounded-xl border border-slate-300 px-4 py-2 text-sm text-slate-600">Cancel</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Contact list */}
+                {contacts.length === 0 && !showContactForm ? (
+                  <p className="text-sm text-slate-400">No additional contacts yet — add trainers, vets, barn managers, and more.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {contacts.map(c => (
+                      <div key={c.id} className="flex items-start justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-semibold text-slate-800">{c.name}</span>
+                            <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">{c.role}</span>
+                          </div>
+                          <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-500">
+                            {c.phone && <span>{c.phone}</span>}
+                            {c.email && <span>{c.email}</span>}
+                            {c.notes && <span className="italic">{c.notes}</span>}
+                          </div>
+                        </div>
+                        <div className="flex gap-1.5 shrink-0">
+                          <button onClick={() => { setEditingContactId(c.id); setContactForm({ name: c.name, role: c.role, phone: c.phone || '', email: c.email || '', notes: c.notes || '' }); setContactMsg(''); setShowContactForm(true) }} className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs text-slate-600 hover:bg-white transition">Edit</button>
+                          <button onClick={() => deleteContact(c.id)} className="rounded-lg border border-red-100 px-2.5 py-1 text-xs text-red-400 hover:bg-red-50 transition">×</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
         )}
 
         {/* Visits Tab */}
         {activeTab === 'visits' && (
         <div className="mt-6 space-y-6">
 
-            {/* Spine Assessment Banner */}
+            {/* ── Upcoming Appointments Banner ── */}
+            <div className="rounded-3xl border border-blue-100 bg-white px-6 py-4 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-base font-semibold text-slate-900">Upcoming Appointments</span>
+                  {upcomingAppointments.length > 0 && (
+                    <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">{upcomingAppointments.length}</span>
+                  )}
+                </div>
+                <Link
+                  href={`/appointments?horseId=${horseId}`}
+                  className="shrink-0 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 transition"
+                >
+                  + Book
+                </Link>
+              </div>
+              {upcomingAppointments.length === 0 ? (
+                <p className="mt-2 text-sm text-slate-400">No upcoming appointments. Book one to get started.</p>
+              ) : (
+                <div className="mt-3 space-y-2">
+                  {upcomingAppointments.map(a => {
+                    const [y, m, d] = a.appointment_date.split('-').map(Number)
+                    const dateStr = new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+                    const timeStr = a.appointment_time ? (() => { const [h, min] = a.appointment_time!.split(':').map(Number); const ampm = h >= 12 ? 'PM' : 'AM'; return ` · ${h % 12 || 12}:${String(min).padStart(2, '0')} ${ampm}` })() : ''
+                    return (
+                      <div key={a.id} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-2.5">
+                        <div>
+                          <span className="text-sm font-medium text-slate-800">{dateStr}{timeStr}</span>
+                          {a.reason && <span className="ml-2 text-xs text-slate-500">{a.reason}</span>}
+                        </div>
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${a.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
+                          {a.status.charAt(0).toUpperCase() + a.status.slice(1)}
+                        </span>
+                      </div>
+                    )
+                  })}
+                  <Link href={`/appointments?horseId=${horseId}`} className="block text-xs text-center text-slate-400 hover:text-slate-600 pt-1">
+                    View all appointments →
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {/* Spine Assessment + Progress Tracker Banners */}
             <div className="flex items-center justify-between rounded-3xl border border-[#0f2040]/10 bg-white px-6 py-4 shadow-md">
               <div>
                 <p className="font-semibold text-slate-900">Spine Assessment</p>
@@ -1207,14 +1475,22 @@ export default function HorseDetailPage() {
                     : 'Check each spinal segment for left / right issues.'}
                 </p>
               </div>
-              <Link
-                href={editingVisitId
-                  ? `/horses/${horse?.id}/spine?visitId=${editingVisitId}`
-                  : `/horses/${horse?.id}/spine`}
-                className="shrink-0 rounded-2xl bg-[#0f2040] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#162d55]"
-              >
-                Open →
-              </Link>
+              <div className="flex items-center gap-2 shrink-0">
+                <Link
+                  href={`/horses/${horse?.id}/progress`}
+                  className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  Progress
+                </Link>
+                <Link
+                  href={editingVisitId
+                    ? `/horses/${horse?.id}/spine?visitId=${editingVisitId}`
+                    : `/horses/${horse?.id}/spine`}
+                  className="rounded-2xl bg-[#0f2040] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#162d55]"
+                >
+                  Open →
+                </Link>
+              </div>
             </div>
 
             <div className="rounded-3xl bg-white p-6 shadow-md">
@@ -1298,19 +1574,37 @@ export default function HorseDetailPage() {
 
                 <div className="md:col-span-2">
                   <Field label="Quick Notes for AI SOAP Draft">
+                    {/* ── Template chips ── */}
+                    <div className="mb-2 flex flex-wrap gap-1.5">
+                      {[
+                        { label: 'Post-competition', text: 'Post-competition soreness. Reduced range of motion through back and hindquarters. Mild tension through poll and withers. Responded well to adjustment.' },
+                        { label: 'Routine adjustment', text: 'Routine maintenance adjustment. Owner reports normal performance and behavior. Minor restrictions found at thoracolumbar junction. Full adjustment performed.' },
+                        { label: 'Poll tension', text: 'Poll tension and head tilt noted on arrival. Restricted cervical range of motion. Owner reports difficulty bending left. Atlas and C2 adjusted. Good response.' },
+                        { label: 'Hind-end asymmetry', text: 'Hind-end asymmetry and reduced impulsion reported by owner. SI joint restriction noted bilaterally, left more pronounced. Adjusted lumbar and sacral regions. Follow up in 2 weeks.' },
+                        { label: 'Back soreness', text: 'Back soreness after heavy work week. Reactive mid-thoracic region on palpation. Adjusted T8–T12. Recommended 2 light days and stretching.' },
+                        { label: 'New client', text: 'Initial assessment. Owner reports history of stiffness and reluctance to pick up right lead. Full spine evaluated. Multiple restrictions found. Comprehensive adjustment performed. Recommendations discussed.' },
+                        { label: 'Pre-event', text: 'Pre-competition tune-up. Horse in good overall condition. Minor restrictions at withers and poll. Light adjustment performed to optimise range of motion ahead of event.' },
+                        { label: 'Post-fall/injury', text: 'Follow-up after recent fall/injury. Area of concern assessed carefully. Compensatory patterns noted. Gentle adjustment within comfort tolerance. Reassess in 1 week.' },
+                      ].map((t) => (
+                        <button
+                          key={t.label}
+                          type="button"
+                          onClick={() => setQuickNotes(prev => prev ? prev + '\n' + t.text : t.text)}
+                          className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 hover:border-slate-900 hover:bg-slate-900 hover:text-white transition"
+                        >
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
                     <textarea
                       value={quickNotes}
                       onChange={(e) => setQuickNotes(e.target.value)}
                       className="min-h-32 w-full rounded-xl border border-slate-300 px-4 py-3"
-                      placeholder={`Example:
-stiff left shoulder
-shortened stride at trot
-improved after adjustment
-recommend 2 light days`}
+                      placeholder="Type notes or tap a template above to pre-fill…"
                     />
                   </Field>
 
-                  <div className="mt-3">
+                  <div className="mt-3 flex items-center gap-2">
                     <button
                       onClick={generateSoap}
                       disabled={generatingSoap}
@@ -1318,6 +1612,15 @@ recommend 2 light days`}
                     >
                       {generatingSoap ? 'Generating SOAP...' : 'Generate SOAP'}
                     </button>
+                    {quickNotes && (
+                      <button
+                        type="button"
+                        onClick={() => setQuickNotes('')}
+                        className="rounded-xl border border-slate-200 px-3 py-3 text-xs text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition"
+                      >
+                        Clear
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -1513,6 +1816,14 @@ recommend 2 light days`}
                               className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 disabled:opacity-50"
                             >
                               {emailingVisitId === visit.id ? 'Emailing PDF...' : 'Email PDF'}
+                            </button>
+
+                            <button
+                              onClick={() => sendOwnerSummary(visit.id)}
+                              disabled={sendingOwnerSummaryId === visit.id}
+                              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 disabled:opacity-50"
+                            >
+                              {sendingOwnerSummaryId === visit.id ? 'Sending…' : 'Owner Summary'}
                             </button>
 
                             <button

@@ -33,6 +33,7 @@ export default function NavBar() {
 
   const isAnatomy = pathname?.startsWith('/anatomy')
   const isHorse = pathname?.startsWith('/horses')
+  const isAppointments = pathname?.startsWith('/appointments')
 
   return (
     <nav className="sticky top-0 z-50 border-b border-[#1a3358] bg-[#0f2040] shadow-lg">
@@ -71,6 +72,14 @@ export default function NavBar() {
           <span className="hidden max-w-[200px] truncate text-sm text-blue-200 xl:block">
             {userEmail}
           </span>
+          {!isAppointments && (
+            <Link
+              href="/appointments"
+              className="whitespace-nowrap rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/20"
+            >
+              Appointments
+            </Link>
+          )}
           {!isAnatomy && (
             <Link
               href="/anatomy"

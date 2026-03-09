@@ -1,0 +1,826 @@
+'use client'
+
+import Link from 'next/link'
+import { useEffect, useMemo, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
+import { supabase } from '../lib/supabase'
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type Appointment = {
+  id: string
+  horse_id: string | null
+  owner_id: string | null
+  appointment_date: string
+  appointment_time: string | null
+  duration_minutes: number | null
+  location: string | null
+  reason: string | null
+  status: 'scheduled' | 'confirmed' | 'completed' | 'cancelled'
+  provider_name: string | null
+  notes: string | null
+  reminder_sent: boolean
+  confirmation_sent: boolean
+  visit_id: string | null
+  horses?: { name: string; owners?: { full_name: string; email: string | null } | null } | null
+}
+
+type Horse = {
+  id: string
+  name: string
+  owner_id: string | null
+  owners?: { full_name: string } | null
+}
+
+const SQL_SETUP = `
+CREATE TABLE appointments (
+  id                   uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  horse_id             uuid REFERENCES horses(id) ON DELETE CASCADE,
+  owner_id             uuid REFERENCES owners(id) ON DELETE SET NULL,
+  appointment_date     date NOT NULL,
+  appointment_time     time,
+  duration_minutes     integer DEFAULT 60,
+  location             text,
+  reason               text,
+  status               text DEFAULT 'scheduled'
+                         CHECK (status IN ('scheduled','confirmed','completed','cancelled')),
+  provider_name        text DEFAULT 'Dr. Andrew Leo',
+  notes                text,
+  reminder_sent        boolean DEFAULT false,
+  confirmation_sent    boolean DEFAULT false,
+  visit_id             uuid REFERENCES visits(id) ON DELETE SET NULL,
+  created_at           timestamptz DEFAULT now()
+);
+CREATE INDEX ON appointments (appointment_date);
+CREATE INDEX ON appointments (horse_id);
+CREATE INDEX ON appointments (owner_id);
+`.trim()
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const STATUS_STYLES: Record<string, string> = {
+  scheduled:  'bg-blue-100 text-blue-700',
+  confirmed:  'bg-emerald-100 text-emerald-700',
+  completed:  'bg-slate-100 text-slate-600',
+  cancelled:  'bg-red-100 text-red-500',
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  scheduled: 'Scheduled',
+  confirmed: 'Confirmed',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+}
+
+function fmtDate(iso: string) {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+  })
+}
+
+function fmtTime(t: string | null) {
+  if (!t) return ''
+  const [h, min] = t.split(':').map(Number)
+  const ampm = h >= 12 ? 'PM' : 'AM'
+  const hour = h % 12 || 12
+  return `${hour}:${String(min).padStart(2, '0')} ${ampm}`
+}
+
+function todayISO() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
+
+// ── Empty appointment form state ──────────────────────────────────────────────
+
+type FormState = {
+  horse_id: string
+  appointment_date: string
+  appointment_time: string
+  duration_minutes: number
+  location: string
+  reason: string
+  status: Appointment['status']
+  provider_name: string
+  notes: string
+}
+
+function emptyForm(date = ''): FormState {
+  return {
+    horse_id: '',
+    appointment_date: date,
+    appointment_time: '09:00',
+    duration_minutes: 60,
+    location: '',
+    reason: '',
+    status: 'scheduled',
+    provider_name: 'Dr. Andrew Leo',
+    notes: '',
+  }
+}
+
+// ── Inner content ─────────────────────────────────────────────────────────────
+
+function AppointmentsContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const preselectedHorseId = searchParams.get('horseId') || ''
+
+  const today = todayISO()
+  const [checkingAuth, setCheckingAuth] = useState(true)
+  const [noTable, setNoTable] = useState(false)
+
+  const [appointments, setAppointments] = useState<Appointment[]>([])
+  const [horses, setHorses] = useState<Horse[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // Calendar state
+  const [calYear, setCalYear] = useState(new Date().getFullYear())
+  const [calMonth, setCalMonth] = useState(new Date().getMonth()) // 0-indexed
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [view, setView] = useState<'calendar' | 'list'>('calendar')
+
+  // Form state
+  const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [form, setForm] = useState<FormState>(emptyForm())
+  const [saving, setSaving] = useState(false)
+  const [formMsg, setFormMsg] = useState('')
+
+  // Email state
+  const [emailingId, setEmailingId] = useState<string | null>(null)
+  const [emailMsg, setEmailMsg] = useState<Record<string, string>>({})
+
+  // Status update state
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
+
+  // ── Auth ────────────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) { router.push('/login'); return }
+      setCheckingAuth(false)
+    })
+  }, [router])
+
+  // ── Load data ───────────────────────────────────────────────────────────────
+
+  async function loadAppointments() {
+    const { data, error } = await supabase
+      .from('appointments')
+      .select(`
+        *,
+        horses (
+          name,
+          owners ( full_name, email )
+        )
+      `)
+      .order('appointment_date', { ascending: true })
+      .order('appointment_time', { ascending: true })
+
+    if (error) {
+      if (error.code === '42P01') { setNoTable(true); return }
+      return
+    }
+
+    setAppointments((data || []) as Appointment[])
+  }
+
+  async function loadHorses() {
+    const { data } = await supabase
+      .from('horses')
+      .select('id, name, owner_id, owners(full_name)')
+      .eq('archived', false)
+      .order('name')
+    setHorses((data || []) as unknown as Horse[])
+  }
+
+  useEffect(() => {
+    if (checkingAuth) return
+    async function init() {
+      setLoading(true)
+      await Promise.all([loadAppointments(), loadHorses()])
+      setLoading(false)
+    }
+    init()
+  }, [checkingAuth])
+
+  // Pre-fill horse from URL
+  useEffect(() => {
+    if (preselectedHorseId && !showForm) {
+      setForm(f => ({ ...f, horse_id: preselectedHorseId, appointment_date: today }))
+      setShowForm(true)
+    }
+  }, [preselectedHorseId])
+
+  // ── Calendar grid ───────────────────────────────────────────────────────────
+
+  const calDays = useMemo(() => {
+    const firstDay = new Date(calYear, calMonth, 1).getDay()
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate()
+    const cells: Array<number | null> = []
+    for (let i = 0; i < firstDay; i++) cells.push(null)
+    for (let d = 1; d <= daysInMonth; d++) cells.push(d)
+    while (cells.length % 7 !== 0) cells.push(null)
+    return cells
+  }, [calYear, calMonth])
+
+  const apptsByDate = useMemo(() => {
+    const map: Record<string, Appointment[]> = {}
+    for (const a of appointments) {
+      if (!map[a.appointment_date]) map[a.appointment_date] = []
+      map[a.appointment_date].push(a)
+    }
+    return map
+  }, [appointments])
+
+  function calDateISO(day: number) {
+    return `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  }
+
+  function prevMonth() {
+    if (calMonth === 0) { setCalYear(y => y - 1); setCalMonth(11) }
+    else setCalMonth(m => m - 1)
+  }
+  function nextMonth() {
+    if (calMonth === 11) { setCalYear(y => y + 1); setCalMonth(0) }
+    else setCalMonth(m => m + 1)
+  }
+
+  // ── Appointments for selected date or upcoming ──────────────────────────────
+
+  const displayedAppointments = useMemo(() => {
+    if (view === 'list') {
+      return appointments.filter(a => a.appointment_date >= today && a.status !== 'cancelled')
+    }
+    if (selectedDate) {
+      return apptsByDate[selectedDate] || []
+    }
+    // Default: show today + upcoming 7 days
+    const week = new Date()
+    week.setDate(week.getDate() + 7)
+    const weekISO = week.toISOString().split('T')[0]
+    return appointments.filter(a => a.appointment_date >= today && a.appointment_date <= weekISO)
+  }, [view, selectedDate, appointments, apptsByDate, today])
+
+  // ── Form handlers ───────────────────────────────────────────────────────────
+
+  function openNewForm(date?: string) {
+    setEditingId(null)
+    setForm({ ...emptyForm(date || today), horse_id: preselectedHorseId || '' })
+    setFormMsg('')
+    setShowForm(true)
+  }
+
+  function openEditForm(appt: Appointment) {
+    setEditingId(appt.id)
+    setForm({
+      horse_id: appt.horse_id || '',
+      appointment_date: appt.appointment_date,
+      appointment_time: appt.appointment_time || '09:00',
+      duration_minutes: appt.duration_minutes || 60,
+      location: appt.location || '',
+      reason: appt.reason || '',
+      status: appt.status,
+      provider_name: appt.provider_name || 'Dr. Andrew Leo',
+      notes: appt.notes || '',
+    })
+    setFormMsg('')
+    setShowForm(true)
+  }
+
+  async function saveForm() {
+    if (!form.horse_id || !form.appointment_date) {
+      setFormMsg('Horse and date are required.')
+      return
+    }
+    setSaving(true)
+    setFormMsg('')
+
+    const horse = horses.find(h => h.id === form.horse_id)
+    const payload = {
+      horse_id: form.horse_id,
+      owner_id: horse?.owner_id || null,
+      appointment_date: form.appointment_date,
+      appointment_time: form.appointment_time || null,
+      duration_minutes: form.duration_minutes,
+      location: form.location || null,
+      reason: form.reason || null,
+      status: form.status,
+      provider_name: form.provider_name || null,
+      notes: form.notes || null,
+    }
+
+    let error
+    if (editingId) {
+      const res = await supabase.from('appointments').update(payload).eq('id', editingId)
+      error = res.error
+    } else {
+      const res = await supabase.from('appointments').insert(payload)
+      error = res.error
+    }
+
+    setSaving(false)
+    if (error) { setFormMsg(`Error: ${error.message}`); return }
+
+    await loadAppointments()
+    setShowForm(false)
+    setEditingId(null)
+  }
+
+  async function deleteAppt(id: string) {
+    if (!confirm('Delete this appointment?')) return
+    await supabase.from('appointments').delete().eq('id', id)
+    await loadAppointments()
+  }
+
+  async function updateStatus(id: string, status: Appointment['status']) {
+    setUpdatingStatus(id)
+    await supabase.from('appointments').update({ status }).eq('id', id)
+    await loadAppointments()
+    setUpdatingStatus(null)
+  }
+
+  // ── Email handlers ──────────────────────────────────────────────────────────
+
+  async function sendEmail(apptId: string, type: 'confirmation' | 'reminder') {
+    setEmailingId(apptId)
+    setEmailMsg(prev => ({ ...prev, [apptId]: '' }))
+    try {
+      const res = await fetch(`/api/appointments/${apptId}/email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        setEmailMsg(prev => ({ ...prev, [apptId]: json.error || 'Email failed.' }))
+      } else {
+        setEmailMsg(prev => ({ ...prev, [apptId]: `${type === 'confirmation' ? 'Confirmation' : 'Reminder'} sent!` }))
+        await loadAppointments()
+      }
+    } catch {
+      setEmailMsg(prev => ({ ...prev, [apptId]: 'Network error.' }))
+    }
+    setEmailingId(null)
+  }
+
+  // ── Render helpers ──────────────────────────────────────────────────────────
+
+  if (checkingAuth) return null
+
+  return (
+    <div className="min-h-screen bg-slate-50 pb-20">
+
+      {/* ── Header ── */}
+      <div className="sticky top-0 z-20 border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+          <div className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
+              ← Dashboard
+            </Link>
+            <div>
+              <h1 className="text-lg font-semibold text-slate-900 leading-tight">Appointments</h1>
+              <p className="text-xs text-slate-500">Schedule & manage visits</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-xl border border-slate-200 overflow-hidden">
+              <button onClick={() => setView('calendar')} className={`px-3 py-2 text-sm font-medium transition ${view === 'calendar' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>Calendar</button>
+              <button onClick={() => setView('list')} className={`px-3 py-2 text-sm font-medium transition ${view === 'list' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>List</button>
+            </div>
+            <button
+              onClick={() => openNewForm()}
+              className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 transition"
+            >
+              + New Appointment
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── SQL Setup ── */}
+      {noTable && (
+        <div className="mx-auto max-w-6xl px-4 py-6">
+          <div className="rounded-3xl border border-amber-200 bg-amber-50 p-6">
+            <h2 className="font-semibold text-amber-900">One-time setup needed</h2>
+            <p className="mt-1 text-sm text-amber-800">Run this SQL in your Supabase dashboard, then refresh.</p>
+            <pre className="mt-4 overflow-x-auto rounded-2xl border border-amber-200 bg-white p-4 text-xs text-slate-700 leading-relaxed">{SQL_SETUP}</pre>
+          </div>
+        </div>
+      )}
+
+      {!noTable && (
+        <div className="mx-auto max-w-6xl px-4 py-6">
+          {view === 'calendar' ? (
+            <div className="grid gap-5 xl:grid-cols-[380px_1fr]">
+
+              {/* ── Calendar ── */}
+              <div className="rounded-3xl bg-white p-5 shadow-sm">
+                {/* Month nav */}
+                <div className="flex items-center justify-between mb-4">
+                  <button onClick={prevMonth} className="rounded-xl border border-slate-200 p-2 hover:bg-slate-50 text-slate-600">‹</button>
+                  <h2 className="text-base font-semibold text-slate-900">{MONTHS[calMonth]} {calYear}</h2>
+                  <button onClick={nextMonth} className="rounded-xl border border-slate-200 p-2 hover:bg-slate-50 text-slate-600">›</button>
+                </div>
+
+                {/* Day headers */}
+                <div className="grid grid-cols-7 mb-1">
+                  {DAYS.map(d => (
+                    <div key={d} className="text-center text-xs font-semibold text-slate-400 py-1">{d}</div>
+                  ))}
+                </div>
+
+                {/* Day cells */}
+                <div className="grid grid-cols-7 gap-0.5">
+                  {calDays.map((day, idx) => {
+                    if (!day) return <div key={idx} />
+                    const iso = calDateISO(day)
+                    const dayAppts = apptsByDate[iso] || []
+                    const isToday = iso === today
+                    const isSelected = iso === selectedDate
+                    const hasActive = dayAppts.some(a => a.status !== 'cancelled')
+
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          setSelectedDate(iso === selectedDate ? null : iso)
+                        }}
+                        className={[
+                          'relative flex flex-col items-center rounded-xl py-2 transition',
+                          isSelected ? 'bg-slate-900 text-white' : isToday ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50 text-slate-700',
+                        ].join(' ')}
+                      >
+                        <span className="text-sm font-medium">{day}</span>
+                        {hasActive && (
+                          <div className="flex gap-0.5 mt-0.5">
+                            {dayAppts.slice(0, 3).filter(a => a.status !== 'cancelled').map((a, i) => (
+                              <span key={i} className={`h-1.5 w-1.5 rounded-full ${
+                                isSelected ? 'bg-white' :
+                                a.status === 'confirmed' ? 'bg-emerald-500' :
+                                a.status === 'completed' ? 'bg-slate-400' :
+                                'bg-blue-400'
+                              }`} />
+                            ))}
+                          </div>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Add for selected date */}
+                {selectedDate && (
+                  <button
+                    onClick={() => openNewForm(selectedDate)}
+                    className="mt-4 w-full rounded-2xl border border-dashed border-slate-300 py-3 text-sm font-medium text-slate-500 hover:border-slate-400 hover:bg-slate-50 transition"
+                  >
+                    + Add appointment on {fmtDate(selectedDate)}
+                  </button>
+                )}
+
+                {/* Legend */}
+                <div className="mt-4 flex items-center gap-4 text-xs text-slate-400">
+                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-blue-400" />Scheduled</span>
+                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" />Confirmed</span>
+                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-slate-400" />Completed</span>
+                </div>
+              </div>
+
+              {/* ── Appointment list panel ── */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-600">
+                    {selectedDate ? fmtDate(selectedDate) : 'Next 7 days'}
+                  </h3>
+                  {selectedDate && (
+                    <button onClick={() => setSelectedDate(null)} className="text-xs text-slate-400 hover:text-slate-600">Clear</button>
+                  )}
+                </div>
+
+                {loading ? (
+                  <p className="text-sm text-slate-400">Loading…</p>
+                ) : displayedAppointments.length === 0 ? (
+                  <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-8 text-center">
+                    <p className="text-sm text-slate-400">No appointments {selectedDate ? 'on this day' : 'in the next 7 days'}.</p>
+                    <button onClick={() => openNewForm(selectedDate || undefined)} className="mt-3 rounded-xl bg-slate-900 px-4 py-2 text-sm text-white">
+                      + Book one
+                    </button>
+                  </div>
+                ) : (
+                  displayedAppointments.map(a => (
+                    <AppointmentCard
+                      key={a.id}
+                      appt={a}
+                      onEdit={() => openEditForm(a)}
+                      onDelete={() => deleteAppt(a.id)}
+                      onStatusChange={(s) => updateStatus(a.id, s)}
+                      onEmail={(type) => sendEmail(a.id, type)}
+                      updatingStatus={updatingStatus === a.id}
+                      emailing={emailingId === a.id}
+                      emailMsg={emailMsg[a.id] || ''}
+                    />
+                  ))
+                )}
+              </div>
+            </div>
+
+          ) : (
+            // ── List view ──
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-slate-600">Upcoming appointments</h3>
+              </div>
+
+              {loading ? (
+                <p className="text-sm text-slate-400">Loading…</p>
+              ) : displayedAppointments.length === 0 ? (
+                <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-10 text-center">
+                  <p className="text-slate-400 text-sm">No upcoming appointments.</p>
+                  <button onClick={() => openNewForm()} className="mt-3 rounded-xl bg-slate-900 px-4 py-2 text-sm text-white">
+                    + Book one
+                  </button>
+                </div>
+              ) : (
+                displayedAppointments.map(a => (
+                  <AppointmentCard
+                    key={a.id}
+                    appt={a}
+                    onEdit={() => openEditForm(a)}
+                    onDelete={() => deleteAppt(a.id)}
+                    onStatusChange={(s) => updateStatus(a.id, s)}
+                    onEmail={(type) => sendEmail(a.id, type)}
+                    updatingStatus={updatingStatus === a.id}
+                    emailing={emailingId === a.id}
+                    emailMsg={emailMsg[a.id] || ''}
+                  />
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Create / Edit Form Drawer ── */}
+      {showForm && (
+        <div className="fixed inset-0 z-40 flex items-end justify-center sm:items-center" onClick={() => setShowForm(false)}>
+          <div className="absolute inset-0 bg-black/40" />
+          <div
+            className="relative z-50 w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-semibold text-slate-900">{editingId ? 'Edit Appointment' : 'New Appointment'}</h2>
+              <button onClick={() => setShowForm(false)} className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50">✕</button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Horse */}
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700">Horse <span className="text-red-400">*</span></label>
+                <select
+                  value={form.horse_id}
+                  onChange={e => setForm(f => ({ ...f, horse_id: e.target.value }))}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                >
+                  <option value="">— Select horse —</option>
+                  {horses.map(h => (
+                    <option key={h.id} value={h.id}>
+                      {h.name}{h.owners?.full_name ? ` (${h.owners.full_name})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Date + Time */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1.5 block text-sm font-semibold text-slate-700">Date <span className="text-red-400">*</span></label>
+                  <input
+                    type="date"
+                    value={form.appointment_date}
+                    onChange={e => setForm(f => ({ ...f, appointment_date: e.target.value }))}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-semibold text-slate-700">Time</label>
+                  <input
+                    type="time"
+                    value={form.appointment_time}
+                    onChange={e => setForm(f => ({ ...f, appointment_time: e.target.value }))}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  />
+                </div>
+              </div>
+
+              {/* Duration + Status */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1.5 block text-sm font-semibold text-slate-700">Duration (min)</label>
+                  <select
+                    value={form.duration_minutes}
+                    onChange={e => setForm(f => ({ ...f, duration_minutes: Number(e.target.value) }))}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  >
+                    {[30, 45, 60, 90, 120].map(d => <option key={d} value={d}>{d} min</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-semibold text-slate-700">Status</label>
+                  <select
+                    value={form.status}
+                    onChange={e => { const s = e.target.value as Appointment['status']; setForm(f => ({ ...f, status: s })) }}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  >
+                    <option value="scheduled">Scheduled</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Reason */}
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700">Reason</label>
+                <input
+                  type="text"
+                  value={form.reason}
+                  onChange={e => setForm(f => ({ ...f, reason: e.target.value }))}
+                  placeholder="e.g. Routine adjustment, Post-competition"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+
+              {/* Location */}
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700">Location</label>
+                <input
+                  type="text"
+                  value={form.location}
+                  onChange={e => setForm(f => ({ ...f, location: e.target.value }))}
+                  placeholder="Barn name or address"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700">Notes</label>
+                <textarea
+                  value={form.notes}
+                  onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                  rows={2}
+                  placeholder="Any prep notes or special instructions…"
+                  className="w-full resize-none rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+
+              {formMsg && <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{formMsg}</p>}
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={saveForm}
+                  disabled={saving}
+                  className="flex-1 rounded-2xl bg-slate-900 py-3 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-40 transition"
+                >
+                  {saving ? 'Saving…' : editingId ? 'Update Appointment' : 'Book Appointment'}
+                </button>
+                <button
+                  onClick={() => setShowForm(false)}
+                  className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Appointment Card ───────────────────────────────────────────────────────────
+
+function AppointmentCard({
+  appt,
+  onEdit,
+  onDelete,
+  onStatusChange,
+  onEmail,
+  updatingStatus,
+  emailing,
+  emailMsg,
+}: {
+  appt: Appointment
+  onEdit: () => void
+  onDelete: () => void
+  onStatusChange: (s: Appointment['status']) => void
+  onEmail: (type: 'confirmation' | 'reminder') => void
+  updatingStatus: boolean
+  emailing: boolean
+  emailMsg: string
+}) {
+  const horseName = appt.horses?.name || '—'
+  const ownerName = appt.horses?.owners?.full_name || '—'
+  const ownerEmail = appt.horses?.owners?.email
+  const canEmail = !!ownerEmail && appt.status !== 'cancelled'
+
+  return (
+    <div className={`rounded-3xl bg-white p-5 shadow-sm border-l-4 ${
+      appt.status === 'confirmed' ? 'border-emerald-400' :
+      appt.status === 'completed' ? 'border-slate-300' :
+      appt.status === 'cancelled' ? 'border-red-300' :
+      'border-blue-400'
+    }`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link href={`/horses/${appt.horse_id}`} className="text-base font-semibold text-slate-900 hover:underline truncate">
+              {horseName}
+            </Link>
+            <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[appt.status]}`}>
+              {STATUS_LABELS[appt.status]}
+            </span>
+          </div>
+          <p className="text-sm text-slate-500 mt-0.5">{ownerName}</p>
+        </div>
+        <div className="text-right flex-shrink-0">
+          <p className="text-sm font-semibold text-slate-800">{fmtDate(appt.appointment_date)}</p>
+          {appt.appointment_time && <p className="text-xs text-slate-500">{fmtTime(appt.appointment_time)} · {appt.duration_minutes || 60} min</p>}
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
+        {appt.reason && <span className="rounded-full bg-slate-100 px-2.5 py-1">{appt.reason}</span>}
+        {appt.location && <span className="rounded-full bg-slate-100 px-2.5 py-1">📍 {appt.location}</span>}
+        {appt.notes && <span className="rounded-full bg-slate-100 px-2.5 py-1 italic">{appt.notes}</span>}
+      </div>
+
+      {/* Actions row */}
+      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+
+        {/* Status changer */}
+        {appt.status !== 'completed' && appt.status !== 'cancelled' && (
+          <>
+            {appt.status === 'scheduled' && (
+              <button onClick={() => onStatusChange('confirmed')} disabled={updatingStatus} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100 transition disabled:opacity-40">
+                Mark Confirmed
+              </button>
+            )}
+            {appt.status === 'confirmed' && (
+              <button onClick={() => onStatusChange('completed')} disabled={updatingStatus} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 transition disabled:opacity-40">
+                Mark Completed
+              </button>
+            )}
+            <button onClick={() => onStatusChange('cancelled')} disabled={updatingStatus} className="rounded-xl border border-red-100 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-500 hover:bg-red-100 transition disabled:opacity-40">
+              Cancel
+            </button>
+          </>
+        )}
+
+        {/* Email buttons */}
+        {canEmail && appt.status === 'scheduled' && (
+          <button onClick={() => onEmail('confirmation')} disabled={emailing} className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition disabled:opacity-40">
+            {emailing ? '…' : appt.confirmation_sent ? '✓ Resend Confirmation' : 'Send Confirmation'}
+          </button>
+        )}
+        {canEmail && (appt.status === 'scheduled' || appt.status === 'confirmed') && (
+          <button onClick={() => onEmail('reminder')} disabled={emailing} className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition disabled:opacity-40">
+            {emailing ? '…' : appt.reminder_sent ? '✓ Resend Reminder' : 'Send Reminder'}
+          </button>
+        )}
+        {!ownerEmail && appt.status !== 'cancelled' && (
+          <span className="text-xs text-amber-500">No owner email on file</span>
+        )}
+
+        <div className="ml-auto flex gap-2">
+          <button onClick={onEdit} className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition">Edit</button>
+          <button onClick={onDelete} className="rounded-xl border border-red-100 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-50 transition">Delete</button>
+        </div>
+      </div>
+
+      {emailMsg && (
+        <p className={`mt-2 text-xs font-medium ${emailMsg.includes('sent') ? 'text-emerald-600' : 'text-red-500'}`}>{emailMsg}</p>
+      )}
+    </div>
+  )
+}
+
+// ── Page wrapper ──────────────────────────────────────────────────────────────
+
+export default function AppointmentsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-slate-400">Loading…</div>}>
+      <AppointmentsContent />
+    </Suspense>
+  )
+}
