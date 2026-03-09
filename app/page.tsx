@@ -44,6 +44,22 @@ type Visit = {
   } | null
 }
 
+type TodayAppointment = {
+  id: string
+  appointment_time: string | null
+  duration_minutes: number | null
+  reason: string | null
+  status: string
+  location: string | null
+  notes: string | null
+  horses?: {
+    id: string
+    name: string
+    species?: 'equine' | 'canine' | null
+    owners?: { full_name: string; phone: string | null } | null
+  } | null
+}
+
 type SearchMode = 'owner' | 'horse' | 'visit'
 
 const RECENT_OWNER_IDS_KEY = 'shortgo_recent_owner_ids'
@@ -71,6 +87,7 @@ export default function Home() {
   const [photoCount, setPhotoCount] = useState(0)
   const [visitCountsByHorse, setVisitCountsByHorse] = useState<Record<string, number>>({})
   const [recentVisits, setRecentVisits] = useState<Visit[]>([])
+  const [todayAppointments, setTodayAppointments] = useState<TodayAppointment[]>([])
 
   const findRecordsRef = useRef<HTMLDivElement>(null)
 
@@ -258,6 +275,34 @@ export default function Home() {
     }
     setVisitCountsByHorse(counts)
     setRecentVisits(visitData.slice(0, 15))
+  }
+
+  async function loadTodayAppointments() {
+    const today = new Date()
+    const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+
+    const { data, error } = await supabase
+      .from('appointments')
+      .select(`
+        id,
+        appointment_time,
+        duration_minutes,
+        reason,
+        status,
+        location,
+        notes,
+        horses (
+          id,
+          name,
+          species,
+          owners ( full_name, phone )
+        )
+      `)
+      .eq('appointment_date', iso)
+      .neq('status', 'cancelled')
+      .order('appointment_time', { ascending: true })
+
+    if (!error) setTodayAppointments((data || []) as unknown as TodayAppointment[])
   }
 
   function loadRecentItems() {
@@ -644,6 +689,7 @@ export default function Home() {
       await loadVisitCount()
       await loadPhotoCount()
       await loadVisitData()
+      await loadTodayAppointments()
       loadRecentItems()
     }
 
@@ -706,6 +752,116 @@ export default function Home() {
           <StatCard label="Patients" value={horses.length} onClick={() => handleStatCardClick('horse')} />
           <StatCard label="Visits" value={visitCount} onClick={() => handleStatCardClick('horse')} />
           <StatCard label="Photos" value={photoCount} onClick={() => handleStatCardClick('horse')} />
+        </div>
+
+        {/* ── Today's Appointments ── */}
+        <div className="mt-5 rounded-3xl bg-white p-5 shadow-md md:p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-slate-900 md:text-2xl">Today's Appointments</h2>
+              <p className="mt-0.5 text-sm text-slate-500">
+                {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              </p>
+            </div>
+            <Link
+              href="/appointments"
+              className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 transition"
+            >
+              View All →
+            </Link>
+          </div>
+
+          <div className="mt-4">
+            {todayAppointments.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-10 text-center">
+                <p className="text-2xl">📅</p>
+                <p className="mt-2 text-sm font-medium text-slate-500">No appointments scheduled for today</p>
+                <Link
+                  href="/appointments"
+                  className="mt-3 rounded-xl bg-[#0f2040] px-4 py-2 text-sm font-semibold text-white hover:bg-[#162d55] transition"
+                >
+                  + Book Appointment
+                </Link>
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {todayAppointments.map((appt) => {
+                  const statusColors: Record<string, string> = {
+                    scheduled: 'bg-blue-100 text-blue-700',
+                    confirmed: 'bg-emerald-100 text-emerald-700',
+                    completed: 'bg-slate-100 text-slate-500',
+                  }
+                  const fmtTime = (t: string | null) => {
+                    if (!t) return 'Time TBD'
+                    const [h, min] = t.split(':').map(Number)
+                    const ampm = h >= 12 ? 'PM' : 'AM'
+                    return `${h % 12 || 12}:${String(min).padStart(2, '0')} ${ampm}`
+                  }
+                  const species = appt.horses?.species
+                  const emoji = species === 'canine' ? '🐕' : '🐴'
+
+                  return (
+                    <div
+                      key={appt.id}
+                      className={`relative rounded-2xl border-l-4 bg-slate-50 p-4 ${
+                        appt.status === 'confirmed' ? 'border-emerald-400' :
+                        appt.status === 'completed' ? 'border-slate-300' :
+                        'border-blue-400'
+                      }`}
+                    >
+                      {/* Time + status */}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-lg font-bold text-slate-900">{fmtTime(appt.appointment_time)}</span>
+                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${statusColors[appt.status] || 'bg-slate-100 text-slate-500'}`}>
+                          {appt.status}
+                        </span>
+                      </div>
+
+                      {/* Patient */}
+                      <div className="mt-2 flex items-center gap-1.5">
+                        <span className="text-base">{emoji}</span>
+                        {appt.horses?.id ? (
+                          <Link
+                            href={`/horses/${appt.horses.id}`}
+                            className="font-semibold text-slate-900 hover:underline"
+                          >
+                            {appt.horses.name}
+                          </Link>
+                        ) : (
+                          <span className="font-semibold text-slate-900">—</span>
+                        )}
+                      </div>
+
+                      {/* Owner */}
+                      {appt.horses?.owners?.full_name && (
+                        <p className="mt-0.5 text-sm text-slate-500">{appt.horses.owners.full_name}</p>
+                      )}
+                      {appt.horses?.owners?.phone && (
+                        <p className="text-xs text-slate-400">{appt.horses.owners.phone}</p>
+                      )}
+
+                      {/* Reason + location */}
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {appt.reason && (
+                          <span className="rounded-full bg-white border border-slate-200 px-2.5 py-0.5 text-xs text-slate-600">{appt.reason}</span>
+                        )}
+                        {appt.location && (
+                          <span className="rounded-full bg-white border border-slate-200 px-2.5 py-0.5 text-xs text-slate-600">📍 {appt.location}</span>
+                        )}
+                        {appt.duration_minutes && (
+                          <span className="rounded-full bg-white border border-slate-200 px-2.5 py-0.5 text-xs text-slate-400">{appt.duration_minutes} min</span>
+                        )}
+                      </div>
+
+                      {appt.notes && (
+                        <p className="mt-2 text-xs italic text-slate-400">{appt.notes}</p>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
         <div ref={findRecordsRef} className="mt-5 rounded-3xl bg-white p-5 shadow-md md:p-6">
