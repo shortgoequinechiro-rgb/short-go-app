@@ -96,6 +96,80 @@ function todayISO() {
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
+// ── ICS / Apple Calendar helpers ──────────────────────────────────────────────
+
+function generateIcs(appt: Appointment): string {
+  const uid = `appt-${appt.id}@shortgo.equine`
+  const [y, m, d] = appt.appointment_date.split('-').map(Number)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const dateOnly = `${y}${pad(m)}${pad(d)}`
+
+  const now = new Date()
+  const dtstamp = `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`
+
+  let dtStart: string
+  let dtEnd: string
+
+  if (appt.appointment_time) {
+    const [h, min] = appt.appointment_time.split(':').map(Number)
+    const duration = appt.duration_minutes || 60
+    const start = new Date(y, m - 1, d, h, min, 0)
+    const end   = new Date(start.getTime() + duration * 60_000)
+    const fmtLocal = (dt: Date) =>
+      `${dt.getFullYear()}${pad(dt.getMonth() + 1)}${pad(dt.getDate())}T${pad(dt.getHours())}${pad(dt.getMinutes())}00`
+    dtStart = `DTSTART:${fmtLocal(start)}`
+    dtEnd   = `DTEND:${fmtLocal(end)}`
+  } else {
+    dtStart = `DTSTART;VALUE=DATE:${dateOnly}`
+    dtEnd   = `DTEND;VALUE=DATE:${dateOnly}`
+  }
+
+  const horseName = appt.horses?.name || 'Horse'
+  const ownerName = appt.horses?.owners?.full_name
+  const summary   = appt.reason
+    ? `${appt.reason} — ${horseName}`
+    : `Equine Chiropractic — ${horseName}`
+  const descParts = [
+    ownerName && `Owner: ${ownerName}`,
+    appt.reason && `Reason: ${appt.reason}`,
+    appt.duration_minutes && `Duration: ${appt.duration_minutes} min`,
+    appt.notes,
+  ].filter(Boolean)
+
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Short-Go Equine Chiropractic//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'BEGIN:VEVENT',
+    `UID:${uid}`,
+    `DTSTAMP:${dtstamp}`,
+    dtStart,
+    dtEnd,
+    `SUMMARY:${summary}`,
+    descParts.length ? `DESCRIPTION:${descParts.join('\\n')}` : '',
+    appt.location ? `LOCATION:${appt.location}` : '',
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].filter(Boolean)
+
+  return lines.join('\r\n')
+}
+
+function downloadIcs(appt: Appointment) {
+  const ics  = generateIcs(appt)
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' })
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a')
+  a.href     = url
+  a.download = `${(appt.horses?.name || 'appointment').replace(/\s+/g, '-')}-${appt.appointment_date}.ics`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
 // ── Empty appointment form state ──────────────────────────────────────────────
 
 type FormState = {
@@ -803,6 +877,15 @@ function AppointmentCard({
         )}
 
         <div className="ml-auto flex gap-2">
+          {appt.status !== 'cancelled' && (
+            <button
+              onClick={() => downloadIcs(appt)}
+              title="Add to Apple Calendar"
+              className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition"
+            >
+              📅 Add to Calendar
+            </button>
+          )}
           <button onClick={onEdit} className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition">Edit</button>
           <button onClick={onDelete} className="rounded-xl border border-red-100 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-50 transition">Delete</button>
         </div>

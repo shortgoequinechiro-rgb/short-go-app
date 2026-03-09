@@ -9,6 +9,74 @@ function getAdminSupabase() {
   return createClient(supabaseUrl, serviceRoleKey)
 }
 
+function generateIcs(appt: {
+  id: string
+  appointment_date: string
+  appointment_time: string | null
+  duration_minutes: number | null
+  location: string | null
+  reason: string | null
+  notes: string | null
+  horses: { name: string; owners: { full_name: string } | null } | null
+}): string {
+  const uid = `appt-${appt.id}@shortgo.equine`
+  const [y, m, d] = appt.appointment_date.split('-').map(Number)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const dateOnly = `${y}${pad(m)}${pad(d)}`
+
+  const now = new Date()
+  const dtstamp = `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`
+
+  let dtStart: string
+  let dtEnd: string
+
+  if (appt.appointment_time) {
+    const [h, min] = appt.appointment_time.split(':').map(Number)
+    const duration = appt.duration_minutes || 60
+    const start = new Date(y, m - 1, d, h, min, 0)
+    const end   = new Date(start.getTime() + duration * 60_000)
+    const fmtLocal = (dt: Date) =>
+      `${dt.getFullYear()}${pad(dt.getMonth() + 1)}${pad(dt.getDate())}T${pad(dt.getHours())}${pad(dt.getMinutes())}00`
+    dtStart = `DTSTART:${fmtLocal(start)}`
+    dtEnd   = `DTEND:${fmtLocal(end)}`
+  } else {
+    dtStart = `DTSTART;VALUE=DATE:${dateOnly}`
+    dtEnd   = `DTEND;VALUE=DATE:${dateOnly}`
+  }
+
+  const horseName = appt.horses?.name || 'Horse'
+  const ownerName = appt.horses?.owners?.full_name
+  const summary   = appt.reason
+    ? `${appt.reason} — ${horseName}`
+    : `Equine Chiropractic — ${horseName}`
+  const descParts = [
+    ownerName && `Owner: ${ownerName}`,
+    appt.reason && `Reason: ${appt.reason}`,
+    appt.duration_minutes && `Duration: ${appt.duration_minutes} min`,
+    appt.notes,
+  ].filter(Boolean)
+
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Short-Go Equine Chiropractic//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'BEGIN:VEVENT',
+    `UID:${uid}`,
+    `DTSTAMP:${dtstamp}`,
+    dtStart,
+    dtEnd,
+    `SUMMARY:${summary}`,
+    descParts.length ? `DESCRIPTION:${descParts.join('\\n')}` : '',
+    appt.location ? `LOCATION:${appt.location}` : '',
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].filter(Boolean)
+
+  return lines.join('\r\n')
+}
+
 function fmtDate(iso: string) {
   const [y, m, d] = iso.split('-').map(Number)
   return new Date(y, m - 1, d).toLocaleDateString('en-US', {
@@ -127,12 +195,29 @@ export async function POST(
 </html>`
 
     const resend = new Resend(resendApiKey)
+
+    // Attach .ics calendar invite to confirmation emails
+    const attachments = isConfirmation ? [{
+      filename: `${(horse?.name || 'appointment').replace(/\s+/g, '-')}-${appt.appointment_date}.ics`,
+      content: Buffer.from(generateIcs({
+        id: appt.id,
+        appointment_date: appt.appointment_date,
+        appointment_time: appt.appointment_time,
+        duration_minutes: appt.duration_minutes,
+        location: appt.location,
+        reason: appt.reason,
+        notes: appt.notes,
+        horses: horse ? { name: horse.name, owners: owner ? { full_name: owner.full_name } : null } : null,
+      })),
+    }] : undefined
+
     const result = await resend.emails.send({
       from: fromEmail,
       to: owner.email,
       subject,
       text: body_text,
       html: htmlBody,
+      attachments,
     })
 
     if ((result as any)?.error) {
