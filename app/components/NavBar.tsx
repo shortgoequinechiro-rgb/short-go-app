@@ -62,7 +62,7 @@ export default function NavBar() {
             </Link>
             <span className="text-white/30">/</span>
             <span className="font-medium text-white">
-              {isAnatomy ? 'Anatomy Viewer' : 'Horse Record'}
+              {isAnatomy ? 'Anatomy Viewer' : 'Patient Record'}
             </span>
           </div>
         )}
