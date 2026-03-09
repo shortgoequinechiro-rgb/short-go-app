@@ -1224,7 +1224,7 @@ export default function HorseDetailPage() {
                   ✓ Consent on File
                 </span>
               ) : (
-                <span className="rounded-xl bg-red-500 px-3 py-1 text-xs font-bold text-white shadow-sm">
+                <span className="rounded-xl bg-red-600 px-3 py-1 text-xs font-bold text-white shadow-sm">
                   ✗ No Consent
                 </span>
               )
