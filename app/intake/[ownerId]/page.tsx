@@ -68,7 +68,10 @@ const REFERRAL_OPTIONS = [
   'Other',
 ]
 
-const GENDER_OPTIONS = ['Mare', 'Gelding', 'Stallion']
+const GENDER_OPTIONS: Record<string, string[]> = {
+  equine: ['Mare', 'Gelding', 'Stallion'],
+  canine: ['Female', 'Male', 'Female (Spayed)', 'Male (Neutered)'],
+}
 
 export default function IntakeFormPage() {
   const params = useParams()
@@ -95,6 +98,7 @@ export default function IntakeFormPage() {
   const [referralSources, setReferralSources] = useState<string[]>([])
 
   // Animal section
+  const [animalSpecies, setAnimalSpecies] = useState<'equine' | 'canine'>('equine')
   const [animalName, setAnimalName] = useState('')
   const [animalAge, setAnimalAge] = useState('')
   const [animalBreed, setAnimalBreed] = useState('')
@@ -164,6 +168,12 @@ export default function IntakeFormPage() {
     setAnimalAge(horse.age || '')
     setAnimalBreed(horse.breed || '')
     setAnimalGender(horse.sex || '')
+    setAnimalSpecies(horse.species === 'canine' ? 'canine' : 'equine')
+  }
+
+  function handleSpeciesChange(species: 'equine' | 'canine') {
+    setAnimalSpecies(species)
+    setAnimalGender('') // reset gender when species changes
   }
 
   // ── Signature canvas ────────────────────────────────────────────────────────
@@ -248,6 +258,7 @@ export default function IntakeFormPage() {
       form_date: now.split('T')[0],
       referral_source: referralSources,
       animal_name: animalName.trim(),
+      animal_species: animalSpecies,
       animal_age: animalAge || null,
       animal_breed: animalBreed || null,
       animal_dob: animalDob || null,
@@ -315,7 +326,7 @@ export default function IntakeFormPage() {
         {/* Header */}
         <div className="mb-8 rounded-3xl bg-white p-8 shadow-md text-center">
           <h1 className="text-3xl font-bold text-slate-900">Equine Chiropractic Intake Form</h1>
-          <p className="mt-2 text-sm text-slate-500">Short-Go Equine Chiropractic · Sarah Rohay, D.C. c.AVCA</p>
+          <p className="mt-2 text-sm text-slate-500">Short-Go Equine Chiropractic · Dr. Andrew Leo, D.C. c.AVCA</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -409,6 +420,27 @@ export default function IntakeFormPage() {
               </Field>
             )}
 
+            <Field label="Species" required>
+              <div className="flex gap-4 mt-2">
+                {[
+                  { value: 'equine', label: '🐴 Horse / Equine' },
+                  { value: 'canine', label: '🐕 Dog / Canine' },
+                ].map(opt => (
+                  <label key={opt.value} className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="radio"
+                      name="species"
+                      value={opt.value}
+                      checked={animalSpecies === opt.value}
+                      onChange={() => handleSpeciesChange(opt.value as 'equine' | 'canine')}
+                      className="h-4 w-4 accent-slate-800"
+                    />
+                    <span className="text-sm text-slate-700">{opt.label}</span>
+                  </label>
+                ))}
+              </div>
+            </Field>
+
             <div className="grid grid-cols-2 gap-4">
               <Field label="Animal Name" required>
                 <input value={animalName} onChange={e => setAnimalName(e.target.value)}
@@ -432,9 +464,9 @@ export default function IntakeFormPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Gender" required>
+              <Field label="Sex" required>
                 <div className="mt-2 space-y-2">
-                  {GENDER_OPTIONS.map(g => (
+                  {GENDER_OPTIONS[animalSpecies].map(g => (
                     <label key={g} className="flex cursor-pointer items-center gap-3">
                       <input
                         type="radio"
@@ -520,7 +552,7 @@ export default function IntakeFormPage() {
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm leading-relaxed text-slate-700 space-y-4">
               <p>
                 I, <strong>{ownerFullName || "[Pet Owner's Name]"}</strong>, hereby give my consent for{' '}
-                <strong>{consentAnimalName}</strong> to receive chiropractic care from Sarah Rohay, D.C. c.AVCA, Animal
+                <strong>{consentAnimalName}</strong> to receive chiropractic care from Dr. Andrew Leo, D.C. c.AVCA, Animal
                 Chiropractor. I understand that chiropractic care involves the assessment and adjustment of the
                 musculoskeletal system of animals to restore proper function and mobility.
               </p>
@@ -552,7 +584,7 @@ export default function IntakeFormPage() {
               <p>
                 By signing below, I acknowledge that I have read and understood the information provided in this
                 consent form, and I voluntarily consent to <strong>{consentAnimalName}</strong> receiving chiropractic
-                care from Sarah Rohay, DC c.AVCA, Animal Chiropractor.
+                care from Dr. Andrew Leo, DC c.AVCA, Animal Chiropractor.
               </p>
             </div>
 
@@ -604,7 +636,7 @@ export default function IntakeFormPage() {
           </button>
 
           <p className="pb-8 text-center text-xs text-slate-400">
-            Short-Go Equine Chiropractic · Sarah Rohay, D.C. c.AVCA, Animal Chiropractor
+            Short-Go Equine Chiropractic · Dr. Andrew Leo, D.C. c.AVCA, Animal Chiropractor
           </p>
         </form>
       </div>
