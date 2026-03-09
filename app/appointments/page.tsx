@@ -744,7 +744,7 @@ function AppointmentsContent() {
                     onChange={e => setForm(f => ({ ...f, duration_minutes: Number(e.target.value) }))}
                     className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
                   >
-                    {[30, 45, 60, 90, 120].map(d => <option key={d} value={d}>{d} min</option>)}
+                    {[15, 30, 45, 60, 90, 120].map(d => <option key={d} value={d}>{d} min</option>)}
                   </select>
                 </div>
                 <div>
