@@ -1030,6 +1030,55 @@ export default function HorseDetailPage() {
     setSelectedOwnerHorseId(horseId)
   }, [horseId])
 
+  // ── Auto-load spine findings into Quick Notes when a visit is opened ──────
+  useEffect(() => {
+    if (!editingVisitId) return
+
+    async function loadSpineIntoNotes() {
+      const { data } = await supabase
+        .from('spine_assessments')
+        .select('findings, notes')
+        .eq('visit_id', editingVisitId)
+        .order('assessed_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (!data?.findings) return
+
+      const findings = data.findings as Record<string, { left: boolean; right: boolean }>
+
+      const LABEL: Record<string, string> = {
+        tmj: 'TMJ', poll: 'Poll',
+        c1: 'C1 (Atlas)', c2: 'C2 (Axis)', c3: 'C3', c4: 'C4', c5: 'C5', c6: 'C6', c7: 'C7',
+        sacrum: 'Sacrum', si_joint: 'SI Joint', coccygeal: 'Coccygeal',
+      }
+      const label = (key: string) =>
+        LABEL[key] ?? key.replace(/^([tTlLcC])(\d+)$/, (_, prefix, num) =>
+          prefix.toUpperCase() + num)
+
+      const flagged = Object.entries(findings)
+        .filter(([, f]) => f.left || f.right)
+        .map(([key, f]) => {
+          const side = f.left && f.right ? 'Bilateral' : f.left ? 'Left' : 'Right'
+          return `${label(key)} (${side})`
+        })
+
+      if (flagged.length === 0) return
+
+      const spineText = [
+        `Spine Findings: ${flagged.join(', ')}`,
+        data.notes ? `Spine Notes: ${data.notes}` : '',
+      ].filter(Boolean).join('\n')
+
+      setQuickNotes(prev => {
+        if (prev.includes('Spine Findings:')) return prev
+        return prev ? `${prev}\n\n${spineText}` : spineText
+      })
+    }
+
+    loadSpineIntoNotes()
+  }, [editingVisitId])
+
   if (checkingAuth) {
     return (
       <main className="min-h-screen bg-[#edf2f7] p-8">

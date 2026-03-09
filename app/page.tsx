@@ -831,13 +831,13 @@ export default function Home() {
             <div className="rounded-3xl bg-[#edf2f7] p-4 md:p-5">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-lg font-semibold text-slate-900">
-                  {searchMode === 'owner' ? 'Owner Results' : searchMode === 'horse' ? 'Horse Results' : 'Visit Results'}
+                  {searchMode === 'owner' ? 'Owner Results' : searchMode === 'horse' ? 'All Horses' : 'Visit Results'}
                 </h3>
                 <span className="text-xs text-slate-500">
                   {searchMode === 'owner'
                     ? `${filteredOwners.length} result${filteredOwners.length === 1 ? '' : 's'}`
                     : searchMode === 'horse'
-                    ? `${filteredHorses.length} result${filteredHorses.length === 1 ? '' : 's'}`
+                    ? `${horses.length} horse${horses.length === 1 ? '' : 's'}`
                     : `${filteredVisits.length} result${filteredVisits.length === 1 ? '' : 's'}`}
                 </span>
               </div>
@@ -891,10 +891,10 @@ export default function Home() {
                       })
                     )
                   ) : searchMode === 'horse' ? (
-                    filteredHorses.length === 0 ? (
-                      <p className="text-sm text-slate-500">Search to find a horse.</p>
+                    horses.length === 0 ? (
+                      <p className="text-sm text-slate-500">No horses on file yet.</p>
                     ) : (
-                      filteredHorses.map((horse) => (
+                      [...horses].sort((a, b) => a.name.localeCompare(b.name)).map((horse) => (
                         <Link
                           key={horse.id}
                           href={`/horses/${horse.id}`}
@@ -1111,7 +1111,9 @@ export default function Home() {
 
                   <div className="mt-5 grid gap-4 md:grid-cols-2">
                     {filteredHorses.length === 0 ? (
-                      <p className="text-sm text-slate-500">No horses found.</p>
+                      <p className="text-sm text-slate-500">
+                        {searchTerm.trim() ? 'No horses match your search.' : 'Type above to search horses.'}
+                      </p>
                     ) : (
                       filteredHorses.map((horse) => (
                         <Link
