@@ -1196,6 +1196,21 @@ export default function HorseDetailPage() {
         {/* Visits Tab */}
         {activeTab === 'visits' && (
         <div className="mt-6 space-y-6">
+
+            {/* Spine Assessment Banner */}
+            <div className="flex items-center justify-between rounded-3xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
+              <div>
+                <p className="font-semibold text-slate-900">Spine Assessment</p>
+                <p className="mt-0.5 text-sm text-slate-500">Check each spinal segment for left / right issues.</p>
+              </div>
+              <Link
+                href={`/horses/${horse?.id}/spine`}
+                className="shrink-0 rounded-2xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700"
+              >
+                Open →
+              </Link>
+            </div>
+
             <div className="rounded-3xl bg-white p-6 shadow-sm">
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <h2 className="text-2xl font-semibold text-slate-900">
