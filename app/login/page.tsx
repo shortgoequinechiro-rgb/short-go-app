@@ -63,7 +63,7 @@ export default function LoginPage() {
           src="/horse-bg.png"
           alt=""
           className="h-[80vh] max-h-[700px] w-auto select-none object-contain"
-          style={{ opacity: 0.08, filter: 'invert(1)' }}
+          style={{ opacity: 0.18, filter: 'invert(1) sepia(1) saturate(4) hue-rotate(5deg)' }}
         />
       </div>
 
