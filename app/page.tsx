@@ -838,13 +838,13 @@ export default function Home() {
             <div className="rounded-3xl bg-[#edf2f7] p-4 md:p-5">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-lg font-semibold text-slate-900">
-                  {searchMode === 'owner' ? 'Owner Results' : searchMode === 'horse' ? 'All Horses' : 'Visit Results'}
+                  {searchMode === 'owner' ? 'Owner Results' : searchMode === 'horse' ? 'All Patients' : 'Visit Results'}
                 </h3>
                 <span className="text-xs text-slate-500">
                   {searchMode === 'owner'
                     ? `${filteredOwners.length} result${filteredOwners.length === 1 ? '' : 's'}`
                     : searchMode === 'horse'
-                    ? `${horses.length} horse${horses.length === 1 ? '' : 's'}`
+                    ? `${horses.length} patient${horses.length === 1 ? '' : 's'}`
                     : `${filteredVisits.length} result${filteredVisits.length === 1 ? '' : 's'}`}
                 </span>
               </div>
@@ -1056,13 +1056,13 @@ export default function Home() {
 
                     <div className="mt-5">
                       <h4 className="text-lg font-semibold text-slate-900">
-                        Horses
+                        Patients
                       </h4>
 
                       <div className="mt-4 grid gap-4 md:grid-cols-2">
                         {filteredHorses.length === 0 ? (
                           <p className="text-sm text-slate-500">
-                            No horses for this owner yet.
+                            No patients for this owner yet.
                           </p>
                         ) : (
                           filteredHorses.map((horse) => (
@@ -1110,16 +1110,16 @@ export default function Home() {
               ) : (
                 <div>
                   <h3 className="text-xl font-semibold text-slate-900">
-                    Matching Horses
+                    Matching Patients
                   </h3>
                   <p className="mt-1 text-sm text-slate-500">
-                    Click a horse to open info, visits, and pictures.
+                    Click a patient to open info, visits, and pictures.
                   </p>
 
                   <div className="mt-5 grid gap-4 md:grid-cols-2">
                     {filteredHorses.length === 0 ? (
                       <p className="text-sm text-slate-500">
-                        {searchTerm.trim() ? 'No horses match your search.' : 'Type above to search horses.'}
+                        {searchTerm.trim() ? 'No patients match your search.' : 'Type above to search patients.'}
                       </p>
                     ) : (
                       filteredHorses.map((horse) => (
