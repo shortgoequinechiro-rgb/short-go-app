@@ -1234,20 +1234,13 @@ export default function HorseDetailPage() {
                 ⚠️ Behavioral Alert
               </span>
             )}
-            {horse?.owner_id && consentOnFile !== undefined && (
-              consentOnFile ? (
-                <span className="rounded-xl bg-emerald-500 px-3 py-1 text-xs font-bold text-white shadow-sm">
-                  ✓ Consent on File
-                </span>
-              ) : (
-                <span className="rounded-xl bg-red-600 px-3 py-1 text-xs font-bold text-white shadow-sm">
-                  ✗ No Consent
-                </span>
-              )
-            )}
-            {intakeForms.length > 0 && (
+            {(consentOnFile || intakeForms.length > 0) ? (
               <span className="rounded-xl bg-emerald-500 px-3 py-1 text-xs font-bold text-white shadow-sm">
-                ✓ Intake on File
+                ✓ Consent
+              </span>
+            ) : (
+              <span className="rounded-xl bg-red-600 px-3 py-1 text-xs font-bold text-white shadow-sm">
+                <strong>✗</strong> Consent
               </span>
             )}
           </div>
