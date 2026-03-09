@@ -305,11 +305,19 @@ export async function GET(
     }
 
     function drawSectionTitle(title: string) {
-  y -= 10
-  ensureSpace(40)
-  drawTextLine(title, margin, y, 13, true, colors.dark)
-  y -= 28
-}
+      y -= 14
+      ensureSpace(40)
+      drawTextLine(title, margin, y, 13, true, colors.dark)
+      y -= 6
+      page.drawLine({
+        start: { x: margin, y },
+        end: { x: pageWidth - margin, y },
+        thickness: 0.5,
+        color: colors.line,
+      })
+      y -= 16
+    }
+
     function drawParagraph(label: string, value: string | null | undefined) {
       const lines = wrapText(value || '—', 88)
       ensureSpace(20 + lines.length * 14)
@@ -402,10 +410,15 @@ export async function GET(
       drawDivider(0, 18)
     }
 
-    function drawSummaryCard() {
-      ensureSpace(108)
+    function truncate(text: string | null | undefined, maxChars: number): string {
+      const t = text || '—'
+      return t.length > maxChars ? t.slice(0, maxChars - 1) + '…' : t
+    }
 
-      const cardHeight = 92
+    function drawSummaryCard() {
+      ensureSpace(114)
+
+      const cardHeight = 98
       page.drawRectangle({
         x: margin,
         y: y - cardHeight,
@@ -416,21 +429,24 @@ export async function GET(
         borderWidth: 1,
       })
 
-      drawTextLine('VISIT SUMMARY', margin + 14, y - 14, 8, true, colors.muted)
+      drawTextLine('VISIT SUMMARY', margin + 14, y - 13, 7.5, true, colors.muted)
 
-      const leftX = margin + 14
+      const colWidth = contentWidth / 2 - 14
+      const leftX  = margin + 14
       const rightX = margin + contentWidth / 2 + 8
       const line1Y = y - 32
       const line2Y = y - 52
       const line3Y = y - 72
 
-      drawTextLine(`Visit Date: ${visit.visit_date || '—'}`, leftX, line1Y, 10, true)
-      drawTextLine(`Provider: ${visit.provider_name || '—'}`, leftX, line2Y, 10, false)
-      drawTextLine(`Follow Up: ${visit.follow_up || '—'}`, leftX, line3Y, 10, false)
+      // Left column — max ~36 chars each to stay within half the card
+      drawTextLine(`Date:       ${truncate(visit.visit_date, 28)}`,      leftX, line1Y, 10, true)
+      drawTextLine(`Provider:  ${truncate(visit.provider_name, 28)}`,    leftX, line2Y, 10, false)
+      drawTextLine(`Follow Up: ${truncate(visit.follow_up, 28)}`,        leftX, line3Y, 10, false)
 
-      drawTextLine(`Reason: ${visit.reason_for_visit || '—'}`, rightX, line1Y, 10, true)
-      drawTextLine(`Treated Areas: ${visit.treated_areas || '—'}`, rightX, line2Y, 10, false)
-      drawTextLine(`Location: ${visit.location || '—'}`, rightX, line3Y, 10, false)
+      // Right column
+      drawTextLine(`Reason:    ${truncate(visit.reason_for_visit, 30)}`, rightX, line1Y, 10, true)
+      drawTextLine(`Areas:     ${truncate(visit.treated_areas, 30)}`,    rightX, line2Y, 10, false)
+      drawTextLine(`Location:  ${truncate(visit.location, 30)}`,         rightX, line3Y, 10, false)
 
       y -= cardHeight + 18
     }
@@ -587,41 +603,35 @@ export async function GET(
         y -= 12
 
         for (const sec of flaggedSections) {
-          ensureSpace(20 + sec.segs.length * 16)
+          ensureSpace(22 + sec.segs.length * 17)
 
-          // Section sub-header
+          // Section sub-header — rect from y-18 to y, text baseline at y-12
           page.drawRectangle({
             x: margin,
-            y: y - 14,
+            y: y - 18,
             width: contentWidth,
-            height: 16,
+            height: 18,
             color: colors.soft,
           })
-          drawTextLine(sec.label.toUpperCase(), nameColX + 4, y - 2, 8, true, colors.muted)
-          y -= 20
+          drawTextLine(sec.label.toUpperCase(), nameColX + 4, y - 12, 8, true, colors.muted)
+          y -= 24
 
           for (const seg of sec.segs) {
-            ensureSpace(16)
+            ensureSpace(17)
             drawTextLine(seg.label, nameColX + 8, y, 10, false, colors.text)
             drawTextLine(
-              seg.left ? 'Yes' : '-',
-              leftColX,
-              y,
-              10,
-              seg.left,
-              seg.left ? rgb(0.85, 0.42, 0.0) : colors.muted
+              seg.left  ? 'Yes' : '-',
+              leftColX,  y, 10, seg.left,
+              seg.left  ? rgb(0.80, 0.38, 0.0) : colors.muted
             )
             drawTextLine(
               seg.right ? 'Yes' : '-',
-              rightColX,
-              y,
-              10,
-              seg.right,
-              seg.right ? rgb(0.85, 0.42, 0.0) : colors.muted
+              rightColX, y, 10, seg.right,
+              seg.right ? rgb(0.80, 0.38, 0.0) : colors.muted
             )
-            y -= 15
+            y -= 17
           }
-          y -= 4
+          y -= 6
         }
       }
 
@@ -677,8 +687,19 @@ export async function GET(
 
     await drawPhotos()
 
+    // Anchor signature near the bottom of the last page instead of floating mid-page
+    const sigBlockHeight = 130
+    if (y - sigBlockHeight < margin) {
+      // Not enough room — start a fresh page and anchor to its bottom
+      newPage()
+      y = margin + sigBlockHeight
+    } else if (y > margin + sigBlockHeight) {
+      // Plenty of room — pull signature down to a consistent bottom position
+      y = margin + sigBlockHeight
+    }
+    // else: y is already close to the bottom — draw in place
+
     drawDivider(8, 18)
-    ensureSpace(70)
 
     drawTextLine('Provider Signature', margin, y, 10, true, colors.muted)
     y -= 24

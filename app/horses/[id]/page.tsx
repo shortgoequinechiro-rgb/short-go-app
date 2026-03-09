@@ -923,8 +923,8 @@ export default function HorseDetailPage() {
 
   if (checkingAuth) {
     return (
-      <main className="min-h-screen bg-slate-100 p-8">
-        <div className="mx-auto max-w-4xl rounded-2xl bg-white p-6 shadow-sm">
+      <main className="min-h-screen bg-[#edf2f7] p-8">
+        <div className="mx-auto max-w-4xl rounded-2xl bg-white p-6 shadow-md">
           <p className="text-slate-700">Checking login...</p>
         </div>
       </main>
@@ -932,9 +932,9 @@ export default function HorseDetailPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-100 p-6 md:p-8">
+    <main className="min-h-screen bg-[#edf2f7] p-6 md:p-8">
       <div className="mx-auto max-w-7xl">
-        <div className="rounded-3xl bg-white p-6 shadow-sm">
+        <div className="rounded-3xl bg-white p-6 shadow-md">
           <h1 className="text-3xl font-bold text-slate-900">
             {horse?.name || 'Horse Record'}
           </h1>
@@ -953,15 +953,15 @@ export default function HorseDetailPage() {
         </div>
 
         {/* Tab navigation */}
-        <div className="mt-6 flex gap-1 rounded-2xl bg-white p-1.5 shadow-sm">
+        <div className="mt-6 flex gap-1 rounded-2xl bg-[#edf2f7] p-1.5 shadow-sm">
           {(['visits', 'info', 'photos'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`flex-1 rounded-xl py-2 text-sm font-medium transition-colors ${
                 activeTab === tab
-                  ? 'bg-slate-900 text-white'
-                  : 'text-slate-600 hover:bg-slate-100'
+                  ? 'bg-[#0f2040] text-white shadow-sm'
+                  : 'text-slate-600 hover:bg-white hover:shadow-sm'
               }`}
             >
               {tab === 'info' ? 'Info' : tab === 'visits' ? 'Visits' : 'Photos'}
@@ -973,7 +973,7 @@ export default function HorseDetailPage() {
         {activeTab === 'info' && (
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
           <div className="space-y-6">
-            <div className="rounded-3xl bg-white p-6 shadow-sm">
+            <div className="rounded-3xl bg-white p-6 shadow-md">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-xl font-semibold text-slate-900">Horse Info</h2>
                 {!editingHorse ? (
@@ -1080,7 +1080,7 @@ export default function HorseDetailPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={saveHorseInfo}
-                      className="rounded-xl bg-slate-900 px-4 py-3 text-sm text-white"
+                      className="rounded-xl bg-[#0f2040] px-4 py-3 text-sm text-white hover:bg-[#162d55] transition-colors"
                     >
                       Save Horse Info
                     </button>
@@ -1097,7 +1097,7 @@ export default function HorseDetailPage() {
           </div>
 
           <div className="space-y-6">
-            <div className="rounded-3xl bg-white p-6 shadow-sm">
+            <div className="rounded-3xl bg-white p-6 shadow-md">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-xl font-semibold text-slate-900">Owner Info</h2>
                 {!editingOwner ? (
@@ -1158,7 +1158,7 @@ export default function HorseDetailPage() {
                   <div className="flex gap-2">
                     <button
                       onClick={saveOwnerInfo}
-                      className="rounded-xl bg-slate-900 px-4 py-3 text-sm text-white"
+                      className="rounded-xl bg-[#0f2040] px-4 py-3 text-sm text-white hover:bg-[#162d55] transition-colors"
                     >
                       Save Owner Info
                     </button>
@@ -1198,7 +1198,7 @@ export default function HorseDetailPage() {
         <div className="mt-6 space-y-6">
 
             {/* Spine Assessment Banner */}
-            <div className="flex items-center justify-between rounded-3xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
+            <div className="flex items-center justify-between rounded-3xl border border-[#0f2040]/10 bg-white px-6 py-4 shadow-md">
               <div>
                 <p className="font-semibold text-slate-900">Spine Assessment</p>
                 <p className="mt-0.5 text-sm text-slate-500">
@@ -1211,13 +1211,13 @@ export default function HorseDetailPage() {
                 href={editingVisitId
                   ? `/horses/${horse?.id}/spine?visitId=${editingVisitId}`
                   : `/horses/${horse?.id}/spine`}
-                className="shrink-0 rounded-2xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700"
+                className="shrink-0 rounded-2xl bg-[#0f2040] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#162d55]"
               >
                 Open →
               </Link>
             </div>
 
-            <div className="rounded-3xl bg-white p-6 shadow-sm">
+            <div className="rounded-3xl bg-white p-6 shadow-md">
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <h2 className="text-2xl font-semibold text-slate-900">
                   {editingVisitId ? 'Edit Visit' : 'Add Visit'}
@@ -1234,7 +1234,7 @@ export default function HorseDetailPage() {
 
                     <Link
                       href={`/anatomy?visitId=${editingVisitId}&horseName=${encodeURIComponent(horse?.name || '')}`}
-                      className="rounded-xl border border-slate-900 bg-slate-900 px-4 py-2 text-sm text-white"
+                      className="rounded-xl border border-[#0f2040] bg-[#0f2040] px-4 py-2 text-sm text-white hover:bg-[#162d55] transition-colors"
                     >
                       Open Anatomy For This Visit
                     </Link>
@@ -1274,14 +1274,16 @@ export default function HorseDetailPage() {
                   />
                 </Field>
 
-                <Field label="Provider Name">
-                  <input
-                    value={providerName}
-                    onChange={(e) => setProviderName(e.target.value)}
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3"
-                    placeholder="Provider"
-                  />
-                </Field>
+                <div className="md:col-span-2">
+                  <Field label="Provider Name">
+                    <input
+                      value={providerName}
+                      onChange={(e) => setProviderName(e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                      placeholder="Provider"
+                    />
+                  </Field>
+                </div>
 
                 <div className="md:col-span-2">
                   <Field label="Reason for Visit">
@@ -1417,7 +1419,7 @@ recommend 2 light days`}
                 <div className="md:col-span-2">
                   <button
                     onClick={saveVisit}
-                    className="rounded-xl bg-slate-900 px-5 py-3 text-white"
+                    className="rounded-xl bg-[#0f2040] px-5 py-3 text-white hover:bg-[#162d55] transition-colors"
                   >
                     {editingVisitId ? 'Update Visit' : 'Save Visit'}
                   </button>
@@ -1431,7 +1433,7 @@ recommend 2 light days`}
               </div>
             ) : null}
 
-            <div className="rounded-3xl bg-white p-6 shadow-sm">
+            <div className="rounded-3xl bg-white p-6 shadow-md">
               <h2 className="text-2xl font-semibold text-slate-900">Visit History</h2>
 
               <div className="mt-4 space-y-4">
@@ -1458,12 +1460,12 @@ recommend 2 light days`}
 
                             <div className="mt-2">
                               {anatomyRegionCounts[visit.id] ? (
-                                <span className="inline-flex rounded-2xl bg-slate-900 px-3 py-1 text-xs font-medium text-white">
+                                <span className="inline-flex rounded-2xl bg-[#0f2040] px-3 py-1 text-xs font-medium text-white">
                                   Anatomy Notes: {anatomyRegionCounts[visit.id]} region
                                   {anatomyRegionCounts[visit.id] === 1 ? '' : 's'}
                                 </span>
                               ) : (
-                                <span className="inline-flex rounded-2xl bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                                <span className="inline-flex rounded-2xl bg-[#edf2f7] px-3 py-1 text-xs font-medium text-slate-600">
                                   No anatomy notes yet
                                 </span>
                               )}
@@ -1474,7 +1476,7 @@ recommend 2 light days`}
                                 {anatomyRegionNamesByVisit[visit.id].map((regionName) => (
                                   <span
                                     key={`${visit.id}-${regionName}`}
-                                    className="inline-flex rounded-2xl bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700"
+                                    className="inline-flex rounded-2xl bg-[#edf2f7] px-3 py-1 text-xs font-medium text-slate-600"
                                   >
                                     {regionName}
                                   </span>
@@ -1486,14 +1488,14 @@ recommend 2 light days`}
                           <div className="flex flex-wrap gap-2">
                             <Link
                               href={`/anatomy?visitId=${visit.id}&horseName=${encodeURIComponent(horse?.name || '')}`}
-                              className="rounded-xl border border-slate-900 bg-slate-900 px-3 py-2 text-sm text-white"
+                              className="rounded-xl border border-[#0f2040] bg-[#0f2040] px-3 py-2 text-sm text-white hover:bg-[#162d55] transition-colors"
                             >
                               Open Anatomy
                             </Link>
 
                             <Link
                               href={`/horses/${horse?.id}/spine?visitId=${visit.id}`}
-                              className="rounded-xl border border-slate-900 bg-slate-900 px-3 py-2 text-sm text-white"
+                              className="rounded-xl border border-[#0f2040] bg-[#0f2040] px-3 py-2 text-sm text-white hover:bg-[#162d55] transition-colors"
                             >
                               Spine
                             </Link>
@@ -1610,7 +1612,7 @@ recommend 2 light days`}
         {/* Photos Tab */}
         {activeTab === 'photos' && (
         <div className="mt-6 space-y-6">
-            <div className="rounded-3xl bg-white p-6 shadow-sm">
+            <div className="rounded-3xl bg-white p-6 shadow-md">
               <h2 className="text-xl font-semibold text-slate-900">Upload Photo</h2>
 
               <div className="mt-4 grid gap-4">
@@ -1668,14 +1670,14 @@ recommend 2 light days`}
                 <button
                   onClick={addPhoto}
                   disabled={uploadingPhoto}
-                  className="rounded-xl bg-slate-900 px-5 py-3 text-white disabled:opacity-50"
+                  className="rounded-xl bg-[#0f2040] px-5 py-3 text-white hover:bg-[#162d55] transition-colors disabled:opacity-50"
                 >
                   {uploadingPhoto ? 'Uploading Photo...' : 'Upload Photo'}
                 </button>
               </div>
             </div>
 
-            <div className="rounded-3xl bg-white p-6 shadow-sm">
+            <div className="rounded-3xl bg-white p-6 shadow-md">
               <h2 className="text-2xl font-semibold text-slate-900">Photo Gallery</h2>
 
               <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">

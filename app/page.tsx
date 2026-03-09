@@ -624,8 +624,8 @@ export default function Home() {
 
   if (checkingAuth) {
     return (
-      <main className="min-h-screen bg-slate-400 p-4 md:p-8">
-        <div className="mx-auto max-w-7xl rounded-3xl bg-white p-6 shadow-sm">
+      <main className="min-h-screen bg-[#edf2f7] p-4 md:p-8">
+        <div className="mx-auto max-w-7xl rounded-3xl bg-white p-6 shadow-md">
           <p className="text-slate-700">Checking login...</p>
         </div>
       </main>
@@ -633,11 +633,11 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-400 p-4 md:p-6 xl:p-8">
+    <main className="min-h-screen bg-[#edf2f7] p-4 md:p-6 xl:p-8">
       <div className="mx-auto max-w-7xl">
-        <div className="rounded-3xl bg-white p-5 shadow-sm md:p-6">
+        <div className="rounded-3xl bg-white p-5 shadow-md md:p-6">
           <div className="flex items-center gap-5">
-            <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-2xl bg-slate-100">
+            <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-2xl bg-[#edf2f7]">
               <Image
                 src="/logo.png"
                 alt="Short-Go logo"
@@ -664,7 +664,7 @@ export default function Home() {
         </div>
 
         <div className="mt-5 grid gap-5 xl:grid-cols-2">
-          <div className="rounded-3xl bg-white p-5 shadow-sm md:p-6">
+          <div className="rounded-3xl bg-white p-5 shadow-md md:p-6">
             <h2 className="text-xl font-semibold text-slate-900 md:text-2xl">
               Recent Owners
             </h2>
@@ -689,8 +689,8 @@ export default function Home() {
                       }}
                       className={`w-full rounded-2xl border p-4 text-left transition ${
                         isSelected
-                          ? 'border-slate-900 bg-slate-900 text-white'
-                          : 'border-slate-200 bg-white hover:border-slate-300'
+                          ? 'border-[#0f2040] bg-[#0f2040] text-white'
+                          : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
                       }`}
                     >
                       <p className="font-semibold">{owner.full_name}</p>
@@ -715,7 +715,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="rounded-3xl bg-white p-5 shadow-sm md:p-6">
+          <div className="rounded-3xl bg-white p-5 shadow-md md:p-6">
             <h2 className="text-xl font-semibold text-slate-900 md:text-2xl">
               Recent Horses
             </h2>
@@ -736,7 +736,7 @@ export default function Home() {
                         {horse.owners?.full_name || '—'}
                       </p>
                     </div>
-                    <span className="rounded-2xl bg-slate-900 px-3 py-1 text-xs font-medium text-white">
+                    <span className="rounded-2xl bg-[#0f2040] px-3 py-1 text-xs font-semibold text-white">
                       {visitCountsByHorse[horse.id] || 0} visit{(visitCountsByHorse[horse.id] || 0) === 1 ? '' : 's'}
                     </span>
                   </Link>
@@ -746,7 +746,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="mt-5 rounded-3xl bg-white p-5 shadow-sm md:p-6">
+        <div className="mt-5 rounded-3xl bg-white p-5 shadow-md md:p-6">
           <h2 className="text-xl font-semibold text-slate-900 md:text-2xl">Recent Visits</h2>
           <p className="mt-1 text-sm text-slate-500">Last 15 visits across all horses.</p>
 
@@ -771,7 +771,7 @@ export default function Home() {
                       {visit.horses?.owners?.full_name || '—'}
                     </p>
                   </div>
-                  <span className="ml-4 shrink-0 rounded-2xl bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                  <span className="ml-4 shrink-0 rounded-2xl bg-[#edf2f7] px-3 py-1 text-xs font-medium text-slate-600">
                     {formatDate(visit.visit_date)}
                   </span>
                 </Link>
@@ -780,7 +780,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div ref={findRecordsRef} className="mt-5 rounded-3xl bg-white p-5 shadow-sm md:p-6">
+        <div ref={findRecordsRef} className="mt-5 rounded-3xl bg-white p-5 shadow-md md:p-6">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
               <h2 className="text-xl font-semibold text-slate-900 md:text-2xl">
@@ -828,7 +828,7 @@ export default function Home() {
           </div>
 
           <div className="mt-6 grid gap-6 xl:grid-cols-[340px_1fr]">
-            <div className="rounded-3xl bg-slate-100 p-4 md:p-5">
+            <div className="rounded-3xl bg-[#edf2f7] p-4 md:p-5">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-lg font-semibold text-slate-900">
                   {searchMode === 'owner' ? 'Owner Results' : searchMode === 'horse' ? 'Horse Results' : 'Visit Results'}
@@ -860,8 +860,8 @@ export default function Home() {
                             }}
                             className={`w-full rounded-2xl border p-4 text-left transition ${
                               isSelected
-                                ? 'border-slate-900 bg-slate-900 text-white'
-                                : 'border-slate-200 bg-white hover:border-slate-300'
+                                ? 'border-[#0f2040] bg-[#0f2040] text-white'
+                                : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
                             }`}
                           >
                             <p className="font-semibold">{owner.full_name}</p>
@@ -1160,7 +1160,7 @@ export default function Home() {
         </div>
 
         <div className="mt-5 grid gap-5 xl:grid-cols-2">
-          <div className="rounded-3xl bg-white p-5 shadow-sm md:p-6">
+          <div className="rounded-3xl bg-white p-5 shadow-md md:p-6">
             <h2 className="text-xl font-semibold text-slate-900 md:text-2xl">
               Quick Add Owner
             </h2>
@@ -1211,7 +1211,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="rounded-3xl bg-white p-5 shadow-sm md:p-6">
+          <div className="rounded-3xl bg-white p-5 shadow-md md:p-6">
             <h2 className="text-xl font-semibold text-slate-900 md:text-2xl">
               Quick Add Horse
             </h2>
@@ -1302,14 +1302,14 @@ function StatCard({
   return (
     <div
       onClick={onClick}
-      className={`rounded-3xl bg-white p-4 shadow-sm md:p-5 ${
+      className={`rounded-3xl bg-white p-4 shadow-md md:p-5 border-l-4 border-[#0f2040] ${
         onClick
-          ? 'cursor-pointer transition-all hover:shadow-md hover:scale-[1.02] active:scale-[0.99]'
+          ? 'cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.99]'
           : ''
       }`}
     >
-      <p className="text-sm text-slate-500">{label}</p>
-      <p className="mt-2 text-3xl font-bold text-slate-900 md:text-4xl">
+      <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">{label}</p>
+      <p className="mt-2 text-3xl font-bold text-[#0f2040] md:text-4xl">
         {value}
       </p>
     </div>

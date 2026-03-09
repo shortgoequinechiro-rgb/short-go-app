@@ -35,12 +35,12 @@ export default function NavBar() {
   const isHorse = pathname?.startsWith('/horses')
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
+    <nav className="sticky top-0 z-50 border-b border-[#1a3358] bg-[#0f2040] shadow-lg">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 md:px-6">
 
         {/* Left: logo + brand */}
         <Link href="/" className="flex min-w-0 items-center gap-3">
-          <div className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-xl bg-slate-100">
+          <div className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-xl bg-white/10">
             <Image
               src="/logo.png"
               alt="Short-Go"
@@ -48,19 +48,19 @@ export default function NavBar() {
               className="object-contain p-0.5"
             />
           </div>
-          <span className="hidden whitespace-nowrap text-sm font-semibold text-slate-900 sm:block">
+          <span className="hidden whitespace-nowrap text-sm font-semibold text-white sm:block tracking-wide">
             Short-Go Equine Chiropractic
           </span>
         </Link>
 
         {/* Center: breadcrumb on sub-pages */}
         {(isHorse || isAnatomy) && (
-          <div className="hidden items-center gap-1.5 text-sm text-slate-500 md:flex">
-            <Link href="/" className="transition-colors hover:text-slate-900">
+          <div className="hidden items-center gap-1.5 text-sm md:flex">
+            <Link href="/" className="text-blue-200 transition-colors hover:text-white">
               Dashboard
             </Link>
-            <span className="text-slate-300">/</span>
-            <span className="font-medium text-slate-900">
+            <span className="text-white/30">/</span>
+            <span className="font-medium text-white">
               {isAnatomy ? 'Anatomy Viewer' : 'Horse Record'}
             </span>
           </div>
@@ -68,20 +68,20 @@ export default function NavBar() {
 
         {/* Right: actions */}
         <div className="flex items-center gap-2">
-          <span className="hidden max-w-[200px] truncate text-sm text-slate-500 xl:block">
+          <span className="hidden max-w-[200px] truncate text-sm text-blue-200 xl:block">
             {userEmail}
           </span>
           {!isAnatomy && (
             <Link
               href="/anatomy"
-              className="whitespace-nowrap rounded-xl border border-slate-900 bg-slate-900 px-3 py-2 text-sm font-medium text-white transition hover:opacity-90"
+              className="whitespace-nowrap rounded-xl border border-[#c9a227] bg-[#c9a227] px-3 py-2 text-sm font-semibold text-[#0f2040] transition hover:bg-[#b89020] hover:border-[#b89020]"
             >
               Anatomy Viewer
             </Link>
           )}
           <button
             onClick={handleSignOut}
-            className="whitespace-nowrap rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 transition-colors hover:bg-slate-50"
+            className="whitespace-nowrap rounded-xl border border-white/25 bg-transparent px-3 py-2 text-sm font-medium text-white/90 transition-colors hover:bg-white/10"
           >
             Sign Out
           </button>
