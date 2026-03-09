@@ -1047,12 +1047,22 @@ export default function Home() {
                         </div>
 
                         {!editingOwner ? (
-                          <button
-                            onClick={() => startOwnerEdit(selectedOwner)}
-                            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
-                          >
-                            Edit Owner
-                          </button>
+                          <div className="flex flex-wrap gap-2">
+                            <a
+                              href={`/intake/${selectedOwner.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 hover:bg-slate-50 transition"
+                            >
+                              📋 Intake Form
+                            </a>
+                            <button
+                              onClick={() => startOwnerEdit(selectedOwner)}
+                              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+                            >
+                              Edit Owner
+                            </button>
+                          </div>
                         ) : null}
                       </div>
 
