@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ChangeEvent, useEffect, useMemo, useState } from 'react'
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 
@@ -190,6 +190,7 @@ export default function HorseDetailPage() {
   const [photoTakenAt, setPhotoTakenAt] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
 
   async function checkUser() {
     const {
@@ -2098,12 +2099,34 @@ export default function HorseDetailPage() {
                 </Field>
 
                 <Field label="Image File">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                    />
+                    {/* Hidden camera-capture input — opens device camera directly */}
+                    <input
+                      ref={cameraInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => cameraInputRef.current?.click()}
+                      title="Take a photo"
+                      className="flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-700 hover:bg-slate-50 transition-colors shrink-0"
+                    >
+                      📷
+                    </button>
+                  </div>
+                  {selectedFile && (
+                    <p className="mt-1 text-xs text-slate-500">Selected: {selectedFile.name}</p>
+                  )}
                 </Field>
 
                 <button
