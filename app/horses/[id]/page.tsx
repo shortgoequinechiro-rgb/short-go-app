@@ -27,6 +27,7 @@ type Horse = {
   archived: boolean
   medical_alerts?: string | null
   history_notes?: string | null
+  behavioral_notes?: string | null
   owners?: {
     full_name: string
     phone: string | null
@@ -159,6 +160,8 @@ export default function HorseDetailPage() {
   const [horseBarnLocationEdit, setHorseBarnLocationEdit] = useState('')
   const [horseSpeciesEdit, setHorseSpeciesEdit] = useState<'equine' | 'canine'>('equine')
   const [horseOwnerIdEdit, setHorseOwnerIdEdit] = useState('')
+  const [behavioralNotesEdit, setBehavioralNotesEdit] = useState('')
+  const [savingBehavioralNotes, setSavingBehavioralNotes] = useState(false)
 
   const [editingOwner, setEditingOwner] = useState(false)
   const [ownerNameEdit, setOwnerNameEdit] = useState('')
@@ -274,6 +277,7 @@ export default function HorseDetailPage() {
     setHorseBarnLocationEdit(data.barn_location || '')
     setHorseSpeciesEdit((data.species as 'equine' | 'canine') || 'equine')
     setHorseOwnerIdEdit(data.owner_id || '')
+    setBehavioralNotesEdit(data.behavioral_notes || '')
 
     setOwnerNameEdit(data.owners?.full_name || '')
     setOwnerPhoneEdit(data.owners?.phone || '')
@@ -445,6 +449,17 @@ export default function HorseDetailPage() {
     await loadHorse()
     await loadOwnerOtherHorses(horseOwnerIdEdit)
     await loadVisits()
+  }
+
+  async function saveBehavioralNotes() {
+    setSavingBehavioralNotes(true)
+    const { error } = await supabase
+      .from('horses')
+      .update({ behavioral_notes: behavioralNotesEdit.trim() || null })
+      .eq('id', horseId)
+    setSavingBehavioralNotes(false)
+    if (error) { setMessage(`Error saving behavioral notes: ${error.message}`); return }
+    await loadHorse()
   }
 
   function cancelHorseEdit() {
@@ -1189,7 +1204,7 @@ export default function HorseDetailPage() {
     <main className="min-h-screen bg-[#edf2f7] p-6 md:p-8">
       <div className="mx-auto max-w-7xl">
         <div className="rounded-3xl bg-white p-6 shadow-md">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-3xl font-bold text-slate-900">
               {horse?.name || 'Patient Record'}
             </h1>
@@ -1197,6 +1212,11 @@ export default function HorseDetailPage() {
               <span className="rounded-xl bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">🐕 Canine</span>
             ) : (
               <span className="rounded-xl bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800">🐴 Equine</span>
+            )}
+            {horse?.behavioral_notes && (
+              <span className="rounded-xl bg-red-600 px-3 py-1 text-xs font-bold text-white shadow-sm">
+                ⚠️ Behavioral Alert
+              </span>
             )}
           </div>
           <p className="mt-2 text-slate-600">
@@ -1381,6 +1401,37 @@ export default function HorseDetailPage() {
           </div>
 
           <div className="space-y-6">
+
+            {/* ── Behavioral Notes ── */}
+            <div className="rounded-3xl border border-red-200 bg-white p-6 shadow-md">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-lg leading-none">⚠️</span>
+                <h2 className="text-xl font-semibold text-red-700">Behavioral Notes</h2>
+              </div>
+              <p className="text-sm text-slate-500 mb-3">
+                Flag anything the provider should know before adjusting — biting, kicking, anxiety, etc. If filled in, a red alert badge appears at the top of this record.
+              </p>
+              <textarea
+                value={behavioralNotesEdit}
+                onChange={(e) => setBehavioralNotesEdit(e.target.value)}
+                rows={3}
+                placeholder="e.g. Bites when touched on left flank, kicks when startled, anxious around new people…"
+                className="w-full resize-none rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 placeholder:text-red-300 focus:outline-none focus:ring-2 focus:ring-red-400"
+              />
+              <div className="mt-3 flex items-center gap-3">
+                <button
+                  onClick={saveBehavioralNotes}
+                  disabled={savingBehavioralNotes}
+                  className="rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+                >
+                  {savingBehavioralNotes ? 'Saving…' : 'Save Notes'}
+                </button>
+                {horse?.behavioral_notes && !behavioralNotesEdit.trim() && (
+                  <span className="text-xs text-slate-400">Clear the field and save to remove the alert.</span>
+                )}
+              </div>
+            </div>
+
             <div className="rounded-3xl bg-white p-6 shadow-md">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-xl font-semibold text-slate-900">Owner Info</h2>
