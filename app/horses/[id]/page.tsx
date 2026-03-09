@@ -1218,6 +1218,17 @@ export default function HorseDetailPage() {
                 ⚠️ Behavioral Alert
               </span>
             )}
+            {horse?.owner_id && consentOnFile !== undefined && (
+              consentOnFile ? (
+                <span className="rounded-xl bg-emerald-500 px-3 py-1 text-xs font-bold text-white shadow-sm">
+                  ✓ Consent on File
+                </span>
+              ) : (
+                <span className="rounded-xl bg-red-500 px-3 py-1 text-xs font-bold text-white shadow-sm">
+                  ✗ No Consent
+                </span>
+              )
+            )}
           </div>
           <p className="mt-2 text-slate-600">
             {horse?.breed || '—'} • {horse?.sex || '—'} • {horse?.age || '—'} • {horse?.discipline || '—'} • {horse?.barn_location || '—'}
@@ -1886,26 +1897,6 @@ export default function HorseDetailPage() {
                   />
                 </Field>
 
-                <Field label="Treated Areas">
-                  <div className="space-y-2">
-                    <input
-                      value={treatedAreas}
-                      onChange={(e) => setTreatedAreas(e.target.value)}
-                      className="w-full rounded-xl border border-slate-300 px-4 py-3"
-                      placeholder="Shoulder, thoracic, cervical, etc."
-                    />
-                    {editingVisitId && activeVisitRegionNames.length > 0 ? (
-                      <button
-                        type="button"
-                        onClick={useAnatomyRegionsForTreatedAreas}
-                        className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-900"
-                      >
-                        Use Anatomy Regions
-                      </button>
-                    ) : null}
-                  </div>
-                </Field>
-
                 <Field label="Follow Up">
                   <input
                     value={followUp}
@@ -2125,10 +2116,7 @@ export default function HorseDetailPage() {
                           </p>
                         )}
 
-                        <div className="mt-3 grid gap-3 md:grid-cols-2">
-                          <p className="text-sm text-slate-700">
-                            <span className="font-medium">Treated Areas:</span> {visit.treated_areas || '—'}
-                          </p>
+                        <div className="mt-3">
                           <p className="text-sm text-slate-700">
                             <span className="font-medium">Follow Up:</span> {visit.follow_up || '—'}
                           </p>
