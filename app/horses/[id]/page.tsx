@@ -1468,7 +1468,7 @@ export default function HorseDetailPage() {
                 </div>
                 <div className="space-y-4">
                   {intakeForms.map((form) => (
-                    <div key={form.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                    <Link key={form.id} href={`/intake/view/${form.id}`} className="block rounded-2xl border border-slate-100 bg-slate-50 p-4 hover:border-slate-300 hover:bg-slate-100 transition cursor-pointer">
                       <div className="flex items-start justify-between gap-2 mb-3">
                         <div>
                           <p className="text-sm font-semibold text-slate-900">
@@ -1478,7 +1478,10 @@ export default function HorseDetailPage() {
                             Signed by {form.signed_name || '—'} · {new Date(form.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
                           </p>
                         </div>
-                        <span className="shrink-0 rounded-xl bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">✓ Signed</span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="rounded-xl bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">✓ Signed</span>
+                          <span className="text-xs text-slate-400">View →</span>
+                        </div>
                       </div>
                       <div className="space-y-1.5 text-xs text-slate-600">
                         {form.reason_for_care && (
@@ -1497,7 +1500,7 @@ export default function HorseDetailPage() {
                           <p><span className="font-medium text-slate-700">Referred by: </span>{form.referral_source.join(', ')}</p>
                         )}
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               </div>
