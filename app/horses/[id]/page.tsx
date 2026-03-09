@@ -1201,10 +1201,16 @@ export default function HorseDetailPage() {
             <div className="flex items-center justify-between rounded-3xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
               <div>
                 <p className="font-semibold text-slate-900">Spine Assessment</p>
-                <p className="mt-0.5 text-sm text-slate-500">Check each spinal segment for left / right issues.</p>
+                <p className="mt-0.5 text-sm text-slate-500">
+                  {editingVisitId
+                    ? 'Linked to the visit you\'re editing — results will appear in the PDF.'
+                    : 'Check each spinal segment for left / right issues.'}
+                </p>
               </div>
               <Link
-                href={`/horses/${horse?.id}/spine`}
+                href={editingVisitId
+                  ? `/horses/${horse?.id}/spine?visitId=${editingVisitId}`
+                  : `/horses/${horse?.id}/spine`}
                 className="shrink-0 rounded-2xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700"
               >
                 Open →
@@ -1483,6 +1489,13 @@ recommend 2 light days`}
                               className="rounded-xl border border-slate-900 bg-slate-900 px-3 py-2 text-sm text-white"
                             >
                               Open Anatomy
+                            </Link>
+
+                            <Link
+                              href={`/horses/${horse?.id}/spine?visitId=${visit.id}`}
+                              className="rounded-xl border border-slate-900 bg-slate-900 px-3 py-2 text-sm text-white"
+                            >
+                              Spine
                             </Link>
 
                             <a

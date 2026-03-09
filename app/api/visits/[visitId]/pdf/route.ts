@@ -12,6 +12,50 @@ const REGION_LABELS: Record<string, string> = {
   hock: 'Hock',
 }
 
+const SPINE_SECTIONS_PDF = [
+  {
+    key: 'cranial',
+    label: 'Cranial / Cervical',
+    segments: [
+      { key: 'tmj',    label: 'TMJ' },
+      { key: 'poll',   label: 'Poll (C0-C1)' },
+      { key: 'c1_c2', label: 'C1-C2 (Atlas / Axis)' },
+      { key: 'c2_c3', label: 'C2-C3' },
+      { key: 'c3_c4', label: 'C3-C4' },
+      { key: 'c4_c5', label: 'C4-C5' },
+      { key: 'c5_c6', label: 'C5-C6' },
+      { key: 'c6_c7', label: 'C6-C7' },
+    ],
+  },
+  {
+    key: 'thoracic',
+    label: 'Thoracic',
+    segments: Array.from({ length: 17 }, (_, i) => ({
+      key: `t${i + 1}_${i + 2}`,
+      label: `T${i + 1}-T${i + 2}`,
+    })),
+  },
+  {
+    key: 'lumbar',
+    label: 'Lumbar',
+    segments: Array.from({ length: 6 }, (_, i) => ({
+      key: `l${i + 1}_${i + 2}`,
+      label: `L${i + 1}-L${i + 2}`,
+    })),
+  },
+  {
+    key: 'sacral',
+    label: 'Sacral / Pelvic',
+    segments: [
+      { key: 'sacrum',    label: 'Sacrum' },
+      { key: 'si_joint',  label: 'SI Joint' },
+      { key: 'coccygeal', label: 'Coccygeal' },
+    ],
+  },
+]
+
+type SpineFinding = { left: boolean; right: boolean }
+
 type VisitPhotoRow = {
   id: string
   caption: string | null
@@ -177,6 +221,26 @@ export async function GET(
         { error: `Error loading visit photos: ${photosError.message}` },
         { status: 500 }
       )
+    }
+
+    // Spine assessment for this visit (null if table doesn't exist yet)
+    let spineAssessment: { findings: Record<string, SpineFinding>; notes: string | null } | null = null
+    try {
+      const { data: spineData } = await supabase
+        .from('spine_assessments')
+        .select('findings, notes')
+        .eq('visit_id', visitId)
+        .order('assessed_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (spineData) {
+        spineAssessment = {
+          findings: (spineData.findings as Record<string, SpineFinding>) ?? {},
+          notes: spineData.notes ?? null,
+        }
+      }
+    } catch {
+      // Table may not exist; skip silently
     }
 
     const pdfDoc = await PDFDocument.create()
@@ -474,6 +538,99 @@ export async function GET(
       }
     }
 
+    function drawSpineAssessment(
+      findings: Record<string, SpineFinding>,
+      notes: string | null
+    ) {
+      // Collect flagged segments grouped by section
+      type FlaggedSeg = { label: string; left: boolean; right: boolean }
+      type FlaggedSection = { label: string; segs: FlaggedSeg[] }
+
+      const flaggedSections: FlaggedSection[] = []
+      let totalFlagged = 0
+
+      for (const section of SPINE_SECTIONS_PDF) {
+        const segs: FlaggedSeg[] = []
+        for (const seg of section.segments) {
+          const f = findings[seg.key]
+          if (f?.left || f?.right) {
+            segs.push({ label: seg.label, left: f.left ?? false, right: f.right ?? false })
+            totalFlagged++
+          }
+        }
+        if (segs.length > 0) {
+          flaggedSections.push({ label: section.label, segs })
+        }
+      }
+
+      if (totalFlagged === 0) {
+        drawTextLine('No fixations or subluxations noted.', margin, y, 10, false, colors.muted)
+        y -= 18
+      } else {
+        // Column positions
+        const nameColX  = margin
+        const leftColX  = pageWidth - margin - 84
+        const rightColX = pageWidth - margin - 34
+
+        // Column headers
+        ensureSpace(22)
+        drawTextLine('SEGMENT', nameColX, y, 7.5, true, colors.muted)
+        drawTextLine('LEFT', leftColX, y, 7.5, true, colors.muted)
+        drawTextLine('RIGHT', rightColX, y, 7.5, true, colors.muted)
+        y -= 6
+        page.drawLine({
+          start: { x: margin, y },
+          end: { x: pageWidth - margin, y },
+          thickness: 0.5,
+          color: colors.line,
+        })
+        y -= 12
+
+        for (const sec of flaggedSections) {
+          ensureSpace(20 + sec.segs.length * 16)
+
+          // Section sub-header
+          page.drawRectangle({
+            x: margin,
+            y: y - 14,
+            width: contentWidth,
+            height: 16,
+            color: colors.soft,
+          })
+          drawTextLine(sec.label.toUpperCase(), nameColX + 4, y - 2, 8, true, colors.muted)
+          y -= 20
+
+          for (const seg of sec.segs) {
+            ensureSpace(16)
+            drawTextLine(seg.label, nameColX + 8, y, 10, false, colors.text)
+            drawTextLine(
+              seg.left ? 'Yes' : '-',
+              leftColX,
+              y,
+              10,
+              seg.left,
+              seg.left ? rgb(0.85, 0.42, 0.0) : colors.muted
+            )
+            drawTextLine(
+              seg.right ? 'Yes' : '-',
+              rightColX,
+              y,
+              10,
+              seg.right,
+              seg.right ? rgb(0.85, 0.42, 0.0) : colors.muted
+            )
+            y -= 15
+          }
+          y -= 4
+        }
+      }
+
+      if (notes && notes.trim()) {
+        y -= 4
+        drawParagraph('Clinical Notes', notes)
+      }
+    }
+
     drawHeader()
     drawSummaryCard()
 
@@ -511,6 +668,11 @@ export async function GET(
         const label = REGION_LABELS[row.region_key] || row.region_key
         drawParagraph(label, row.notes || '—')
       }
+    }
+
+    if (spineAssessment) {
+      drawSectionTitle('Spine Assessment')
+      drawSpineAssessment(spineAssessment.findings, spineAssessment.notes)
     }
 
     await drawPhotos()

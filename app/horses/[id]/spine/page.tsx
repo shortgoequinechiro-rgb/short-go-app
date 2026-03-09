@@ -1,24 +1,24 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useEffect, useState, Suspense } from 'react'
+import { useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../../lib/supabase'
 
-// ── Spine sections & segments ──────────────────────────────────────────────
+// ── Spine sections & segments ─────────────────────────────────────────────
 const SPINE_SECTIONS = [
   {
     key: 'cranial',
     label: 'Cranial / Cervical',
     segments: [
-      { key: 'tmj',     label: 'TMJ' },
-      { key: 'poll',    label: 'Poll  (C0–C1)' },
-      { key: 'c1_c2',  label: 'C1–C2  (Atlas / Axis)' },
-      { key: 'c2_c3',  label: 'C2–C3' },
-      { key: 'c3_c4',  label: 'C3–C4' },
-      { key: 'c4_c5',  label: 'C4–C5' },
-      { key: 'c5_c6',  label: 'C5–C6' },
-      { key: 'c6_c7',  label: 'C6–C7' },
+      { key: 'tmj',    label: 'TMJ' },
+      { key: 'poll',   label: 'Poll  (C0–C1)' },
+      { key: 'c1_c2', label: 'C1–C2  (Atlas / Axis)' },
+      { key: 'c2_c3', label: 'C2–C3' },
+      { key: 'c3_c4', label: 'C3–C4' },
+      { key: 'c4_c5', label: 'C4–C5' },
+      { key: 'c5_c6', label: 'C5–C6' },
+      { key: 'c6_c7', label: 'C6–C7' },
     ],
   },
   {
@@ -52,34 +52,38 @@ type SegmentFinding = { left: boolean; right: boolean }
 type Findings = Record<string, SegmentFinding>
 
 const SQL_SETUP = `CREATE TABLE spine_assessments (
-  id         uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  horse_id   uuid REFERENCES horses(id) ON DELETE CASCADE NOT NULL,
-  visit_id   uuid REFERENCES visits(id) ON DELETE SET NULL,
+  id          uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  horse_id    uuid REFERENCES horses(id) ON DELETE CASCADE NOT NULL,
+  visit_id    uuid REFERENCES visits(id) ON DELETE SET NULL,
   assessed_at timestamptz DEFAULT now(),
-  findings   jsonb NOT NULL DEFAULT '{}',
-  notes      text,
-  created_at timestamptz DEFAULT now()
+  findings    jsonb NOT NULL DEFAULT '{}',
+  notes       text,
+  created_at  timestamptz DEFAULT now()
 );
 
 CREATE INDEX ON spine_assessments (horse_id, assessed_at DESC);`
 
-export default function SpineAssessmentPage() {
+// ── Inner component (needs useSearchParams) ───────────────────────────────
+function SpineInner() {
   const { id: horseId } = useParams<{ id: string }>()
+  const searchParams     = useSearchParams()
+  const visitId          = searchParams.get('visitId') ?? null
 
-  const [horseName, setHorseName]   = useState('')
-  const [findings,  setFindings]    = useState<Findings>({})
-  const [notes,     setNotes]       = useState('')
-  const [saving,    setSaving]      = useState(false)
-  const [saveMsg,   setSaveMsg]     = useState('')
-  const [lastSaved, setLastSaved]   = useState<string | null>(null)
-  const [noTable,   setNoTable]     = useState(false)
-  const [loading,   setLoading]     = useState(true)
+  const [horseName, setHorseName] = useState('')
+  const [findings,  setFindings]  = useState<Findings>({})
+  const [notes,     setNotes]     = useState('')
+  const [saving,    setSaving]    = useState(false)
+  const [saveMsg,   setSaveMsg]   = useState('')
+  const [lastSaved, setLastSaved] = useState<string | null>(null)
+  const [noTable,   setNoTable]   = useState(false)
+  const [loading,   setLoading]   = useState(true)
 
-  // ── Load horse + most-recent assessment ───────────────────────────────
+  // ── Load ────────────────────────────────────────────────────────────────
   useEffect(() => {
     async function load() {
       setLoading(true)
 
+      // Horse name
       const { data: horse } = await supabase
         .from('horses')
         .select('name')
@@ -87,13 +91,20 @@ export default function SpineAssessmentPage() {
         .single()
       if (horse) setHorseName(horse.name)
 
-      const { data, error } = await supabase
+      // If we have a visitId, look for an assessment already saved for it
+      let query = supabase
         .from('spine_assessments')
         .select('findings, notes, assessed_at')
-        .eq('horse_id', horseId)
         .order('assessed_at', { ascending: false })
         .limit(1)
-        .maybeSingle()
+
+      if (visitId) {
+        query = query.eq('visit_id', visitId) as typeof query
+      } else {
+        query = query.eq('horse_id', horseId) as typeof query
+      }
+
+      const { data, error } = await query.maybeSingle()
 
       if (error) {
         if (error.code === '42P01') setNoTable(true)
@@ -106,9 +117,9 @@ export default function SpineAssessmentPage() {
       setLoading(false)
     }
     load()
-  }, [horseId])
+  }, [horseId, visitId])
 
-  // ── Toggle a single L or R checkbox ───────────────────────────────────
+  // ── Toggle ──────────────────────────────────────────────────────────────
   function toggle(segKey: string, side: 'left' | 'right') {
     setFindings(prev => ({
       ...prev,
@@ -120,13 +131,14 @@ export default function SpineAssessmentPage() {
     }))
   }
 
-  // ── Save assessment ────────────────────────────────────────────────────
+  // ── Save ────────────────────────────────────────────────────────────────
   async function save() {
     setSaving(true)
     setSaveMsg('')
 
     const { error } = await supabase.from('spine_assessments').insert({
       horse_id:    horseId,
+      visit_id:    visitId ?? null,
       findings,
       notes,
       assessed_at: new Date().toISOString(),
@@ -139,12 +151,11 @@ export default function SpineAssessmentPage() {
     } else {
       const ts = new Date().toISOString()
       setLastSaved(ts)
-      setSaveMsg('Assessment saved!')
-      setTimeout(() => setSaveMsg(''), 3500)
+      setSaveMsg('Saved! This will appear on the visit PDF.')
+      setTimeout(() => setSaveMsg(''), 4000)
     }
   }
 
-  // ── Derived counts ─────────────────────────────────────────────────────
   const flaggedCount = Object.values(findings).filter(f => f.left || f.right).length
 
   function formatDate(iso: string) {
@@ -154,7 +165,6 @@ export default function SpineAssessmentPage() {
     })
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
 
@@ -172,9 +182,10 @@ export default function SpineAssessmentPage() {
               <h1 className="text-lg font-semibold text-slate-900 leading-tight">
                 Spine Assessment
               </h1>
-              {horseName && (
-                <p className="text-xs text-slate-500">{horseName}</p>
-              )}
+              <p className="text-xs text-slate-500">
+                {horseName && `${horseName} · `}
+                {visitId ? 'Linked to this visit' : 'Standalone record'}
+              </p>
             </div>
           </div>
 
@@ -187,27 +198,23 @@ export default function SpineAssessmentPage() {
           </button>
         </div>
 
-        {/* Status row */}
-        <div className="mx-auto max-w-2xl px-4 pb-2 flex items-center gap-3">
-          {saveMsg && (
+        {/* Status bar */}
+        <div className="mx-auto max-w-2xl px-4 pb-2">
+          {saveMsg ? (
             <span className="text-sm font-medium text-emerald-600">{saveMsg}</span>
-          )}
-          {lastSaved && !saveMsg && (
-            <span className="text-xs text-slate-400">
-              Last saved {formatDate(lastSaved)}
-            </span>
-          )}
+          ) : lastSaved ? (
+            <span className="text-xs text-slate-400">Last saved {formatDate(lastSaved)}</span>
+          ) : null}
         </div>
       </div>
 
-      {/* ── No-table setup message ── */}
+      {/* ── No-table setup ── */}
       {noTable ? (
         <div className="mx-auto max-w-2xl px-4 py-8">
           <div className="rounded-3xl border border-amber-200 bg-amber-50 p-6">
             <h2 className="font-semibold text-amber-900">One-time setup needed</h2>
             <p className="mt-1 text-sm text-amber-800">
-              Run the following SQL in your Supabase dashboard (SQL Editor) to enable
-              spine assessments, then refresh this page.
+              Run this SQL in your Supabase dashboard (SQL Editor), then refresh.
             </p>
             <pre className="mt-4 overflow-x-auto rounded-2xl border border-amber-200 bg-white p-4 text-xs text-slate-700 leading-relaxed">
               {SQL_SETUP}
@@ -216,17 +223,20 @@ export default function SpineAssessmentPage() {
         </div>
 
       ) : loading ? (
-        <div className="mx-auto max-w-2xl px-4 py-12 text-center text-slate-400">
-          Loading…
-        </div>
+        <div className="mx-auto max-w-2xl px-4 py-12 text-center text-slate-400">Loading…</div>
 
       ) : (
         <div className="mx-auto max-w-2xl space-y-4 px-4 py-5">
 
-          {/* L / R legend */}
+          {/* L / R column header */}
           <div className="flex items-center justify-between rounded-2xl bg-white px-5 py-3 shadow-sm">
             <p className="text-sm text-slate-500">
               Check a box to mark a fixation or subluxation.
+              {visitId && (
+                <span className="ml-1 font-medium text-slate-700">
+                  Results will be included in this visit&apos;s PDF export.
+                </span>
+              )}
             </p>
             <div className="flex items-center gap-6 text-xs font-bold uppercase tracking-wide text-slate-500">
               <span>Left</span>
@@ -247,16 +257,14 @@ export default function SpineAssessmentPage() {
           {SPINE_SECTIONS.map(section => (
             <div key={section.key} className="overflow-hidden rounded-3xl bg-white shadow-sm">
 
-              {/* Section header */}
               <div className="flex items-center justify-between bg-slate-900 px-5 py-3">
                 <h2 className="text-sm font-semibold text-white">{section.label}</h2>
-                <div className="flex items-center gap-6 pr-0.5 text-xs font-bold uppercase tracking-wide text-slate-400">
+                <div className="flex items-center gap-6 text-xs font-bold uppercase tracking-wide text-slate-400">
                   <span>L</span>
                   <span>R</span>
                 </div>
               </div>
 
-              {/* Segment rows */}
               <div className="divide-y divide-slate-100">
                 {section.segments.map((seg, idx) => {
                   const f = findings[seg.key]
@@ -271,19 +279,11 @@ export default function SpineAssessmentPage() {
                         hasIssue ? 'border-l-[3px] border-amber-400' : '',
                       ].join(' ')}
                     >
-                      <span
-                        className={`text-sm ${
-                          hasIssue
-                            ? 'font-semibold text-slate-900'
-                            : 'text-slate-600'
-                        }`}
-                      >
+                      <span className={`text-sm ${hasIssue ? 'font-semibold text-slate-900' : 'text-slate-600'}`}>
                         {seg.label}
                       </span>
 
-                      {/* Checkboxes */}
                       <div className="flex items-center gap-6">
-                        {/* Left */}
                         <label className="flex cursor-pointer items-center">
                           <input
                             type="checkbox"
@@ -292,8 +292,6 @@ export default function SpineAssessmentPage() {
                             className="h-5 w-5 cursor-pointer rounded border-slate-300 accent-slate-900"
                           />
                         </label>
-
-                        {/* Right */}
                         <label className="flex cursor-pointer items-center">
                           <input
                             type="checkbox"
@@ -310,11 +308,9 @@ export default function SpineAssessmentPage() {
             </div>
           ))}
 
-          {/* ── Notes ── */}
+          {/* Notes */}
           <div className="rounded-3xl bg-white p-5 shadow-sm">
-            <h2 className="mb-3 text-base font-semibold text-slate-900">
-              Clinical Notes
-            </h2>
+            <h2 className="mb-3 text-base font-semibold text-slate-900">Clinical Notes</h2>
             <textarea
               value={notes}
               onChange={e => setNotes(e.target.value)}
@@ -324,7 +320,7 @@ export default function SpineAssessmentPage() {
             />
           </div>
 
-          {/* ── Bottom save button ── */}
+          {/* Bottom save */}
           <button
             onClick={save}
             disabled={saving || noTable}
@@ -336,5 +332,14 @@ export default function SpineAssessmentPage() {
         </div>
       )}
     </div>
+  )
+}
+
+// ── Page wrapper (Suspense required for useSearchParams) ──────────────────
+export default function SpineAssessmentPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-slate-400">Loading…</div>}>
+      <SpineInner />
+    </Suspense>
   )
 }
