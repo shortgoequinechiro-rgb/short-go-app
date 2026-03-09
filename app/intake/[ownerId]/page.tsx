@@ -266,7 +266,7 @@ export default function IntakeFormPage() {
   }
 
   const ownerFullName = `${ownerFirstName} ${ownerLastName}`.trim()
-  const consentAnimalName = animalName.trim() || '[Pet's Name]'
+  const consentAnimalName = animalName.trim() || "[Pet's Name]"
 
   return (
     <div className="min-h-screen bg-[#edf2f7] py-10 px-4">
