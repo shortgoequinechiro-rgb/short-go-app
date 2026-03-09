@@ -1201,10 +1201,6 @@ export default function Home() {
                               <div className="mt-4 text-sm text-slate-600">
                                 <p>Barn: {horse.barn_location || '—'}</p>
                               </div>
-
-                              <div className="mt-5 inline-flex min-h-[44px] items-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white">
-                                Open Patient Record
-                              </div>
                             </Link>
                           ))
                         )}
@@ -1258,10 +1254,6 @@ export default function Home() {
                           <div className="mt-4 grid gap-1 text-sm text-slate-600">
                             <p>Breed: {horse.breed || '—'}</p>
                             <p>Barn: {horse.barn_location || '—'}</p>
-                          </div>
-
-                          <div className="mt-5 inline-flex min-h-[44px] items-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white">
-                            Open Patient Record
                           </div>
                         </Link>
                       ))
