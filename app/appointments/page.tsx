@@ -235,7 +235,7 @@ function AppointmentsContent() {
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
 
   // ── Location autocomplete ────────────────────────────────────────────────────
-  const placesServiceRef = useRef<any>(null)
+  const locationDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [locationSuggestions, setLocationSuggestions] = useState<{ description: string; place_id: string }[]>([])
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false)
 
@@ -248,56 +248,33 @@ function AppointmentsContent() {
     })
   }, [router])
 
-  // ── Google Places loader ─────────────────────────────────────────────────────
-  useEffect(() => {
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-    if (!apiKey) return
-
-    function initService() {
-      placesServiceRef.current = new (window as any).google.maps.places.AutocompleteService()
-    }
-
-    if ((window as any).google?.maps?.places) {
-      initService()
-      return
-    }
-
-    // Avoid loading the script twice
-    if (document.querySelector('#google-maps-script')) return
-
-    const script = document.createElement('script')
-    script.id = 'google-maps-script'
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`
-    script.async = true
-    script.defer = true
-    script.onload = initService
-    document.head.appendChild(script)
-  }, [])
-
   function handleLocationChange(value: string) {
     setForm(f => ({ ...f, location: value }))
 
-    if (!placesServiceRef.current || value.trim().length < 2) {
+    if (locationDebounceRef.current) clearTimeout(locationDebounceRef.current)
+
+    if (value.trim().length < 2) {
       setLocationSuggestions([])
       setShowLocationSuggestions(false)
       return
     }
 
-    placesServiceRef.current.getPlacePredictions(
-      { input: value },
-      (predictions: any[], status: string) => {
-        if (predictions && predictions.length > 0) {
-          setLocationSuggestions(predictions.map((p: any) => ({
-            description: p.description,
-            place_id: p.place_id,
-          })))
+    locationDebounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/places?input=${encodeURIComponent(value)}`)
+        const data = await res.json()
+        if (data.predictions?.length > 0) {
+          setLocationSuggestions(data.predictions)
           setShowLocationSuggestions(true)
         } else {
           setLocationSuggestions([])
           setShowLocationSuggestions(false)
         }
+      } catch {
+        setLocationSuggestions([])
+        setShowLocationSuggestions(false)
       }
-    )
+    }, 300)
   }
 
   function selectLocation(description: string) {
