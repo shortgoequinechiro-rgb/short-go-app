@@ -23,6 +23,7 @@ type Horse = {
   breed: string | null
   discipline: string | null
   barn_location: string | null
+  species: 'equine' | 'canine' | null
   archived: boolean
   created_at: string
   owners?: {
@@ -90,6 +91,7 @@ export default function Home() {
   const [horseBreed, setHorseBreed] = useState('')
   const [horseDiscipline, setHorseDiscipline] = useState('')
   const [barnLocation, setBarnLocation] = useState('')
+  const [addSpecies, setAddSpecies] = useState<'equine' | 'canine'>('equine')
 
   const [searchMode, setSearchMode] = useState<SearchMode>('owner')
   const [searchTerm, setSearchTerm] = useState('')
@@ -287,7 +289,7 @@ export default function Home() {
     }
 
     if (!horseName.trim()) {
-      setMessage('Horse name is required.')
+      setMessage('Patient name is required.')
       return
     }
 
@@ -298,20 +300,22 @@ export default function Home() {
         breed: horseBreed || null,
         discipline: horseDiscipline || null,
         barn_location: barnLocation || null,
+        species: addSpecies,
         archived: false,
       },
     ])
 
     if (error) {
-      setMessage(`Error saving horse: ${error.message}`)
+      setMessage(`Error saving patient: ${error.message}`)
       return
     }
 
-    setMessage('Horse saved successfully.')
+    setMessage('Patient saved successfully.')
     setHorseName('')
     setHorseBreed('')
     setHorseDiscipline('')
     setBarnLocation('')
+    setAddSpecies('equine')
     await loadHorses()
   }
 
@@ -802,7 +806,7 @@ export default function Home() {
                   className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
                 >
                   <option value="owner">Owner</option>
-                  <option value="horse">Horse</option>
+                  <option value="horse">Patient</option>
                   <option value="visit">Visit</option>
                 </select>
               </div>
@@ -819,7 +823,7 @@ export default function Home() {
                     searchMode === 'owner'
                       ? 'Search owner name, phone, email, or address...'
                       : searchMode === 'horse'
-                      ? 'Search horse, owner, breed, discipline, barn...'
+                      ? 'Search patient, owner, breed, discipline, location...'
                       : 'Search visit by horse, owner, date (2026-03-07), or reason...'
                   }
                 />
@@ -1091,7 +1095,7 @@ export default function Home() {
                               </div>
 
                               <div className="mt-5 inline-flex min-h-[44px] items-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white">
-                                Open Horse Record
+                                Open Patient Record
                               </div>
                             </Link>
                           ))
@@ -1149,7 +1153,7 @@ export default function Home() {
                           </div>
 
                           <div className="mt-5 inline-flex min-h-[44px] items-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white">
-                            Open Horse Record
+                            Open Patient Record
                           </div>
                         </Link>
                       ))
@@ -1215,7 +1219,7 @@ export default function Home() {
 
           <div className="rounded-3xl bg-white p-5 shadow-md md:p-6">
             <h2 className="text-xl font-semibold text-slate-900 md:text-2xl">
-              Quick Add Horse
+              Quick Add Patient
             </h2>
 
             <div className="mt-4 grid gap-4">
@@ -1234,12 +1238,23 @@ export default function Home() {
                 </select>
               </Field>
 
-              <Field label="Horse Name">
+              <Field label="Species">
+                <select
+                  value={addSpecies}
+                  onChange={(e) => setAddSpecies(e.target.value as 'equine' | 'canine')}
+                  className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                >
+                  <option value="equine">Equine (Horse)</option>
+                  <option value="canine">Canine (Dog)</option>
+                </select>
+              </Field>
+
+              <Field label="Patient Name">
                 <input
                   value={horseName}
                   onChange={(e) => setHorseName(e.target.value)}
                   className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
-                  placeholder="Horse name"
+                  placeholder={addSpecies === 'canine' ? 'Dog name' : 'Horse name'}
                 />
               </Field>
 
@@ -1253,22 +1268,22 @@ export default function Home() {
                   />
                 </Field>
 
-                <Field label="Discipline">
+                <Field label={addSpecies === 'canine' ? 'Activity / Sport' : 'Discipline'}>
                   <input
                     value={horseDiscipline}
                     onChange={(e) => setHorseDiscipline(e.target.value)}
                     className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
-                    placeholder="Barrel, ranch, dressage, etc."
+                    placeholder={addSpecies === 'canine' ? 'Agility, hunting, sport, etc.' : 'Barrel, ranch, dressage, etc.'}
                   />
                 </Field>
               </div>
 
-              <Field label="Barn Location">
+              <Field label="Location">
                 <input
                   value={barnLocation}
                   onChange={(e) => setBarnLocation(e.target.value)}
                   className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
-                  placeholder="Barn or ranch name"
+                  placeholder={addSpecies === 'canine' ? 'City, kennel, or home' : 'Barn or ranch name'}
                 />
               </Field>
 
@@ -1276,7 +1291,7 @@ export default function Home() {
                 onClick={addHorse}
                 className="min-h-[48px] rounded-2xl bg-slate-900 px-5 py-3 text-base font-medium text-white"
               >
-                Save Horse
+                Save Patient
               </button>
             </div>
           </div>

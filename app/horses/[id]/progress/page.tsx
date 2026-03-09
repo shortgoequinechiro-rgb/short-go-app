@@ -28,41 +28,72 @@ type Visit = {
   plan: string | null
 }
 
-// ── Spine map ─────────────────────────────────────────────────────────────────
+// ── Spine maps ────────────────────────────────────────────────────────────────
 
-const SPINE_SECTIONS = [
+const EQUINE_SPINE_SECTIONS = [
   {
     key: 'cranial', label: 'Cranial / Cervical',
     segments: [
-      { key: 'tmj', label: 'TMJ' },
-      { key: 'poll', label: 'Poll (C0–C1)' },
-      { key: 'c1_c2', label: 'C1–C2' },
-      { key: 'c2_c3', label: 'C2–C3' },
-      { key: 'c3_c4', label: 'C3–C4' },
-      { key: 'c4_c5', label: 'C4–C5' },
-      { key: 'c5_c6', label: 'C5–C6' },
-      { key: 'c6_c7', label: 'C6–C7' },
+      { key: 'tmj',  label: 'TMJ' },
+      { key: 'poll', label: 'Poll' },
+      { key: 'c1',   label: 'C1 (Atlas)' },
+      { key: 'c2',   label: 'C2 (Axis)' },
+      { key: 'c3',   label: 'C3' },
+      { key: 'c4',   label: 'C4' },
+      { key: 'c5',   label: 'C5' },
+      { key: 'c6',   label: 'C6' },
+      { key: 'c7',   label: 'C7' },
     ],
   },
   {
     key: 'thoracic', label: 'Thoracic',
-    segments: Array.from({ length: 17 }, (_, i) => ({ key: `t${i+1}_${i+2}`, label: `T${i+1}–T${i+2}` })),
+    segments: Array.from({ length: 18 }, (_, i) => ({ key: `t${i+1}`, label: `T${i+1}` })),
   },
   {
     key: 'lumbar', label: 'Lumbar',
-    segments: Array.from({ length: 6 }, (_, i) => ({ key: `l${i+1}_${i+2}`, label: `L${i+1}–L${i+2}` })),
+    segments: Array.from({ length: 6 }, (_, i) => ({ key: `l${i+1}`, label: `L${i+1}` })),
   },
   {
     key: 'sacral', label: 'Sacral / Pelvic',
     segments: [
-      { key: 'sacrum', label: 'Sacrum' },
-      { key: 'si_joint', label: 'SI Joint' },
+      { key: 'sacrum',    label: 'Sacrum' },
+      { key: 'si_joint',  label: 'SI Joint' },
       { key: 'coccygeal', label: 'Coccygeal' },
     ],
   },
 ]
 
-const ALL_SEGMENTS = SPINE_SECTIONS.flatMap(s => s.segments)
+const CANINE_SPINE_SECTIONS = [
+  {
+    key: 'cranial', label: 'Cranial / Cervical',
+    segments: [
+      { key: 'occiput', label: 'Occiput' },
+      { key: 'c1',      label: 'C1 (Atlas)' },
+      { key: 'c2',      label: 'C2 (Axis)' },
+      { key: 'c3',      label: 'C3' },
+      { key: 'c4',      label: 'C4' },
+      { key: 'c5',      label: 'C5' },
+      { key: 'c6',      label: 'C6' },
+      { key: 'c7',      label: 'C7' },
+    ],
+  },
+  {
+    key: 'thoracic', label: 'Thoracic',
+    segments: Array.from({ length: 13 }, (_, i) => ({ key: `t${i+1}`, label: `T${i+1}` })),
+  },
+  {
+    key: 'lumbar', label: 'Lumbar',
+    segments: Array.from({ length: 7 }, (_, i) => ({ key: `l${i+1}`, label: `L${i+1}` })),
+  },
+  {
+    key: 'sacral', label: 'Sacral / Pelvic',
+    segments: [
+      { key: 'sacrum',    label: 'Sacrum' },
+      { key: 'si_joint',  label: 'SI Joint' },
+      { key: 'coccygeal', label: 'Coccygeal' },
+    ],
+  },
+]
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -87,18 +118,25 @@ export default function ProgressPage() {
   const { id: horseId } = useParams<{ id: string }>()
 
   const [horseName, setHorseName] = useState('')
+  const [horseSpecies, setHorseSpecies] = useState<'equine' | 'canine'>('equine')
   const [assessments, setAssessments] = useState<SpineAssessment[]>([])
   const [visits, setVisits] = useState<Visit[]>([])
   const [loading, setLoading] = useState(true)
   const [noTable, setNoTable] = useState(false)
   const [activeView, setActiveView] = useState<'heatmap' | 'timeline' | 'visits'>('heatmap')
 
+  const SPINE_SECTIONS = horseSpecies === 'canine' ? CANINE_SPINE_SECTIONS : EQUINE_SPINE_SECTIONS
+  const ALL_SEGMENTS = SPINE_SECTIONS.flatMap(s => s.segments)
+
   useEffect(() => {
     async function load() {
       setLoading(true)
 
-      const { data: horse } = await supabase.from('horses').select('name').eq('id', horseId).single()
-      if (horse) setHorseName(horse.name)
+      const { data: horse } = await supabase.from('horses').select('name, species').eq('id', horseId).single()
+      if (horse) {
+        setHorseName(horse.name)
+        setHorseSpecies((horse.species as 'equine' | 'canine') || 'equine')
+      }
 
       // Spine assessments
       const { data: spineData, error: spineError } = await supabase
@@ -139,7 +177,8 @@ export default function ProgressPage() {
       }
     }
     return counts
-  }, [assessments])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assessments, horseSpecies])
 
   const maxCount = useMemo(() => Math.max(...Object.values(heatmap), 1), [heatmap])
 
@@ -162,7 +201,8 @@ export default function ProgressPage() {
       .map(s => ({ ...s, count: heatmap[s.key] || 0 }))
       .filter(s => s.count > 0)
       .sort((a, b) => b.count - a.count),
-  [heatmap])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [heatmap, horseSpecies])
 
   const mostPersistent = sortedByFrequency.slice(0, 5)
 

@@ -5,8 +5,8 @@ import { useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../../lib/supabase'
 
-// ── Spine sections & segments ─────────────────────────────────────────────
-const SPINE_SECTIONS = [
+// ── Equine spine sections & segments ──────────────────────────────────────
+const EQUINE_SPINE_SECTIONS = [
   {
     key: 'cranial',
     label: 'Cranial / Cervical',
@@ -49,6 +49,49 @@ const SPINE_SECTIONS = [
   },
 ]
 
+// ── Canine spine sections & segments ──────────────────────────────────────
+const CANINE_SPINE_SECTIONS = [
+  {
+    key: 'cranial',
+    label: 'Cranial / Cervical',
+    segments: [
+      { key: 'occiput', label: 'Occiput' },
+      { key: 'c1',      label: 'C1  (Atlas)' },
+      { key: 'c2',      label: 'C2  (Axis)' },
+      { key: 'c3',      label: 'C3' },
+      { key: 'c4',      label: 'C4' },
+      { key: 'c5',      label: 'C5' },
+      { key: 'c6',      label: 'C6' },
+      { key: 'c7',      label: 'C7' },
+    ],
+  },
+  {
+    key: 'thoracic',
+    label: 'Thoracic',
+    segments: Array.from({ length: 13 }, (_, i) => ({
+      key: `t${i + 1}`,
+      label: `T${i + 1}`,
+    })),
+  },
+  {
+    key: 'lumbar',
+    label: 'Lumbar',
+    segments: Array.from({ length: 7 }, (_, i) => ({
+      key: `l${i + 1}`,
+      label: `L${i + 1}`,
+    })),
+  },
+  {
+    key: 'sacral',
+    label: 'Sacral / Pelvic',
+    segments: [
+      { key: 'sacrum',    label: 'Sacrum' },
+      { key: 'si_joint',  label: 'SI Joint' },
+      { key: 'coccygeal', label: 'Coccygeal' },
+    ],
+  },
+]
+
 type SegmentFinding = { left: boolean; right: boolean }
 type Findings = Record<string, SegmentFinding>
 
@@ -71,6 +114,8 @@ function SpineInner() {
   const { id: horseId } = useParams<{ id: string }>()
   const searchParams     = useSearchParams()
   const urlVisitId       = searchParams.get('visitId') ?? null
+  const urlSpecies       = searchParams.get('species') ?? 'equine'
+  const SPINE_SECTIONS   = urlSpecies === 'canine' ? CANINE_SPINE_SECTIONS : EQUINE_SPINE_SECTIONS
 
   const [horseName,       setHorseName]       = useState('')
   const [visits,          setVisits]          = useState<Visit[]>([])
@@ -199,7 +244,7 @@ function SpineInner() {
             </Link>
             <div>
               <h1 className="text-lg font-semibold text-slate-900 leading-tight">
-                Spine Assessment
+                {urlSpecies === 'canine' ? 'Canine Spine Assessment' : 'Spine Assessment'}
               </h1>
               <p className="text-xs text-slate-500">
                 {horseName && `${horseName} · `}

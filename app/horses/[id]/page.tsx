@@ -23,6 +23,7 @@ type Horse = {
   age: string | null
   discipline: string | null
   barn_location: string | null
+  species: 'equine' | 'canine' | null
   archived: boolean
   medical_alerts?: string | null
   history_notes?: string | null
@@ -156,6 +157,7 @@ export default function HorseDetailPage() {
   const [horseAgeEdit, setHorseAgeEdit] = useState('')
   const [horseDisciplineEdit, setHorseDisciplineEdit] = useState('')
   const [horseBarnLocationEdit, setHorseBarnLocationEdit] = useState('')
+  const [horseSpeciesEdit, setHorseSpeciesEdit] = useState<'equine' | 'canine'>('equine')
   const [horseOwnerIdEdit, setHorseOwnerIdEdit] = useState('')
 
   const [editingOwner, setEditingOwner] = useState(false)
@@ -264,6 +266,7 @@ export default function HorseDetailPage() {
     setHorseAgeEdit(data.age || '')
     setHorseDisciplineEdit(data.discipline || '')
     setHorseBarnLocationEdit(data.barn_location || '')
+    setHorseSpeciesEdit((data.species as 'equine' | 'canine') || 'equine')
     setHorseOwnerIdEdit(data.owner_id || '')
 
     setOwnerNameEdit(data.owners?.full_name || '')
@@ -402,7 +405,7 @@ export default function HorseDetailPage() {
     setMessage('')
 
     if (!horseNameEdit.trim()) {
-      setMessage('Horse name is required.')
+      setMessage('Patient name is required.')
       return
     }
 
@@ -421,17 +424,18 @@ export default function HorseDetailPage() {
         age: horseAgeEdit || null,
         discipline: horseDisciplineEdit || null,
         barn_location: horseBarnLocationEdit || null,
+        species: horseSpeciesEdit,
       })
       .eq('id', horseId)
 
     if (error) {
-      setMessage(`Error updating horse: ${error.message}`)
+      setMessage(`Error updating patient: ${error.message}`)
       return
     }
 
     setEditingHorse(false)
     setEditingOwner(false)
-    setMessage('Horse info updated successfully. History preserved with the horse record.')
+    setMessage('Patient info updated successfully. History preserved with the record.')
     await loadHorse()
     await loadOwnerOtherHorses(horseOwnerIdEdit)
     await loadVisits()
@@ -445,6 +449,7 @@ export default function HorseDetailPage() {
     setHorseAgeEdit(horse?.age || '')
     setHorseDisciplineEdit(horse?.discipline || '')
     setHorseBarnLocationEdit(horse?.barn_location || '')
+    setHorseSpeciesEdit((horse?.species as 'equine' | 'canine') || 'equine')
     setHorseOwnerIdEdit(horse?.owner_id || '')
   }
 
@@ -605,6 +610,7 @@ export default function HorseDetailPage() {
         body: JSON.stringify({
           quickNotes,
           horseName: horse?.name || '',
+          species: horse?.species || 'equine',
           discipline: horse?.discipline || '',
           anatomyContext,
         }),
@@ -868,6 +874,7 @@ export default function HorseDetailPage() {
         horseAgeEdit !== (horse?.age || '') ||
         horseDisciplineEdit !== (horse?.discipline || '') ||
         horseBarnLocationEdit !== (horse?.barn_location || '') ||
+        horseSpeciesEdit !== ((horse?.species as 'equine' | 'canine') || 'equine') ||
         horseOwnerIdEdit !== (horse?.owner_id || '')
       )
 
@@ -910,6 +917,7 @@ export default function HorseDetailPage() {
     horseAgeEdit,
     horseDisciplineEdit,
     horseBarnLocationEdit,
+    horseSpeciesEdit,
     horseOwnerIdEdit,
     horse,
     editingOwner,
@@ -1134,9 +1142,16 @@ export default function HorseDetailPage() {
     <main className="min-h-screen bg-[#edf2f7] p-6 md:p-8">
       <div className="mx-auto max-w-7xl">
         <div className="rounded-3xl bg-white p-6 shadow-md">
-          <h1 className="text-3xl font-bold text-slate-900">
-            {horse?.name || 'Horse Record'}
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold text-slate-900">
+              {horse?.name || 'Patient Record'}
+            </h1>
+            {horse?.species === 'canine' ? (
+              <span className="rounded-xl bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">🐕 Canine</span>
+            ) : (
+              <span className="rounded-xl bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800">🐴 Equine</span>
+            )}
+          </div>
           <p className="mt-2 text-slate-600">
             {horse?.breed || '—'} • {horse?.sex || '—'} • {horse?.age || '—'} • {horse?.discipline || '—'} • {horse?.barn_location || '—'}
           </p>
@@ -1174,7 +1189,7 @@ export default function HorseDetailPage() {
           <div className="space-y-6">
             <div className="rounded-3xl bg-white p-6 shadow-md">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-xl font-semibold text-slate-900">Horse Info</h2>
+                <h2 className="text-xl font-semibold text-slate-900">Patient Info</h2>
                 {!editingHorse ? (
                   <button
                     onClick={() => setEditingHorse(true)}
@@ -1187,23 +1202,35 @@ export default function HorseDetailPage() {
 
               {!editingHorse ? (
                 <div className="mt-4 space-y-3 text-sm text-slate-700">
-                  <InfoRow label="Horse Name" value={horse?.name || '—'} />
+                  <InfoRow label="Patient Name" value={horse?.name || '—'} />
+                  <InfoRow label="Species" value={horse?.species === 'canine' ? 'Canine (Dog)' : 'Equine (Horse)'} />
                   <InfoRow label="Breed" value={horse?.breed || '—'} />
                   <InfoRow label="Sex" value={horse?.sex || '—'} />
                   <InfoRow label="Age" value={horse?.age || '—'} />
-                  <InfoRow label="Discipline" value={horse?.discipline || '—'} />
-                  <InfoRow label="Barn" value={horse?.barn_location || '—'} />
+                  <InfoRow label={horse?.species === 'canine' ? 'Activity / Sport' : 'Discipline'} value={horse?.discipline || '—'} />
+                  <InfoRow label="Location" value={horse?.barn_location || '—'} />
                   <InfoRow label="Owner" value={horse?.owners?.full_name || '—'} />
                 </div>
               ) : (
                 <div className="mt-4 grid gap-4">
-                  <Field label="Horse Name">
+                  <Field label="Patient Name">
                     <input
                       value={horseNameEdit}
                       onChange={(e) => setHorseNameEdit(e.target.value)}
                       className="w-full rounded-xl border border-slate-300 px-4 py-3"
-                      placeholder="Horse name"
+                      placeholder={horseSpeciesEdit === 'canine' ? 'Dog name' : 'Horse name'}
                     />
+                  </Field>
+
+                  <Field label="Species">
+                    <select
+                      value={horseSpeciesEdit}
+                      onChange={(e) => setHorseSpeciesEdit(e.target.value as 'equine' | 'canine')}
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                    >
+                      <option value="equine">Equine (Horse)</option>
+                      <option value="canine">Canine (Dog)</option>
+                    </select>
                   </Field>
 
                   <Field label="Owner">
@@ -1237,11 +1264,22 @@ export default function HorseDetailPage() {
                       className="w-full rounded-xl border border-slate-300 px-4 py-3"
                     >
                       <option value="">Select sex</option>
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                      <option value="Gelding">Gelding</option>
-                      <option value="Mare">Mare</option>
-                      <option value="Stallion">Stallion</option>
+                      {horseSpeciesEdit === 'canine' ? (
+                        <>
+                          <option value="Male">Male (Intact)</option>
+                          <option value="Female">Female (Intact)</option>
+                          <option value="Neutered">Neutered (Male)</option>
+                          <option value="Spayed">Spayed (Female)</option>
+                        </>
+                      ) : (
+                        <>
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                          <option value="Gelding">Gelding</option>
+                          <option value="Mare">Mare</option>
+                          <option value="Stallion">Stallion</option>
+                        </>
+                      )}
                     </select>
                   </Field>
 
@@ -1254,21 +1292,21 @@ export default function HorseDetailPage() {
                     />
                   </Field>
 
-                  <Field label="Discipline">
+                  <Field label={horseSpeciesEdit === 'canine' ? 'Activity / Sport' : 'Discipline'}>
                     <input
                       value={horseDisciplineEdit}
                       onChange={(e) => setHorseDisciplineEdit(e.target.value)}
                       className="w-full rounded-xl border border-slate-300 px-4 py-3"
-                      placeholder="Discipline"
+                      placeholder={horseSpeciesEdit === 'canine' ? 'Agility, hunting, sport, etc.' : 'Discipline'}
                     />
                   </Field>
 
-                  <Field label="Barn Location">
+                  <Field label="Location">
                     <input
                       value={horseBarnLocationEdit}
                       onChange={(e) => setHorseBarnLocationEdit(e.target.value)}
                       className="w-full rounded-xl border border-slate-300 px-4 py-3"
-                      placeholder="Barn location"
+                      placeholder={horseSpeciesEdit === 'canine' ? 'City, kennel, or home' : 'Barn location'}
                     />
                   </Field>
 
@@ -1281,7 +1319,7 @@ export default function HorseDetailPage() {
                       onClick={saveHorseInfo}
                       className="rounded-xl bg-[#0f2040] px-4 py-3 text-sm text-white hover:bg-[#162d55] transition-colors"
                     >
-                      Save Horse Info
+                      Save Patient Info
                     </button>
                     <button
                       onClick={cancelHorseEdit}
@@ -1574,8 +1612,8 @@ export default function HorseDetailPage() {
                 </Link>
                 <Link
                   href={editingVisitId
-                    ? `/horses/${horse?.id}/spine?visitId=${editingVisitId}`
-                    : `/horses/${horse?.id}/spine`}
+                    ? `/horses/${horse?.id}/spine?visitId=${editingVisitId}&species=${horse?.species || 'equine'}`
+                    : `/horses/${horse?.id}/spine?species=${horse?.species || 'equine'}`}
                   className="rounded-2xl bg-[#0f2040] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#162d55]"
                 >
                   Open →
@@ -1887,7 +1925,7 @@ export default function HorseDetailPage() {
                             </Link>
 
                             <Link
-                              href={`/horses/${horse?.id}/spine?visitId=${visit.id}`}
+                              href={`/horses/${horse?.id}/spine?visitId=${visit.id}&species=${horse?.species || 'equine'}`}
                               className="rounded-xl border border-[#0f2040] bg-[#0f2040] px-3 py-2 text-sm text-white hover:bg-[#162d55] transition-colors"
                             >
                               Spine
