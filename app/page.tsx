@@ -721,12 +721,12 @@ export default function Home() {
 
           <div className="rounded-3xl bg-white p-5 shadow-md md:p-6">
             <h2 className="text-xl font-semibold text-slate-900 md:text-2xl">
-              Recent Horses
+              Recent Patients
             </h2>
 
             <div className="mt-4 space-y-3">
               {recentHorses.length === 0 ? (
-                <p className="text-sm text-slate-500">No recent horses yet.</p>
+                <p className="text-sm text-slate-500">No recent patients yet.</p>
               ) : (
                 recentHorses.map((horse) => (
                   <Link
@@ -735,7 +735,10 @@ export default function Home() {
                     className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300"
                   >
                     <div>
-                      <p className="font-semibold text-slate-900">{horse.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-slate-900">{horse.name}</p>
+                        <span className="text-sm">{horse.species === 'canine' ? '🐕' : '🐴'}</span>
+                      </div>
                       <p className="mt-1 text-sm text-slate-500">
                         {horse.owners?.full_name || '—'}
                       </p>
