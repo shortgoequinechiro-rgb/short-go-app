@@ -1,0 +1,26 @@
+{
+  "name": "Short-Go Equine Chiropractic",
+  "short_name": "Short-Go",
+  "description": "Equine chiropractic practice management for Dr. Andrew Leo",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f2040",
+  "theme_color": "#0f2040",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["medical", "productivity"],
+  "lang": "en-US"
+}
