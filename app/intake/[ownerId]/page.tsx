@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 
 // ── SQL Setup ──────────────────────────────────────────────────────────────────
@@ -10,6 +10,7 @@ import { createClient } from '@supabase/supabase-js'
 // CREATE TABLE intake_forms (
 //   id                    uuid DEFAULT gen_random_uuid() PRIMARY KEY,
 //   owner_id              uuid REFERENCES owners(id) ON DELETE CASCADE NOT NULL,
+//   horse_id              uuid REFERENCES horses(id) ON DELETE SET NULL,
 //   submitted_at          timestamptz DEFAULT now() NOT NULL,
 //   form_date             date,
 //   referral_source       text[],
@@ -32,6 +33,9 @@ import { createClient } from '@supabase/supabase-js'
 //   signed_name           text,
 //   created_at            timestamptz DEFAULT now()
 // );
+//
+// If table already exists, add horse_id column:
+// ALTER TABLE intake_forms ADD COLUMN IF NOT EXISTS horse_id uuid REFERENCES horses(id) ON DELETE SET NULL;
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -46,6 +50,16 @@ type Owner = {
   address: string | null
 }
 
+type PatientAnimal = {
+  id: string
+  name: string
+  species: 'equine' | 'canine' | null
+  breed: string | null
+  age: string | null
+  sex: string | null
+  barn_location: string | null
+}
+
 const REFERRAL_OPTIONS = [
   'Friend/Family member',
   'Other Chiropractor/Veterinarian',
@@ -58,10 +72,11 @@ const GENDER_OPTIONS = ['Mare', 'Gelding', 'Stallion']
 
 export default function IntakeFormPage() {
   const params = useParams()
-  const router = useRouter()
   const ownerId = params?.ownerId as string
 
   const [owner, setOwner] = useState<Owner | null>(null)
+  const [ownerHorses, setOwnerHorses] = useState<PatientAnimal[]>([])
+  const [selectedHorseId, setSelectedHorseId] = useState<string>('new')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -106,27 +121,49 @@ export default function IntakeFormPage() {
 
   useEffect(() => {
     if (!ownerId) return
-    loadOwner()
+    loadOwnerAndAnimals()
   }, [ownerId])
 
-  async function loadOwner() {
-    const { data } = await supabase
-      .from('owners')
-      .select('id, full_name, phone, email, address')
-      .eq('id', ownerId)
-      .single()
+  async function loadOwnerAndAnimals() {
+    const [ownerRes, horsesRes] = await Promise.all([
+      supabase.from('owners').select('id, full_name, phone, email, address').eq('id', ownerId).single(),
+      supabase.from('horses').select('id, name, species, breed, age, sex, barn_location').eq('owner_id', ownerId).order('name'),
+    ])
 
-    if (data) {
+    if (ownerRes.data) {
+      const data = ownerRes.data
       setOwner(data)
       const parts = data.full_name?.split(' ') || []
       setOwnerFirstName(parts[0] || '')
       setOwnerLastName(parts.slice(1).join(' ') || '')
       setPhone(data.phone || '')
       setEmail(data.email || '')
-      // Try to parse address
       if (data.address) setStreetAddress(data.address)
     }
+
+    if (horsesRes.data) {
+      setOwnerHorses(horsesRes.data)
+    }
+
     setLoading(false)
+  }
+
+  // When the dropdown selection changes, pre-fill animal fields
+  function handleAnimalSelect(horseId: string) {
+    setSelectedHorseId(horseId)
+    if (horseId === 'new') {
+      setAnimalName('')
+      setAnimalAge('')
+      setAnimalBreed('')
+      setAnimalGender('')
+      return
+    }
+    const horse = ownerHorses.find(h => h.id === horseId)
+    if (!horse) return
+    setAnimalName(horse.name || '')
+    setAnimalAge(horse.age || '')
+    setAnimalBreed(horse.breed || '')
+    setAnimalGender(horse.sex || '')
   }
 
   // ── Signature canvas ────────────────────────────────────────────────────────
@@ -202,10 +239,13 @@ export default function IntakeFormPage() {
 
     const canvas = canvasRef.current
     const signatureData = canvas ? canvas.toDataURL('image/png') : null
+    const now = new Date().toISOString()
 
     const { error: dbError } = await supabase.from('intake_forms').insert({
       owner_id: ownerId,
-      form_date: new Date().toISOString().split('T')[0],
+      horse_id: selectedHorseId !== 'new' ? selectedHorseId : null,
+      submitted_at: now,
+      form_date: now.split('T')[0],
       referral_source: referralSources,
       animal_name: animalName.trim(),
       animal_age: animalAge || null,
@@ -345,6 +385,30 @@ export default function IntakeFormPage() {
 
           {/* ── Animal Info ── */}
           <Section title="Animal Information">
+
+            {/* Patient selector */}
+            {ownerHorses.length > 0 && (
+              <Field label="Select Patient">
+                <select
+                  value={selectedHorseId}
+                  onChange={e => handleAnimalSelect(e.target.value)}
+                  className={`${inputCls} cursor-pointer`}
+                >
+                  <option value="new">➕ New / First-time patient</option>
+                  {ownerHorses.map(h => (
+                    <option key={h.id} value={h.id}>
+                      {h.species === 'canine' ? '🐕' : '🐴'} {h.name}{h.breed ? ` — ${h.breed}` : ''}
+                    </option>
+                  ))}
+                </select>
+                {selectedHorseId !== 'new' && (
+                  <p className="mt-1.5 text-xs text-emerald-600">
+                    ✓ Linked to existing patient record — fields pre-filled below
+                  </p>
+                )}
+              </Field>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <Field label="Animal Name" required>
                 <input value={animalName} onChange={e => setAnimalName(e.target.value)}
@@ -455,7 +519,7 @@ export default function IntakeFormPage() {
           <Section title="Informed Consent">
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm leading-relaxed text-slate-700 space-y-4">
               <p>
-                I, <strong>{ownerFullName || '[Pet Owner\'s Name]'}</strong>, hereby give my consent for{' '}
+                I, <strong>{ownerFullName || "[Pet Owner's Name]"}</strong>, hereby give my consent for{' '}
                 <strong>{consentAnimalName}</strong> to receive chiropractic care from Sarah Rohay, D.C. c.AVCA, Animal
                 Chiropractor. I understand that chiropractic care involves the assessment and adjustment of the
                 musculoskeletal system of animals to restore proper function and mobility.
@@ -467,21 +531,21 @@ export default function IntakeFormPage() {
                 injury or exacerbation of pre-existing conditions.
               </p>
               <p>
-                I agree to provide accurate and complete information about <strong>{consentAnimalName}</strong>'s
+                I agree to provide accurate and complete information about <strong>{consentAnimalName}</strong>&apos;s
                 medical history, current health status, and any relevant veterinary treatments or procedures. I
                 understand that this information will be used by the chiropractor to assess{' '}
-                <strong>{consentAnimalName}</strong>'s condition and develop an appropriate treatment plan.
+                <strong>{consentAnimalName}</strong>&apos;s condition and develop an appropriate treatment plan.
               </p>
               <p>
                 I understand that the chiropractor may need to perform a physical examination and/or diagnostic tests
-                to evaluate <strong>{consentAnimalName}</strong>'s condition and determine the appropriate course of
+                to evaluate <strong>{consentAnimalName}</strong>&apos;s condition and determine the appropriate course of
                 chiropractic care. I agree to comply with any recommendations or instructions provided by the
-                chiropractor regarding <strong>{consentAnimalName}</strong>'s care, including follow-up appointments
+                chiropractor regarding <strong>{consentAnimalName}</strong>&apos;s care, including follow-up appointments
                 and home care exercises.
               </p>
               <p>
                 I understand that I have the right to ask questions and seek clarification about{' '}
-                <strong>{consentAnimalName}</strong>'s chiropractic care at any time. I acknowledge that I have been
+                <strong>{consentAnimalName}</strong>&apos;s chiropractic care at any time. I acknowledge that I have been
                 provided with information about the benefits, risks, and alternatives to chiropractic care for animals,
                 and I have had the opportunity to discuss any concerns or questions with the chiropractor.
               </p>
@@ -507,10 +571,6 @@ export default function IntakeFormPage() {
                   onTouchMove={draw}
                   onTouchEnd={stopDraw}
                 />
-                {!hasSigned && (
-                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                  </div>
-                )}
               </div>
               <div className="mt-2 flex items-center justify-between">
                 <p className="text-xs text-slate-400">

@@ -133,6 +133,8 @@ export default function HorseDetailPage() {
   const [selectedOwnerHorseId, setSelectedOwnerHorseId] = useState('')
   const [consentOnFile, setConsentOnFile] = useState<{ signed_at: string; signed_name: string } | null | undefined>(undefined)
   const [upcomingAppointments, setUpcomingAppointments] = useState<{ id: string; appointment_date: string; appointment_time: string | null; reason: string | null; status: string }[]>([])
+  type IntakeForm = { id: string; submitted_at: string; signed_name: string | null; animal_name: string; reason_for_care: string | null; health_problems: string | null; medications_supplements: string | null; previous_chiro_care: boolean | null; referral_source: string[] | null }
+  const [intakeForms, setIntakeForms] = useState<IntakeForm[]>([])
 
   // Multi-contact roles
   type HorseContact = { id: string; horse_id: string; name: string; role: string; phone: string | null; email: string | null; notes: string | null }
@@ -1073,6 +1075,20 @@ export default function HorseDetailPage() {
     }
   }, [horse?.owner_id])
 
+  // Load intake forms linked to this horse
+  useEffect(() => {
+    if (!horseId) return
+    async function loadIntakeForms() {
+      const { data } = await supabase
+        .from('intake_forms')
+        .select('id, submitted_at, signed_name, animal_name, reason_for_care, health_problems, medications_supplements, previous_chiro_care, referral_source')
+        .eq('horse_id', horseId)
+        .order('submitted_at', { ascending: false })
+      setIntakeForms(data || [])
+    }
+    loadIntakeForms()
+  }, [horseId])
+
   // Load upcoming appointments for this horse
   useEffect(() => {
     if (!horseId) return
@@ -1442,6 +1458,50 @@ export default function HorseDetailPage() {
                 )}
               </div>
             </div>
+
+            {/* ── Intake Forms ── */}
+            {intakeForms.length > 0 && (
+              <div className="rounded-3xl bg-white p-6 shadow-md">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-lg leading-none">📋</span>
+                  <h2 className="text-xl font-semibold text-slate-900">Intake Forms</h2>
+                </div>
+                <div className="space-y-4">
+                  {intakeForms.map((form) => (
+                    <div key={form.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                      <div className="flex items-start justify-between gap-2 mb-3">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">
+                            {form.animal_name}
+                          </p>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            Signed by {form.signed_name || '—'} · {new Date(form.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                          </p>
+                        </div>
+                        <span className="shrink-0 rounded-xl bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">✓ Signed</span>
+                      </div>
+                      <div className="space-y-1.5 text-xs text-slate-600">
+                        {form.reason_for_care && (
+                          <p><span className="font-medium text-slate-700">Reason: </span>{form.reason_for_care}</p>
+                        )}
+                        {form.health_problems && (
+                          <p><span className="font-medium text-slate-700">Health concerns: </span>{form.health_problems}</p>
+                        )}
+                        {form.medications_supplements && (
+                          <p><span className="font-medium text-slate-700">Medications: </span>{form.medications_supplements}</p>
+                        )}
+                        {form.previous_chiro_care !== null && (
+                          <p><span className="font-medium text-slate-700">Previous chiro care: </span>{form.previous_chiro_care ? 'Yes' : 'No'}</p>
+                        )}
+                        {form.referral_source && form.referral_source.length > 0 && (
+                          <p><span className="font-medium text-slate-700">Referred by: </span>{form.referral_source.join(', ')}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="rounded-3xl bg-white p-6 shadow-md">
               <div className="flex items-center justify-between gap-3">
