@@ -180,6 +180,7 @@ export async function GET(
           breed,
           sex,
           age,
+          species,
           discipline,
           barn_location,
           owners (
@@ -402,9 +403,10 @@ export async function GET(
       }
 
       const generatedText = `Generated: ${new Date().toLocaleDateString()}`
-      const horseText = `Horse: ${horse?.name || '—'}`
+      const speciesLabel = horse?.species === 'canine' ? 'Canine' : 'Horse'
+      const patientText = `${speciesLabel}: ${horse?.name || '—'}`
       drawTextLine(generatedText, pageWidth - margin - 120, y - 2, 9, false, colors.muted)
-      drawTextLine(horseText, pageWidth - margin - 120, y - 18, 9, true, colors.text)
+      drawTextLine(patientText, pageWidth - margin - 120, y - 18, 9, true, colors.text)
 
       y -= 58
       drawDivider(0, 18)
@@ -644,9 +646,11 @@ export async function GET(
     drawHeader()
     drawSummaryCard()
 
-    drawSectionTitle('Horse Information')
+    const patientSpecies = horse?.species === 'canine' ? 'Canine' : 'Equine'
+    drawSectionTitle('Patient Information')
     drawInfoGrid([
-      { label: 'Horse Name', value: horse?.name || '—' },
+      { label: 'Patient Name', value: horse?.name || '—' },
+      { label: 'Species', value: patientSpecies },
       { label: 'Breed', value: horse?.breed || '—' },
       { label: 'Sex', value: horse?.sex || '—' },
       { label: 'Age', value: horse?.age || '—' },
