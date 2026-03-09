@@ -747,13 +747,6 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-4 xl:grid-cols-4">
-          <StatCard label="Owners" value={owners.length} onClick={() => handleStatCardClick('owner')} />
-          <StatCard label="Patients" value={horses.length} onClick={() => handleStatCardClick('horse')} />
-          <StatCard label="Visits" value={visitCount} onClick={() => handleStatCardClick('horse')} />
-          <StatCard label="Photos" value={photoCount} onClick={() => handleStatCardClick('horse')} />
-        </div>
-
         {/* ── Today's Appointments ── */}
         <div className="mt-5 rounded-3xl bg-white p-5 shadow-md md:p-6">
           <div className="flex items-center justify-between">
