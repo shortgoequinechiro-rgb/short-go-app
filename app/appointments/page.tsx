@@ -30,6 +30,7 @@ type Horse = {
   id: string
   name: string
   owner_id: string | null
+  species?: 'equine' | 'canine' | null
   owners?: { full_name: string } | null
 }
 
@@ -268,7 +269,7 @@ function AppointmentsContent() {
   async function loadHorses() {
     const { data } = await supabase
       .from('horses')
-      .select('id, name, owner_id, owners(full_name)')
+      .select('id, name, owner_id, species, owners(full_name)')
       .eq('archived', false)
       .order('name')
     setHorses((data || []) as unknown as Horse[])
@@ -370,7 +371,7 @@ function AppointmentsContent() {
 
   async function saveForm() {
     if (!form.horse_id || !form.appointment_date) {
-      setFormMsg('Horse and date are required.')
+      setFormMsg('Patient and date are required.')
       return
     }
     setSaving(true)
@@ -655,18 +656,18 @@ function AppointmentsContent() {
             </div>
 
             <div className="space-y-4">
-              {/* Horse */}
+              {/* Patient */}
               <div>
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700">Horse <span className="text-red-400">*</span></label>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700">Patient <span className="text-red-400">*</span></label>
                 <select
                   value={form.horse_id}
                   onChange={e => setForm(f => ({ ...f, horse_id: e.target.value }))}
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
                 >
-                  <option value="">— Select horse —</option>
+                  <option value="">— Select patient —</option>
                   {horses.map(h => (
                     <option key={h.id} value={h.id}>
-                      {h.name}{h.owners?.full_name ? ` (${h.owners.full_name})` : ''}
+                      {h.species === 'canine' ? '🐕' : '🐴'} {h.name}{h.owners?.full_name ? ` (${h.owners.full_name})` : ''}
                     </option>
                   ))}
                 </select>
