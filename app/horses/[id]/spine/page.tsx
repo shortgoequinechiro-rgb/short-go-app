@@ -63,27 +63,28 @@ const SQL_SETUP = `CREATE TABLE spine_assessments (
 
 CREATE INDEX ON spine_assessments (horse_id, assessed_at DESC);`
 
+type Visit = { id: string; visit_date: string | null; reason_for_visit: string | null }
+
 // ── Inner component (needs useSearchParams) ───────────────────────────────
 function SpineInner() {
   const { id: horseId } = useParams<{ id: string }>()
   const searchParams     = useSearchParams()
-  const visitId          = searchParams.get('visitId') ?? null
+  const urlVisitId       = searchParams.get('visitId') ?? null
 
-  const [horseName, setHorseName] = useState('')
-  const [findings,  setFindings]  = useState<Findings>({})
-  const [notes,     setNotes]     = useState('')
-  const [saving,    setSaving]    = useState(false)
-  const [saveMsg,   setSaveMsg]   = useState('')
-  const [lastSaved, setLastSaved] = useState<string | null>(null)
-  const [noTable,   setNoTable]   = useState(false)
-  const [loading,   setLoading]   = useState(true)
+  const [horseName,       setHorseName]       = useState('')
+  const [visits,          setVisits]          = useState<Visit[]>([])
+  const [selectedVisitId, setSelectedVisitId] = useState<string>(urlVisitId ?? '')
+  const [findings,        setFindings]        = useState<Findings>({})
+  const [notes,           setNotes]           = useState('')
+  const [saving,          setSaving]          = useState(false)
+  const [saveMsg,         setSaveMsg]         = useState('')
+  const [lastSaved,       setLastSaved]       = useState<string | null>(null)
+  const [noTable,         setNoTable]         = useState(false)
+  const [loading,         setLoading]         = useState(true)
 
-  // ── Load ────────────────────────────────────────────────────────────────
+  // ── Load horse name + visits ─────────────────────────────────────────────
   useEffect(() => {
-    async function load() {
-      setLoading(true)
-
-      // Horse name
+    async function loadMeta() {
       const { data: horse } = await supabase
         .from('horses')
         .select('name')
@@ -91,15 +92,32 @@ function SpineInner() {
         .single()
       if (horse) setHorseName(horse.name)
 
-      // If we have a visitId, look for an assessment already saved for it
+      const { data: visitData } = await supabase
+        .from('visits')
+        .select('id, visit_date, reason_for_visit')
+        .eq('horse_id', horseId)
+        .order('visit_date', { ascending: false })
+      setVisits((visitData ?? []) as Visit[])
+    }
+    loadMeta()
+  }, [horseId])
+
+  // ── Load existing assessment when selectedVisitId changes ────────────────
+  useEffect(() => {
+    async function loadAssessment() {
+      setLoading(true)
+      setFindings({})
+      setNotes('')
+      setLastSaved(null)
+
       let query = supabase
         .from('spine_assessments')
         .select('findings, notes, assessed_at')
         .order('assessed_at', { ascending: false })
         .limit(1)
 
-      if (visitId) {
-        query = query.eq('visit_id', visitId) as typeof query
+      if (selectedVisitId) {
+        query = query.eq('visit_id', selectedVisitId) as typeof query
       } else {
         query = query.eq('horse_id', horseId) as typeof query
       }
@@ -116,8 +134,8 @@ function SpineInner() {
 
       setLoading(false)
     }
-    load()
-  }, [horseId, visitId])
+    loadAssessment()
+  }, [horseId, selectedVisitId])
 
   // ── Toggle ──────────────────────────────────────────────────────────────
   function toggle(segKey: string, side: 'left' | 'right') {
@@ -138,7 +156,7 @@ function SpineInner() {
 
     const { error } = await supabase.from('spine_assessments').insert({
       horse_id:    horseId,
-      visit_id:    visitId ?? null,
+      visit_id:    selectedVisitId || null,
       findings,
       notes,
       assessed_at: new Date().toISOString(),
@@ -184,7 +202,7 @@ function SpineInner() {
               </h1>
               <p className="text-xs text-slate-500">
                 {horseName && `${horseName} · `}
-                {visitId ? 'Linked to this visit' : 'Standalone record'}
+                {selectedVisitId ? 'Linked to visit' : 'No visit selected'}
               </p>
             </div>
           </div>
@@ -228,15 +246,40 @@ function SpineInner() {
       ) : (
         <div className="mx-auto max-w-2xl space-y-4 px-4 py-5">
 
+          {/* Visit selector */}
+          <div className="rounded-3xl bg-white px-5 py-4 shadow-sm">
+            <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+              Link to Visit
+            </label>
+            <select
+              value={selectedVisitId}
+              onChange={e => setSelectedVisitId(e.target.value)}
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
+            >
+              <option value="">— No visit (standalone record) —</option>
+              {visits.map(v => (
+                <option key={v.id} value={v.id}>
+                  {v.visit_date
+                    ? new Date(v.visit_date + 'T00:00:00').toLocaleDateString('en-US', {
+                        month: 'short', day: 'numeric', year: 'numeric',
+                      })
+                    : 'No date'
+                  }
+                  {v.reason_for_visit ? ` — ${v.reason_for_visit}` : ''}
+                </option>
+              ))}
+            </select>
+            {selectedVisitId && (
+              <p className="mt-1.5 text-xs text-slate-500">
+                This assessment will appear in that visit&apos;s PDF export.
+              </p>
+            )}
+          </div>
+
           {/* L / R column header */}
           <div className="flex items-center justify-between rounded-2xl bg-white px-5 py-3 shadow-sm">
             <p className="text-sm text-slate-500">
               Check a box to mark a fixation or subluxation.
-              {visitId && (
-                <span className="ml-1 font-medium text-slate-700">
-                  Results will be included in this visit&apos;s PDF export.
-                </span>
-              )}
             </p>
             <div className="flex items-center gap-6 text-xs font-bold uppercase tracking-wide text-slate-500">
               <span>Left</span>
