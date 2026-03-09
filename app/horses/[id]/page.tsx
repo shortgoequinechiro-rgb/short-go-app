@@ -1245,6 +1245,11 @@ export default function HorseDetailPage() {
                 </span>
               )
             )}
+            {intakeForms.length > 0 && (
+              <span className="rounded-xl bg-emerald-500 px-3 py-1 text-xs font-bold text-white shadow-sm">
+                ✓ Intake on File
+              </span>
+            )}
           </div>
           <p className="mt-2 text-slate-600">
             {horse?.breed || '—'} • {horse?.sex || '—'} • {horse?.age || '—'} • {horse?.discipline || '—'} • {horse?.barn_location || '—'}
