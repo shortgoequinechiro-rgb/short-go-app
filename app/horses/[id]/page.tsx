@@ -507,7 +507,7 @@ export default function HorseDetailPage() {
     setAutoEmailAfterSave(false)
   }
 
-  function startEditVisit(visit: Visit) {
+  async function startEditVisit(visit: Visit) {
     const derivedTreatedAreas =
       anatomyRegionNamesByVisit[visit.id]?.length
         ? anatomyRegionNamesByVisit[visit.id].join(', ')
@@ -518,7 +518,6 @@ export default function HorseDetailPage() {
     setVisitLocation(visit.location || '')
     setProviderName(visit.provider_name || 'Dr. Andrew Leo')
     setReasonForVisit(visit.reason_for_visit || '')
-    setQuickNotes('')
     setSubjective(visit.subjective || '')
     setObjective(visit.objective || '')
     setAssessment(visit.assessment || '')
@@ -529,6 +528,48 @@ export default function HorseDetailPage() {
     setAutoEmailAfterSave(false)
 
     window.scrollTo({ top: 0, behavior: 'smooth' })
+
+    // Load spine findings for this visit and pre-fill Quick Notes
+    const LABEL: Record<string, string> = {
+      tmj: 'TMJ', poll: 'Poll',
+      c1: 'C1 (Atlas)', c2: 'C2 (Axis)', c3: 'C3', c4: 'C4', c5: 'C5', c6: 'C6', c7: 'C7',
+      sacrum: 'Sacrum', si_joint: 'SI Joint', coccygeal: 'Coccygeal',
+    }
+    const segLabel = (key: string) =>
+      LABEL[key] ?? key.replace(/^([tTlLcC])(\d+)$/, (_, p, n) => p.toUpperCase() + n)
+
+    try {
+      const { data: spineData } = await supabase
+        .from('spine_assessments')
+        .select('findings, notes')
+        .eq('visit_id', visit.id)
+        .order('assessed_at', { ascending: false })
+        .limit(1)
+
+      const row = spineData?.[0]
+      if (row?.findings) {
+        const findings = row.findings as Record<string, { left: boolean; right: boolean }>
+        const flagged = Object.entries(findings)
+          .filter(([, f]) => f.left || f.right)
+          .map(([key, f]) => {
+            const side = f.left && f.right ? 'Bilateral' : f.left ? 'Left' : 'Right'
+            return `${segLabel(key)} (${side})`
+          })
+
+        if (flagged.length > 0) {
+          const spineText = [
+            `Spine Findings: ${flagged.join(', ')}`,
+            row.notes ? `Spine Notes: ${row.notes}` : '',
+          ].filter(Boolean).join('\n')
+          setQuickNotes(spineText)
+          return
+        }
+      }
+    } catch {
+      // spine table may not exist yet — just leave Quick Notes empty
+    }
+
+    setQuickNotes('')
   }
 
   function useAnatomyRegionsForTreatedAreas() {
@@ -1030,54 +1071,54 @@ export default function HorseDetailPage() {
     setSelectedOwnerHorseId(horseId)
   }, [horseId])
 
-  // ── Auto-load spine findings into Quick Notes when a visit is opened ──────
+  // ── Pre-fill Quick Notes with latest spine findings for new-visit form ────
   useEffect(() => {
-    if (!editingVisitId) return
+    if (editingVisitId) return          // existing visits handled in startEditVisit
+    if (!horseId) return
 
-    async function loadSpineIntoNotes() {
-      const { data } = await supabase
-        .from('spine_assessments')
-        .select('findings, notes')
-        .eq('visit_id', editingVisitId)
-        .order('assessed_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
+    const LABEL: Record<string, string> = {
+      tmj: 'TMJ', poll: 'Poll',
+      c1: 'C1 (Atlas)', c2: 'C2 (Axis)', c3: 'C3', c4: 'C4', c5: 'C5', c6: 'C6', c7: 'C7',
+      sacrum: 'Sacrum', si_joint: 'SI Joint', coccygeal: 'Coccygeal',
+    }
+    const segLabel = (key: string) =>
+      LABEL[key] ?? key.replace(/^([tTlLcC])(\d+)$/, (_, p, n) => p.toUpperCase() + n)
 
-      if (!data?.findings) return
+    async function loadLatestSpine() {
+      try {
+        const { data } = await supabase
+          .from('spine_assessments')
+          .select('findings, notes')
+          .eq('horse_id', horseId)
+          .order('assessed_at', { ascending: false })
+          .limit(1)
 
-      const findings = data.findings as Record<string, { left: boolean; right: boolean }>
+        const row = data?.[0]
+        if (!row?.findings) return
 
-      const LABEL: Record<string, string> = {
-        tmj: 'TMJ', poll: 'Poll',
-        c1: 'C1 (Atlas)', c2: 'C2 (Axis)', c3: 'C3', c4: 'C4', c5: 'C5', c6: 'C6', c7: 'C7',
-        sacrum: 'Sacrum', si_joint: 'SI Joint', coccygeal: 'Coccygeal',
+        const findings = row.findings as Record<string, { left: boolean; right: boolean }>
+        const flagged = Object.entries(findings)
+          .filter(([, f]) => f.left || f.right)
+          .map(([key, f]) => {
+            const side = f.left && f.right ? 'Bilateral' : f.left ? 'Left' : 'Right'
+            return `${segLabel(key)} (${side})`
+          })
+
+        if (flagged.length === 0) return
+
+        const spineText = [
+          `Spine Findings: ${flagged.join(', ')}`,
+          row.notes ? `Spine Notes: ${row.notes}` : '',
+        ].filter(Boolean).join('\n')
+
+        setQuickNotes(prev => prev ? prev : spineText)
+      } catch {
+        // spine table may not exist yet
       }
-      const label = (key: string) =>
-        LABEL[key] ?? key.replace(/^([tTlLcC])(\d+)$/, (_, prefix, num) =>
-          prefix.toUpperCase() + num)
-
-      const flagged = Object.entries(findings)
-        .filter(([, f]) => f.left || f.right)
-        .map(([key, f]) => {
-          const side = f.left && f.right ? 'Bilateral' : f.left ? 'Left' : 'Right'
-          return `${label(key)} (${side})`
-        })
-
-      if (flagged.length === 0) return
-
-      const spineText = [
-        `Spine Findings: ${flagged.join(', ')}`,
-        data.notes ? `Spine Notes: ${data.notes}` : '',
-      ].filter(Boolean).join('\n')
-
-      setQuickNotes(prev => {
-        if (prev.includes('Spine Findings:')) return prev
-        return prev ? `${prev}\n\n${spineText}` : spineText
-      })
     }
 
-    loadSpineIntoNotes()
-  }, [editingVisitId])
+    loadLatestSpine()
+  }, [horseId, editingVisitId])
 
   if (checkingAuth) {
     return (

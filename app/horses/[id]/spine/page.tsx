@@ -208,13 +208,23 @@ function SpineInner() {
             </div>
           </div>
 
-          <button
-            onClick={save}
-            disabled={saving || noTable || loading}
-            className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-40"
-          >
-            {saving ? 'Saving…' : 'Save'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={save}
+              disabled={saving || noTable || loading}
+              className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-40"
+            >
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+            {flaggedCount > 0 && (
+              <button
+                onClick={() => setFindings({})}
+                className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 transition"
+              >
+                Clear All
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Status bar */}
@@ -365,13 +375,23 @@ function SpineInner() {
           </div>
 
           {/* Bottom save */}
-          <button
-            onClick={save}
-            disabled={saving || noTable}
-            className="w-full rounded-2xl bg-slate-900 py-4 text-base font-semibold text-white transition hover:bg-slate-700 disabled:opacity-40"
-          >
-            {saving ? 'Saving…' : 'Save Assessment'}
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={save}
+              disabled={saving || noTable}
+              className="flex-1 rounded-2xl bg-slate-900 py-4 text-base font-semibold text-white transition hover:bg-slate-700 disabled:opacity-40"
+            >
+              {saving ? 'Saving…' : 'Save Assessment'}
+            </button>
+            {flaggedCount > 0 && (
+              <button
+                onClick={() => setFindings({})}
+                className="rounded-2xl border border-slate-300 px-6 py-4 text-base font-medium text-slate-600 hover:bg-slate-100 transition"
+              >
+                Clear All
+              </button>
+            )}
+          </div>
 
         </div>
       )}
