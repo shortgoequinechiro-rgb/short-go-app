@@ -106,6 +106,47 @@ export default function Home() {
   const [recentOwnerIds, setRecentOwnerIds] = useState<string[]>([])
   const [recentHorseIds, setRecentHorseIds] = useState<string[]>([])
 
+  // ── Address autocomplete ─────────────────────────────────────────────────────
+  const addAddressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const editAddressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [addAddressSuggestions, setAddAddressSuggestions] = useState<{ description: string; place_id: string }[]>([])
+  const [showAddAddressSuggestions, setShowAddAddressSuggestions] = useState(false)
+  const [editAddressSuggestions, setEditAddressSuggestions] = useState<{ description: string; place_id: string }[]>([])
+  const [showEditAddressSuggestions, setShowEditAddressSuggestions] = useState(false)
+
+  async function fetchAddressSuggestions(value: string) {
+    if (value.trim().length < 2) return []
+    try {
+      const res = await fetch(`/api/places?input=${encodeURIComponent(value)}`)
+      const data = await res.json()
+      return data.predictions || []
+    } catch {
+      return []
+    }
+  }
+
+  function handleAddAddressChange(value: string) {
+    setAddress(value)
+    if (addAddressDebounceRef.current) clearTimeout(addAddressDebounceRef.current)
+    if (value.trim().length < 2) { setAddAddressSuggestions([]); setShowAddAddressSuggestions(false); return }
+    addAddressDebounceRef.current = setTimeout(async () => {
+      const results = await fetchAddressSuggestions(value)
+      setAddAddressSuggestions(results)
+      setShowAddAddressSuggestions(results.length > 0)
+    }, 300)
+  }
+
+  function handleEditAddressChange(value: string) {
+    setOwnerAddressEdit(value)
+    if (editAddressDebounceRef.current) clearTimeout(editAddressDebounceRef.current)
+    if (value.trim().length < 2) { setEditAddressSuggestions([]); setShowEditAddressSuggestions(false); return }
+    editAddressDebounceRef.current = setTimeout(async () => {
+      const results = await fetchAddressSuggestions(value)
+      setEditAddressSuggestions(results)
+      setShowEditAddressSuggestions(results.length > 0)
+    }, 300)
+  }
+
   async function checkUser() {
     const {
       data: { user },
@@ -1016,12 +1057,37 @@ export default function Home() {
                           </Field>
 
                           <Field label="Address">
-                            <textarea
-                              value={ownerAddressEdit}
-                              onChange={(e) => setOwnerAddressEdit(e.target.value)}
-                              className="min-h-[96px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
-                              placeholder="Owner address"
-                            />
+                            <div className="relative">
+                              <input
+                                type="text"
+                                value={ownerAddressEdit}
+                                onChange={(e) => handleEditAddressChange(e.target.value)}
+                                onBlur={() => setTimeout(() => setShowEditAddressSuggestions(false), 150)}
+                                onFocus={() => ownerAddressEdit.length >= 2 && editAddressSuggestions.length > 0 && setShowEditAddressSuggestions(true)}
+                                autoComplete="off"
+                                className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                                placeholder="Start typing an address…"
+                              />
+                              {showEditAddressSuggestions && editAddressSuggestions.length > 0 && (
+                                <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+                                  {editAddressSuggestions.map((s, i) => (
+                                    <button
+                                      key={s.place_id}
+                                      type="button"
+                                      onMouseDown={() => { setOwnerAddressEdit(s.description); setEditAddressSuggestions([]); setShowEditAddressSuggestions(false) }}
+                                      className={`flex w-full items-start gap-3 px-4 py-3 text-left text-sm transition hover:bg-slate-50 ${i < editAddressSuggestions.length - 1 ? 'border-b border-slate-100' : ''}`}
+                                    >
+                                      <span className="mt-0.5 shrink-0 text-slate-400">📍</span>
+                                      <span className="text-slate-700">{s.description}</span>
+                                    </button>
+                                  ))}
+                                  <div className="flex items-center justify-end gap-1 border-t border-slate-100 px-4 py-1.5">
+                                    <span className="text-[10px] text-slate-400">Powered by</span>
+                                    <span className="text-[10px] font-medium text-slate-500">Google</span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </Field>
 
                           <div className="flex flex-wrap gap-2">
@@ -1203,12 +1269,37 @@ export default function Home() {
               </Field>
 
               <Field label="Address">
-                <textarea
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  className="min-h-[96px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
-                  placeholder="Owner address"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={address}
+                    onChange={(e) => handleAddAddressChange(e.target.value)}
+                    onBlur={() => setTimeout(() => setShowAddAddressSuggestions(false), 150)}
+                    onFocus={() => address.length >= 2 && addAddressSuggestions.length > 0 && setShowAddAddressSuggestions(true)}
+                    autoComplete="off"
+                    className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                    placeholder="Start typing an address…"
+                  />
+                  {showAddAddressSuggestions && addAddressSuggestions.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+                      {addAddressSuggestions.map((s, i) => (
+                        <button
+                          key={s.place_id}
+                          type="button"
+                          onMouseDown={() => { setAddress(s.description); setAddAddressSuggestions([]); setShowAddAddressSuggestions(false) }}
+                          className={`flex w-full items-start gap-3 px-4 py-3 text-left text-sm transition hover:bg-slate-50 ${i < addAddressSuggestions.length - 1 ? 'border-b border-slate-100' : ''}`}
+                        >
+                          <span className="mt-0.5 shrink-0 text-slate-400">📍</span>
+                          <span className="text-slate-700">{s.description}</span>
+                        </button>
+                      ))}
+                      <div className="flex items-center justify-end gap-1 border-t border-slate-100 px-4 py-1.5">
+                        <span className="text-[10px] text-slate-400">Powered by</span>
+                        <span className="text-[10px] font-medium text-slate-500">Google</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </Field>
 
               <button
