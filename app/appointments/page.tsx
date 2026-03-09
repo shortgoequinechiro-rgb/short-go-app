@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import { supabase } from '../lib/supabase'
@@ -234,6 +234,11 @@ function AppointmentsContent() {
   // Status update state
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
 
+  // ── Location autocomplete ────────────────────────────────────────────────────
+  const placesServiceRef = useRef<any>(null)
+  const [locationSuggestions, setLocationSuggestions] = useState<{ description: string; place_id: string }[]>([])
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false)
+
   // ── Auth ────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -242,6 +247,64 @@ function AppointmentsContent() {
       setCheckingAuth(false)
     })
   }, [router])
+
+  // ── Google Places loader ─────────────────────────────────────────────────────
+  useEffect(() => {
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+    if (!apiKey) return
+
+    function initService() {
+      placesServiceRef.current = new (window as any).google.maps.places.AutocompleteService()
+    }
+
+    if ((window as any).google?.maps?.places) {
+      initService()
+      return
+    }
+
+    // Avoid loading the script twice
+    if (document.querySelector('#google-maps-script')) return
+
+    const script = document.createElement('script')
+    script.id = 'google-maps-script'
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`
+    script.async = true
+    script.defer = true
+    script.onload = initService
+    document.head.appendChild(script)
+  }, [])
+
+  function handleLocationChange(value: string) {
+    setForm(f => ({ ...f, location: value }))
+
+    if (!placesServiceRef.current || value.trim().length < 2) {
+      setLocationSuggestions([])
+      setShowLocationSuggestions(false)
+      return
+    }
+
+    placesServiceRef.current.getPlacePredictions(
+      { input: value },
+      (predictions: any[], status: string) => {
+        if (predictions && predictions.length > 0) {
+          setLocationSuggestions(predictions.map((p: any) => ({
+            description: p.description,
+            place_id: p.place_id,
+          })))
+          setShowLocationSuggestions(true)
+        } else {
+          setLocationSuggestions([])
+          setShowLocationSuggestions(false)
+        }
+      }
+    )
+  }
+
+  function selectLocation(description: string) {
+    setForm(f => ({ ...f, location: description }))
+    setLocationSuggestions([])
+    setShowLocationSuggestions(false)
+  }
 
   // ── Load data ───────────────────────────────────────────────────────────────
 
@@ -734,16 +797,41 @@ function AppointmentsContent() {
                 />
               </div>
 
-              {/* Location */}
+              {/* Location with Google Places autocomplete */}
               <div>
                 <label className="mb-1.5 block text-sm font-semibold text-slate-700">Location</label>
-                <input
-                  type="text"
-                  value={form.location}
-                  onChange={e => setForm(f => ({ ...f, location: e.target.value }))}
-                  placeholder="Barn name or address"
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={form.location}
+                    onChange={e => handleLocationChange(e.target.value)}
+                    onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 150)}
+                    onFocus={() => form.location.length >= 2 && locationSuggestions.length > 0 && setShowLocationSuggestions(true)}
+                    placeholder="Start typing an address or barn name…"
+                    autoComplete="off"
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  />
+                  {/* Suggestions dropdown */}
+                  {showLocationSuggestions && locationSuggestions.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+                      {locationSuggestions.map((s, i) => (
+                        <button
+                          key={s.place_id}
+                          type="button"
+                          onMouseDown={() => selectLocation(s.description)}
+                          className={`flex w-full items-start gap-3 px-4 py-3 text-left text-sm transition hover:bg-slate-50 ${i < locationSuggestions.length - 1 ? 'border-b border-slate-100' : ''}`}
+                        >
+                          <span className="mt-0.5 shrink-0 text-slate-400">📍</span>
+                          <span className="text-slate-700">{s.description}</span>
+                        </button>
+                      ))}
+                      <div className="flex items-center justify-end gap-1 border-t border-slate-100 px-4 py-1.5">
+                        <span className="text-[10px] text-slate-400">Powered by</span>
+                        <span className="text-[10px] font-medium text-slate-500">Google</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Notes */}
