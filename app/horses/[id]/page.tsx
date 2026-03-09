@@ -191,6 +191,11 @@ export default function HorseDetailPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const cameraInputRef = useRef<HTMLInputElement>(null)
+  const [showCameraModal, setShowCameraModal] = useState(false)
+  const [cameraError, setCameraError] = useState<string | null>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
 
   async function checkUser() {
     const {
@@ -824,6 +829,47 @@ export default function HorseDetailPage() {
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] || null
     setSelectedFile(file)
+  }
+
+  async function openCamera() {
+    setCameraError(null)
+    setShowCameraModal(true)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' },
+      })
+      streamRef.current = stream
+      // Wait for the modal to mount before assigning srcObject
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+        }
+      }, 50)
+    } catch {
+      setCameraError('Could not access camera. Please allow camera permission and try again.')
+    }
+  }
+
+  function capturePhoto() {
+    if (!videoRef.current || !canvasRef.current) return
+    const video = videoRef.current
+    const canvas = canvasRef.current
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    canvas.getContext('2d')?.drawImage(video, 0, 0)
+    canvas.toBlob((blob) => {
+      if (!blob) return
+      const file = new File([blob], `photo-${Date.now()}.jpg`, { type: 'image/jpeg' })
+      setSelectedFile(file)
+      closeCamera()
+    }, 'image/jpeg', 0.92)
+  }
+
+  function closeCamera() {
+    streamRef.current?.getTracks().forEach((t) => t.stop())
+    streamRef.current = null
+    setShowCameraModal(false)
+    setCameraError(null)
   }
 
   async function emailVisitPdf(visitId: string) {
@@ -2099,6 +2145,15 @@ export default function HorseDetailPage() {
                 </Field>
 
                 <Field label="Image File">
+                  {/* Hidden fallback for browsers that don't support getUserMedia */}
+                  <input
+                    ref={cameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
                   <div className="flex gap-2">
                     <input
                       type="file"
@@ -2106,28 +2161,82 @@ export default function HorseDetailPage() {
                       onChange={handleFileChange}
                       className="w-full rounded-xl border border-slate-300 px-4 py-3"
                     />
-                    {/* Hidden camera-capture input — opens device camera directly */}
-                    <input
-                      ref={cameraInputRef}
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
                     <button
                       type="button"
-                      onClick={() => cameraInputRef.current?.click()}
-                      title="Take a photo"
-                      className="flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-700 hover:bg-slate-50 transition-colors shrink-0"
+                      onClick={openCamera}
+                      title="Take a photo with your camera"
+                      className="flex items-center gap-2 rounded-xl bg-[#0f2040] px-4 py-3 text-white font-semibold hover:bg-[#162d55] active:scale-95 transition-all shrink-0 shadow-md"
                     >
-                      📷
+                      <span className="text-lg leading-none">📷</span>
+                      <span className="text-sm whitespace-nowrap">Take Photo</span>
                     </button>
                   </div>
                   {selectedFile && (
-                    <p className="mt-1 text-xs text-slate-500">Selected: {selectedFile.name}</p>
+                    <p className="mt-2 flex items-center gap-1 text-xs text-emerald-600 font-medium">
+                      <span>✓</span> Ready: {selectedFile.name}
+                    </p>
                   )}
                 </Field>
+
+                {/* Camera Modal */}
+                {showCameraModal && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+                    <div className="w-full max-w-lg rounded-3xl bg-white shadow-2xl overflow-hidden">
+                      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                        <h3 className="text-lg font-semibold text-slate-900">Take a Photo</h3>
+                        <button
+                          type="button"
+                          onClick={closeCamera}
+                          className="text-slate-400 hover:text-slate-600 text-2xl leading-none"
+                        >
+                          ×
+                        </button>
+                      </div>
+                      <div className="relative bg-black">
+                        {cameraError ? (
+                          <div className="flex flex-col items-center justify-center gap-3 p-8 text-center">
+                            <span className="text-4xl">📷</span>
+                            <p className="text-sm text-slate-600">{cameraError}</p>
+                            <button
+                              type="button"
+                              onClick={() => { closeCamera(); cameraInputRef.current?.click() }}
+                              className="rounded-xl bg-[#0f2040] px-5 py-2.5 text-sm text-white hover:bg-[#162d55]"
+                            >
+                              Choose from Library Instead
+                            </button>
+                          </div>
+                        ) : (
+                          <video
+                            ref={videoRef}
+                            autoPlay
+                            playsInline
+                            muted
+                            className="w-full"
+                          />
+                        )}
+                        <canvas ref={canvasRef} className="hidden" />
+                      </div>
+                      {!cameraError && (
+                        <div className="flex gap-3 p-4">
+                          <button
+                            type="button"
+                            onClick={closeCamera}
+                            className="flex-1 rounded-xl border border-slate-200 px-5 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={capturePhoto}
+                            className="flex-1 rounded-xl bg-[#0f2040] px-5 py-3 text-sm font-semibold text-white hover:bg-[#162d55] shadow"
+                          >
+                            📸 Capture
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <button
                   onClick={addPhoto}
