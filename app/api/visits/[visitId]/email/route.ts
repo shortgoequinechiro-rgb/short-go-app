@@ -13,6 +13,14 @@ const REGION_LABELS: Record<string, string> = {
   hock: 'Hock',
 }
 
+const SPINE_SEGMENT_LABELS: Record<string, string> = {
+  tmj: 'TMJ', poll: 'Poll (C0-C1)', c1_c2: 'C1-C2 (Atlas/Axis)',
+  c2_c3: 'C2-C3', c3_c4: 'C3-C4', c4_c5: 'C4-C5', c5_c6: 'C5-C6', c6_c7: 'C6-C7',
+  ...Object.fromEntries(Array.from({ length: 17 }, (_, i) => [`t${i+1}_${i+2}`, `T${i+1}-T${i+2}`])),
+  ...Object.fromEntries(Array.from({ length: 6 },  (_, i) => [`l${i+1}_${i+2}`, `L${i+1}-L${i+2}`])),
+  sacrum: 'Sacrum', si_joint: 'SI Joint', coccygeal: 'Coccygeal',
+}
+
 type VisitPhotoRow = {
   id: string
   caption: string | null
@@ -132,6 +140,7 @@ async function buildVisitPdf(visitId: string) {
         breed,
         sex,
         age,
+        species,
         discipline,
         barn_location,
         owners (
@@ -158,6 +167,14 @@ async function buildVisitPdf(visitId: string) {
   if (anatomyError) {
     throw new Error(`Error loading anatomy notes: ${anatomyError.message}`)
   }
+
+  const { data: spineData } = await supabase
+    .from('spine_assessments')
+    .select('findings, notes')
+    .eq('visit_id', visitId)
+    .order('assessed_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
 
   const { data: visitPhotos, error: photosError } = await supabase
     .from('photos')
@@ -323,7 +340,8 @@ async function buildVisitPdf(visitId: string) {
     }
 
     const generatedText = `Generated: ${new Date().toLocaleDateString()}`
-    const horseText = `Horse: ${horse?.name || '—'}`
+    const speciesLabel = horse?.species === 'canine' ? 'Canine' : 'Horse'
+    const horseText = `${speciesLabel}: ${horse?.name || '—'}`
     drawTextLine(generatedText, pageWidth - margin - 120, y - 2, 9, false, colors.muted)
     drawTextLine(horseText, pageWidth - margin - 120, y - 18, 9, true, colors.text)
 
@@ -503,6 +521,22 @@ async function buildVisitPdf(visitId: string) {
     for (const row of anatomyRows) {
       const label = REGION_LABELS[row.region_key] || row.region_key
       drawParagraph(label, row.notes || '—')
+    }
+  }
+
+  if (spineData?.findings) {
+    const findings = spineData.findings as Record<string, { left: boolean; right: boolean }>
+    const flagged = Object.entries(findings).filter(([, v]) => v.left || v.right)
+    if (flagged.length > 0) {
+      drawSectionTitle('Spine Assessment')
+      for (const [segKey, val] of flagged) {
+        const label = SPINE_SEGMENT_LABELS[segKey] || segKey
+        const sides = [val.left && 'Left', val.right && 'Right'].filter(Boolean).join(' / ')
+        drawParagraph(label, sides)
+      }
+      if (spineData.notes) {
+        drawParagraph('Notes', spineData.notes)
+      }
     }
   }
 
