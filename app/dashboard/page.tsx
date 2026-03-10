@@ -23,6 +23,8 @@ type Horse = {
   breed: string | null
   discipline: string | null
   barn_location: string | null
+  age: string | null
+  gender: string | null
   species: 'equine' | 'canine' | null
   archived: boolean
   created_at: string
@@ -60,8 +62,6 @@ type TodayAppointment = {
   } | null
 }
 
-type SearchMode = 'owner' | 'horse' | 'visit'
-
 const RECENT_OWNER_IDS_KEY = 'shortgo_recent_owner_ids'
 const RECENT_HORSE_IDS_KEY = 'shortgo_recent_horse_ids'
 
@@ -92,8 +92,7 @@ export default function Home() {
 
   const findRecordsRef = useRef<HTMLDivElement>(null)
 
-  function handleStatCardClick(mode: SearchMode) {
-    setSearchMode(mode)
+  function handleStatCardClick() {
     setTimeout(() => {
       findRecordsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }, 50)
@@ -108,10 +107,10 @@ export default function Home() {
   const [horseName, setHorseName] = useState('')
   const [horseBreed, setHorseBreed] = useState('')
   const [horseDiscipline, setHorseDiscipline] = useState('')
-  const [barnLocation, setBarnLocation] = useState('')
+  const [horseAge, setHorseAge] = useState('')
+  const [horseGender, setHorseGender] = useState('')
   const [addSpecies, setAddSpecies] = useState<'equine' | 'canine'>('equine')
 
-  const [searchMode, setSearchMode] = useState<SearchMode>('owner')
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedOwnerId, setSelectedOwnerId] = useState<string | null>(null)
 
@@ -388,7 +387,8 @@ export default function Home() {
         name: horseName,
         breed: horseBreed || null,
         discipline: horseDiscipline || null,
-        barn_location: barnLocation || null,
+        age: horseAge || null,
+        gender: horseGender || null,
         species: addSpecies,
         archived: false,
         practitioner_id: userId,
@@ -404,7 +404,8 @@ export default function Home() {
     setHorseName('')
     setHorseBreed('')
     setHorseDiscipline('')
-    setBarnLocation('')
+    setHorseAge('')
+    setHorseGender('')
     setAddSpecies('equine')
     await loadHorses()
   }
@@ -616,10 +617,7 @@ export default function Home() {
 
   const filteredOwners = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
-
-    if (searchMode !== 'owner') return []
     if (!query) return owners
-
     return owners.filter((owner) => {
       return (
         owner.full_name.toLowerCase().includes(query) ||
@@ -628,29 +626,27 @@ export default function Home() {
         (owner.address || '').toLowerCase().includes(query)
       )
     })
-  }, [owners, searchTerm, searchMode])
+  }, [owners, searchTerm])
 
-  const filteredHorses = useMemo(() => {
+  // Patients matching the search term (shown as a second section when typing)
+  const filteredPatients = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
+    if (!query) return []
+    return horses.filter((horse) => {
+      return (
+        horse.name.toLowerCase().includes(query) ||
+        (horse.owners?.full_name || '').toLowerCase().includes(query) ||
+        (horse.breed || '').toLowerCase().includes(query) ||
+        (horse.discipline || '').toLowerCase().includes(query)
+      )
+    })
+  }, [horses, searchTerm])
 
-    if (searchMode === 'horse') {
-      if (!query) return []
-
-      return horses.filter((horse) => {
-        return (
-          horse.name.toLowerCase().includes(query) ||
-          (horse.owners?.full_name || '').toLowerCase().includes(query) ||
-          (horse.breed || '').toLowerCase().includes(query) ||
-          (horse.discipline || '').toLowerCase().includes(query) ||
-          (horse.barn_location || '').toLowerCase().includes(query)
-        )
-      })
-    }
-
+  // Patients belonging to the selected owner (shown in the right panel)
+  const filteredHorses = useMemo(() => {
     if (!selectedOwnerId) return []
-
     return horses.filter((horse) => horse.owner_id === selectedOwnerId)
-  }, [horses, searchTerm, searchMode, selectedOwnerId])
+  }, [horses, selectedOwnerId])
 
   const selectedOwner = useMemo(() => {
     if (!selectedOwnerId) return null
@@ -669,20 +665,6 @@ export default function Home() {
       .filter((horse): horse is Horse => Boolean(horse))
   }, [recentHorseIds, horses])
 
-  const filteredVisits = useMemo(() => {
-    if (searchMode !== 'visit') return []
-    const query = searchTerm.trim().toLowerCase()
-    if (!query) return recentVisits
-    return recentVisits.filter((visit) => {
-      return (
-        (visit.reason_for_visit || '').toLowerCase().includes(query) ||
-        (visit.visit_date || '').includes(query) ||
-        (visit.horses?.name || '').toLowerCase().includes(query) ||
-        (visit.horses?.owners?.full_name || '').toLowerCase().includes(query)
-      )
-    })
-  }, [recentVisits, searchTerm, searchMode])
-
   useEffect(() => {
     async function init() {
       const isLoggedIn = await checkUser()
@@ -699,13 +681,6 @@ export default function Home() {
 
     init()
   }, [])
-
-  useEffect(() => {
-    if (searchMode === 'horse') {
-      setSelectedOwnerId(null)
-      setEditingOwner(false)
-    }
-  }, [searchMode])
 
   useEffect(() => {
     if (selectedOwner) {
@@ -868,172 +843,106 @@ export default function Home() {
                 Find Records
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                Owner results are scrollable. Horse results appear through search.
+                Search owners or patients by name, phone, breed, and more.
               </p>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-[180px_1fr] xl:min-w-[560px]">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Search By
-                </label>
-                <select
-                  value={searchMode}
-                  onChange={(e) => setSearchMode(e.target.value as SearchMode)}
-                  className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
-                >
-                  <option value="owner">Owner</option>
-                  <option value="horse">Patient</option>
-                  <option value="visit">Visit</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Search
-                </label>
-                <input
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
-                  placeholder={
-                    searchMode === 'owner'
-                      ? 'Search owner name, phone, email, or address...'
-                      : searchMode === 'horse'
-                      ? 'Search patient, owner, breed, discipline, location...'
-                      : 'Search visit by horse, owner, date (2026-03-07), or reason...'
-                  }
-                />
-              </div>
+            <div className="xl:min-w-[560px]">
+              <label className="mb-1 block text-sm font-medium text-slate-700">
+                Search
+              </label>
+              <input
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value)
+                  setSelectedOwnerId(null)
+                  setEditingOwner(false)
+                }}
+                className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                placeholder="Search owner name, patient name, phone, breed..."
+              />
             </div>
           </div>
 
           <div className="mt-6 grid gap-6 xl:grid-cols-[340px_1fr]">
             <div className="rounded-3xl bg-[#edf2f7] p-4 md:p-5">
               <div className="flex items-center justify-between gap-3">
-                <h3 className="text-lg font-semibold text-slate-900">
-                  {searchMode === 'owner' ? 'Owner Results' : searchMode === 'horse' ? 'All Patients' : 'Visit Results'}
-                </h3>
+                <h3 className="text-lg font-semibold text-slate-900">Results</h3>
                 <span className="text-xs text-slate-500">
-                  {searchMode === 'owner'
-                    ? `${filteredOwners.length} result${filteredOwners.length === 1 ? '' : 's'}`
-                    : searchMode === 'horse'
-                    ? `${horses.length} patient${horses.length === 1 ? '' : 's'}`
-                    : `${filteredVisits.length} result${filteredVisits.length === 1 ? '' : 's'}`}
+                  {filteredOwners.length} owner{filteredOwners.length === 1 ? '' : 's'}
+                  {filteredPatients.length > 0 ? `, ${filteredPatients.length} patient${filteredPatients.length === 1 ? '' : 's'}` : ''}
                 </span>
               </div>
 
               <div className="mt-4 h-[520px] overflow-y-scroll pr-2">
                 <div className="space-y-3">
-                  {searchMode === 'owner' ? (
-                    filteredOwners.length === 0 ? (
-                      <p className="text-sm text-slate-500">No owners found.</p>
-                    ) : (
-                      filteredOwners.map((owner) => {
-                        const isSelected = selectedOwnerId === owner.id
+                  {/* Owners section */}
+                  {searchTerm.trim() && filteredPatients.length > 0 && (
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400">Owners</p>
+                  )}
+                  {filteredOwners.length === 0 ? (
+                    <p className="text-sm text-slate-500">No owners found.</p>
+                  ) : (
+                    filteredOwners.map((owner) => {
+                      const isSelected = selectedOwnerId === owner.id
+                      return (
+                        <button
+                          key={owner.id}
+                          onClick={() => {
+                            setSelectedOwnerId(owner.id)
+                            setEditingOwner(false)
+                          }}
+                          className={`w-full rounded-2xl border p-4 text-left transition ${
+                            isSelected
+                              ? 'border-[#0f2040] bg-[#0f2040] text-white'
+                              : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
+                          }`}
+                        >
+                          <p className="font-semibold">{owner.full_name}</p>
+                          <p className={`mt-1 text-sm ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
+                            {formatPhone(owner.phone)}
+                          </p>
+                          <p className={`text-sm ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
+                            {owner.email || 'No email'}
+                          </p>
+                        </button>
+                      )
+                    })
+                  )}
 
-                        return (
-                          <button
-                            key={owner.id}
-                            onClick={() => {
-                              setSelectedOwnerId(owner.id)
-                              setEditingOwner(false)
-                            }}
-                            className={`w-full rounded-2xl border p-4 text-left transition ${
-                              isSelected
-                                ? 'border-[#0f2040] bg-[#0f2040] text-white'
-                                : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
-                            }`}
-                          >
-                            <p className="font-semibold">{owner.full_name}</p>
-                            <p
-                              className={`mt-1 text-sm ${
-                                isSelected ? 'text-slate-300' : 'text-slate-500'
-                              }`}
-                            >
-                              {formatPhone(owner.phone)}
-                            </p>
-                            <p
-                              className={`text-sm ${
-                                isSelected ? 'text-slate-300' : 'text-slate-500'
-                              }`}
-                            >
-                              {owner.email || 'No email'}
-                            </p>
-                            <p
-                              className={`mt-1 text-sm ${
-                                isSelected ? 'text-slate-300' : 'text-slate-500'
-                              }`}
-                            >
-                              {owner.address || 'No address'}
-                            </p>
-                          </button>
-                        )
-                      })
-                    )
-                  ) : searchMode === 'horse' ? (
-                    horses.length === 0 ? (
-                      <p className="text-sm text-slate-500">No horses on file yet.</p>
-                    ) : (
-                      [...horses].sort((a, b) => a.name.localeCompare(b.name)).map((horse) => (
+                  {/* Patients section — only appears when search term matches patients */}
+                  {filteredPatients.length > 0 && (
+                    <>
+                      <p className="pt-2 text-[11px] font-semibold uppercase tracking-widest text-slate-400">Patients</p>
+                      {filteredPatients.map((horse) => (
                         <Link
                           key={horse.id}
                           href={`/horses/${horse.id}`}
-                          className="block rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300"
+                          className="block rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm"
                         >
                           <p className="font-semibold text-slate-900">{horse.name}</p>
                           <p className="mt-1 text-sm text-slate-500">
-                            Owner: {horse.owners?.full_name || '—'}
+                            {horse.owners?.full_name || '—'}
                           </p>
-                          <p className="text-sm text-slate-500">
-                            {horse.discipline || 'No discipline'}
-                          </p>
+                          {horse.breed && (
+                            <p className="text-sm text-slate-400">{horse.breed}</p>
+                          )}
                         </Link>
-                      ))
-                    )
-                  ) : filteredVisits.length === 0 ? (
-                    <p className="text-sm text-slate-500">No visits found.</p>
-                  ) : (
-                    filteredVisits.map((visit) => (
-                      <Link
-                        key={visit.id}
-                        href={`/horses/${visit.horse_id}`}
-                        className="block rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300"
-                      >
-                        <p className="font-semibold text-slate-900">
-                          {visit.horses?.name || '—'}
-                        </p>
-                        <p className="mt-1 text-sm text-slate-500">
-                          {formatDate(visit.visit_date)}
-                        </p>
-                        <p className="text-sm text-slate-500">
-                          {visit.reason_for_visit || 'No reason noted'}
-                        </p>
-                        <p className="text-sm text-slate-400">
-                          {visit.horses?.owners?.full_name || '—'}
-                        </p>
-                      </Link>
-                    ))
+                      ))}
+                    </>
                   )}
                 </div>
               </div>
             </div>
 
             <div className="rounded-3xl border border-slate-200 bg-white p-5 md:p-6">
-              {searchMode === 'visit' ? (
+              {!selectedOwner ? (
                 <div className="flex min-h-[300px] items-center justify-center rounded-2xl border border-dashed border-slate-300">
-                  <p className="text-center text-slate-500">
-                    Click any visit to open the horse record.
-                  </p>
+                  <p className="text-slate-500">Select an owner to view their patients.</p>
                 </div>
-              ) : searchMode === 'owner' ? (
-                !selectedOwner ? (
-                  <div className="flex min-h-[300px] items-center justify-center rounded-2xl border border-dashed border-slate-300">
-                    <p className="text-slate-500">Select an owner to view horses.</p>
-                  </div>
-                ) : (
-                  <div>
-                    <div className="rounded-2xl bg-slate-100 p-4">
+              ) : (
+                <div>
+                  <div className="rounded-2xl bg-slate-100 p-4">
                       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                         <div>
                           <h3 className="text-xl font-semibold text-slate-900">
@@ -1219,58 +1128,6 @@ export default function Home() {
                       </div>
                     </div>
                   </div>
-                )
-              ) : (
-                <div>
-                  <h3 className="text-xl font-semibold text-slate-900">
-                    Matching Patients
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Click a patient to open info, visits, and pictures.
-                  </p>
-
-                  <div className="mt-5 grid gap-4 md:grid-cols-2">
-                    {filteredHorses.length === 0 ? (
-                      <p className="text-sm text-slate-500">
-                        {searchTerm.trim() ? 'No patients match your search.' : 'Type above to search patients.'}
-                      </p>
-                    ) : (
-                      filteredHorses.map((horse) => (
-                        <Link
-                          key={horse.id}
-                          href={`/horses/${horse.id}`}
-                          className="rounded-3xl border border-slate-200 p-5 transition hover:border-slate-400 hover:bg-slate-50"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="text-xl font-semibold text-slate-900">
-                                {horse.name}
-                              </p>
-                              <p className="mt-1 text-sm text-slate-600">
-                                Owner: {horse.owners?.full_name || '—'}
-                              </p>
-                            </div>
-
-                            <div className="flex flex-col items-end gap-1">
-                              {horse.discipline ? (
-                                <span className="rounded-2xl bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                                  {horse.discipline}
-                                </span>
-                              ) : null}
-                              <span className="rounded-2xl bg-slate-900 px-3 py-1 text-xs font-medium text-white">
-                                {visitCountsByHorse[horse.id] || 0} visit{(visitCountsByHorse[horse.id] || 0) === 1 ? '' : 's'}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="mt-4 grid gap-1 text-sm text-slate-600">
-                            <p>Breed: {horse.breed || '—'}</p>
-                            <p>Barn: {horse.barn_location || '—'}</p>
-                          </div>
-                        </Link>
-                      ))
-                    )}
-                  </div>
                 </div>
               )}
             </div>
@@ -1415,14 +1272,40 @@ export default function Home() {
                 </Field>
               </div>
 
-              <Field label="Location">
-                <input
-                  value={barnLocation}
-                  onChange={(e) => setBarnLocation(e.target.value)}
-                  className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
-                  placeholder={addSpecies === 'canine' ? 'City, kennel, or home' : 'Barn or ranch name'}
-                />
-              </Field>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field label="Age">
+                  <input
+                    value={horseAge}
+                    onChange={(e) => setHorseAge(e.target.value)}
+                    className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                    placeholder="e.g. 5 years"
+                  />
+                </Field>
+
+                <Field label="Gender">
+                  <select
+                    value={horseGender}
+                    onChange={(e) => setHorseGender(e.target.value)}
+                    className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                  >
+                    <option value="">Select gender</option>
+                    {addSpecies === 'equine' ? (
+                      <>
+                        <option value="Mare">Mare</option>
+                        <option value="Stallion">Stallion</option>
+                        <option value="Gelding">Gelding</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="Female">Female</option>
+                        <option value="Male">Male</option>
+                        <option value="Female (Spayed)">Female (Spayed)</option>
+                        <option value="Male (Neutered)">Male (Neutered)</option>
+                      </>
+                    )}
+                  </select>
+                </Field>
+              </div>
 
               <button
                 onClick={addHorse}
