@@ -259,7 +259,7 @@ export default function IntakeFormPage() {
         .from('horses')
         .insert({
           owner_id: ownerId,
-          name: animalName.trim(),
+          name: animalName.trim() || 'Unknown Patient',
           breed: animalBreed || null,
           age: animalAge || null,
           sex: animalGender || null,
@@ -285,8 +285,7 @@ export default function IntakeFormPage() {
         submitted_at: now,
         form_date: now.split('T')[0],
         referral_source: referralSources,
-        animal_name: animalName.trim(),
-        animal_species: animalSpecies,
+        animal_name: animalName.trim() || 'Unknown Patient',
         animal_age: animalAge || null,
         animal_breed: animalBreed || null,
         animal_dob: animalDob || null,
