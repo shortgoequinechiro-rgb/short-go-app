@@ -454,6 +454,16 @@ export default function HorseDetailPage() {
     await loadVisits()
   }
 
+  async function deletePatient() {
+    const confirmed = window.confirm(
+      `Are you sure you want to permanently delete ${horse?.name || 'this patient'}? This will also delete all visits, intake forms, photos, and contacts linked to this record. This cannot be undone.`
+    )
+    if (!confirmed) return
+    const { error } = await supabase.from('horses').delete().eq('id', horseId)
+    if (error) { setMessage(`Error deleting patient: ${error.message}`); return }
+    router.push('/')
+  }
+
   async function saveBehavioralNotes() {
     setSavingBehavioralNotes(true)
     const { error } = await supabase
@@ -1311,12 +1321,20 @@ export default function HorseDetailPage() {
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-xl font-semibold text-slate-900">Patient Info</h2>
                 {!editingHorse ? (
-                  <button
-                    onClick={() => setEditingHorse(true)}
-                    className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
-                  >
-                    Edit
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setEditingHorse(true)}
+                      className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={deletePatient}
+                      className="rounded-xl border border-red-200 bg-white px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 ) : null}
               </div>
 
