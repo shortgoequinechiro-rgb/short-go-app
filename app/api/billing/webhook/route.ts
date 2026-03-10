@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import Stripe from 'stripe'
+import { getStripe } from '../../../lib/stripe'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -28,6 +28,8 @@ export async function POST(req: Request) {
   if (!sig) {
     return NextResponse.json({ error: 'Missing stripe-signature header' }, { status: 400 })
   }
+
+  const stripe = getStripe()
 
   let event: Stripe.Event
   try {
@@ -85,7 +87,7 @@ export async function POST(req: Request) {
           .from('practitioners')
           .update({
             subscription_id: sub.id,
-            subscription_status: sub.status, // use Stripe's status directly
+            subscription_status: sub.status,
             trial_ends_at: sub.trial_end
               ? new Date(sub.trial_end * 1000).toISOString()
               : null,

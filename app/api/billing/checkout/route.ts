@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import Stripe from 'stripe'
+import { getStripe } from '../.././../lib/stripe'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -27,6 +26,8 @@ export async function POST(req: Request) {
       .select('stripe_customer_id, subscription_status')
       .eq('id', user.id)
       .single()
+
+    const stripe = getStripe()
 
     // Get or create Stripe customer
     let customerId = practitioner?.stripe_customer_id
