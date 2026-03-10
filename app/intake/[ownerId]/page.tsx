@@ -283,7 +283,6 @@ export default function IntakeFormPage() {
         form_date: now.split('T')[0],
         referral_source: referralSources,
         animal_name: animalName.trim() || 'Unknown Patient',
-        animal_species: animalSpecies,
         animal_age: animalAge || null,
         animal_breed: animalBreed || null,
         animal_dob: animalDob || null,
@@ -305,6 +304,10 @@ export default function IntakeFormPage() {
       .single()
 
     if (dbError) {
+      // Roll back the horse record we just created so retrying doesn't duplicate it
+      if (selectedHorseId === 'new' && resolvedHorseId) {
+        await supabase.from('horses').delete().eq('id', resolvedHorseId)
+      }
       setError(`Submission error: ${dbError.message}`)
       setSubmitting(false)
       return
