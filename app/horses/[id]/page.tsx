@@ -1235,13 +1235,18 @@ export default function HorseDetailPage() {
                 ⚠️ Behavioral Alert
               </span>
             )}
-            {(consentOnFile || intakeForms.length > 0) ? (
+            {consentOnFile ? (
               <span className="rounded-xl bg-emerald-500 px-3 py-1 text-xs font-bold text-white shadow-sm">
                 ✓ Consent
               </span>
             ) : (
               <span className="rounded-xl bg-red-600 px-3 py-1 text-xs font-bold text-white shadow-sm">
                 <strong>✗</strong> Consent
+              </span>
+            )}
+            {intakeForms.length > 0 && (
+              <span className="rounded-xl bg-blue-500 px-3 py-1 text-xs font-bold text-white shadow-sm">
+                📋 Intake on File
               </span>
             )}
           </div>
@@ -1830,17 +1835,19 @@ export default function HorseDetailPage() {
                       Cancel Edit
                     </button>
 
-                    <Link
-                      href={`/anatomy?visitId=${editingVisitId}&horseName=${encodeURIComponent(horse?.name || '')}`}
-                      className="rounded-xl border border-[#0f2040] bg-[#0f2040] px-4 py-2 text-sm text-white hover:bg-[#162d55] transition-colors"
-                    >
-                      Open Anatomy For This Visit
-                    </Link>
+                    {horse?.species !== 'canine' && (
+                      <Link
+                        href={`/anatomy?visitId=${editingVisitId}&horseName=${encodeURIComponent(horse?.name || '')}`}
+                        className="rounded-xl border border-[#0f2040] bg-[#0f2040] px-4 py-2 text-sm text-white hover:bg-[#162d55] transition-colors"
+                      >
+                        Open Anatomy For This Visit
+                      </Link>
+                    )}
                   </div>
                 ) : null}
               </div>
 
-              {editingVisitId && activeVisitAnatomyCount > 0 ? (
+              {horse?.species !== 'canine' && editingVisitId && activeVisitAnatomyCount > 0 ? (
                 <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <p className="text-sm font-semibold text-slate-900">
                     Using saved anatomy notes from this visit
@@ -2063,20 +2070,22 @@ export default function HorseDetailPage() {
                               {formatDate(visit.visit_date)}
                             </p>
 
-                            <div className="mt-2">
-                              {anatomyRegionCounts[visit.id] ? (
-                                <span className="inline-flex rounded-2xl bg-[#0f2040] px-3 py-1 text-xs font-medium text-white">
-                                  Anatomy Notes: {anatomyRegionCounts[visit.id]} region
-                                  {anatomyRegionCounts[visit.id] === 1 ? '' : 's'}
-                                </span>
-                              ) : (
-                                <span className="inline-flex rounded-2xl bg-[#edf2f7] px-3 py-1 text-xs font-medium text-slate-600">
-                                  No anatomy notes yet
-                                </span>
-                              )}
-                            </div>
+                            {horse?.species !== 'canine' && (
+                              <div className="mt-2">
+                                {anatomyRegionCounts[visit.id] ? (
+                                  <span className="inline-flex rounded-2xl bg-[#0f2040] px-3 py-1 text-xs font-medium text-white">
+                                    Anatomy Notes: {anatomyRegionCounts[visit.id]} region
+                                    {anatomyRegionCounts[visit.id] === 1 ? '' : 's'}
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex rounded-2xl bg-[#edf2f7] px-3 py-1 text-xs font-medium text-slate-600">
+                                    No anatomy notes yet
+                                  </span>
+                                )}
+                              </div>
+                            )}
 
-                            {anatomyRegionNamesByVisit[visit.id]?.length ? (
+                            {horse?.species !== 'canine' && anatomyRegionNamesByVisit[visit.id]?.length ? (
                               <div className="mt-2 flex flex-wrap gap-2">
                                 {anatomyRegionNamesByVisit[visit.id].map((regionName) => (
                                   <span
@@ -2091,12 +2100,14 @@ export default function HorseDetailPage() {
                           </div>
 
                           <div className="flex flex-wrap gap-2">
-                            <Link
-                              href={`/anatomy?visitId=${visit.id}&horseName=${encodeURIComponent(horse?.name || '')}`}
-                              className="rounded-xl border border-[#0f2040] bg-[#0f2040] px-3 py-2 text-sm text-white hover:bg-[#162d55] transition-colors"
-                            >
-                              Open Anatomy
-                            </Link>
+                            {horse?.species !== 'canine' && (
+                              <Link
+                                href={`/anatomy?visitId=${visit.id}&horseName=${encodeURIComponent(horse?.name || '')}`}
+                                className="rounded-xl border border-[#0f2040] bg-[#0f2040] px-3 py-2 text-sm text-white hover:bg-[#162d55] transition-colors"
+                              >
+                                Open Anatomy
+                              </Link>
+                            )}
 
                             <Link
                               href={`/horses/${horse?.id}/spine?visitId=${visit.id}&species=${horse?.species || 'equine'}`}
@@ -2144,7 +2155,7 @@ export default function HorseDetailPage() {
                           </div>
                         </div>
 
-                        {visitAnatomyItems.length > 0 ? (
+                        {horse?.species !== 'canine' && visitAnatomyItems.length > 0 ? (
                           <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                             <div className="flex flex-wrap items-center justify-between gap-3">
                               <p className="text-sm font-semibold text-slate-900">
