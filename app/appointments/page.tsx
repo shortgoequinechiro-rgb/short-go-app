@@ -121,8 +121,10 @@ function generateIcs(appt: Appointment): string {
     dtStart = `DTSTART:${fmtLocal(start)}`
     dtEnd   = `DTEND:${fmtLocal(end)}`
   } else {
+    const nextDay = new Date(y, m - 1, d + 1)
+    const nextDateOnly = `${nextDay.getFullYear()}${pad(nextDay.getMonth() + 1)}${pad(nextDay.getDate())}`
     dtStart = `DTSTART;VALUE=DATE:${dateOnly}`
-    dtEnd   = `DTEND;VALUE=DATE:${dateOnly}`
+    dtEnd   = `DTEND;VALUE=DATE:${nextDateOnly}`
   }
 
   const horseName = appt.horses?.name || 'Horse'

@@ -56,7 +56,7 @@ Rules:
 `.trim()
 
     const response = await client.responses.create({
-      model: 'gpt-5-mini',
+      model: 'gpt-4o-mini',
       input: prompt,
     })
 

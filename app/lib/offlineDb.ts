@@ -1,4 +1,5 @@
 import Dexie, { type Table } from 'dexie'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -60,8 +61,7 @@ export const offlineDb = new OfflineDB()
 
 // ── Sync ──────────────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function syncPendingData(supabase: any) {
+export async function syncPendingData(supabase: SupabaseClient) {
   if (!navigator.onLine) return { synced: 0, failed: 0 }
 
   const horses = await offlineDb.pendingHorses.toArray()
