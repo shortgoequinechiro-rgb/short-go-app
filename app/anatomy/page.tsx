@@ -455,12 +455,14 @@ function AnatomyContent() {
     if (!selectedLandmark) return
 
     if (visitId) {
+      const { data: { user } } = await supabase.auth.getUser()
       const { error } = await supabase.from('visit_anatomy_regions').upsert(
         {
           visit_id: visitId,
           region_key: selectedLandmark.key,
           notes: noteDraft,
           updated_at: new Date().toISOString(),
+          practitioner_id: user?.id,
         },
         {
           onConflict: 'visit_id,region_key',
@@ -552,6 +554,7 @@ function AnatomyContent() {
       return
     }
 
+    const { data: { user: photoUser } } = await supabase.auth.getUser()
     const { error: insertError } = await supabase.from('photos').insert([
       {
         horse_id: horseId,
@@ -559,6 +562,7 @@ function AnatomyContent() {
         caption: 'Anatomy Screenshot',
         body_area: selectedLandmark?.title || null,
         image_path: filePath,
+        practitioner_id: photoUser?.id,
       },
     ])
 
