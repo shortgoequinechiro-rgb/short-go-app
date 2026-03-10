@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 
@@ -22,6 +22,7 @@ type ConsentRecord = {
   form_version: string
   horses_acknowledged: string | null
   notes: string | null
+  signature_data: string | null
 }
 
 // ── SQL Setup hint ────────────────────────────────────────────────────────────
@@ -35,10 +36,14 @@ CREATE TABLE consent_forms (
   form_version         text DEFAULT '1.0',
   horses_acknowledged  text,
   notes                text,
+  signature_data       text,
   created_at           timestamptz DEFAULT now()
 );
 
 CREATE INDEX ON consent_forms (owner_id, signed_at DESC);
+
+-- If table already exists, add signature_data column:
+-- ALTER TABLE consent_forms ADD COLUMN IF NOT EXISTS signature_data text;
 `.trim()
 
 // ── Agreement items ───────────────────────────────────────────────────────────
@@ -98,13 +103,16 @@ export default function ConsentFormPage() {
   const [linkedHorseId, setLinkedHorseId] = useState<string | null>(null)
 
   // Form state
-  const [signedName, setSignedName] = useState('')
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({})
   const [formNotes, setFormNotes] = useState('')
 
+  // Signature canvas
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const isDrawingRef = useRef(false)
+  const [hasSigned, setHasSigned] = useState(false)
+
   const allChecked =
-    AGREEMENT_ITEMS.every((item) => checkedItems[item.key]) &&
-    signedName.trim().length > 2
+    AGREEMENT_ITEMS.every((item) => checkedItems[item.key]) && hasSigned
 
   // ── Load data ───────────────────────────────────────────────────────────────
 
@@ -112,7 +120,6 @@ export default function ConsentFormPage() {
     async function load() {
       setLoading(true)
 
-      // Owner
       const { data: ownerData, error: ownerError } = await supabase
         .from('owners')
         .select('id, full_name, phone, email')
@@ -125,9 +132,7 @@ export default function ConsentFormPage() {
       }
 
       setOwner(ownerData as Owner)
-      setSignedName(ownerData.full_name || '')
 
-      // Horses for this owner
       const { data: horseData } = await supabase
         .from('horses')
         .select('id, name')
@@ -137,12 +142,10 @@ export default function ConsentFormPage() {
 
       setHorses((horseData || []) as { id: string; name: string }[])
 
-      // Get linked horse from URL if present
       const params = new URLSearchParams(window.location.search)
       const horseIdParam = params.get('horseId')
       if (horseIdParam) setLinkedHorseId(horseIdParam)
 
-      // Existing consents
       const { data: consentData, error: consentError } = await supabase
         .from('consent_forms')
         .select('*')
@@ -150,16 +153,12 @@ export default function ConsentFormPage() {
         .order('signed_at', { ascending: false })
 
       if (consentError) {
-        if (consentError.code === '42P01') {
-          setNoTable(true)
-        }
+        if (consentError.code === '42P01') setNoTable(true)
         setLoading(false)
         return
       }
 
       setExistingConsents((consentData || []) as ConsentRecord[])
-
-      // Auto-open form if no consent on file
       if (!consentData || consentData.length === 0) setShowForm(true)
 
       setLoading(false)
@@ -167,6 +166,61 @@ export default function ConsentFormPage() {
 
     load()
   }, [ownerId])
+
+  // ── Signature canvas helpers ─────────────────────────────────────────────────
+
+  function getCanvasPos(e: React.MouseEvent | React.TouchEvent, canvas: HTMLCanvasElement) {
+    const rect = canvas.getBoundingClientRect()
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
+    if ('touches' in e) {
+      return {
+        x: (e.touches[0].clientX - rect.left) * scaleX,
+        y: (e.touches[0].clientY - rect.top) * scaleY,
+      }
+    }
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+    }
+  }
+
+  function startDraw(e: React.MouseEvent | React.TouchEvent) {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    e.preventDefault()
+    isDrawingRef.current = true
+    const ctx = canvas.getContext('2d')!
+    ctx.beginPath()
+    const pos = getCanvasPos(e, canvas)
+    ctx.moveTo(pos.x, pos.y)
+  }
+
+  function draw(e: React.MouseEvent | React.TouchEvent) {
+    if (!isDrawingRef.current) return
+    const canvas = canvasRef.current
+    if (!canvas) return
+    e.preventDefault()
+    const ctx = canvas.getContext('2d')!
+    ctx.lineWidth = 2.5
+    ctx.lineCap = 'round'
+    ctx.strokeStyle = '#1e293b'
+    const pos = getCanvasPos(e, canvas)
+    ctx.lineTo(pos.x, pos.y)
+    ctx.stroke()
+    setHasSigned(true)
+  }
+
+  function stopDraw() {
+    isDrawingRef.current = false
+  }
+
+  function clearSignature() {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    canvas.getContext('2d')!.clearRect(0, 0, canvas.width, canvas.height)
+    setHasSigned(false)
+  }
 
   // ── Toggle agreement checkbox ───────────────────────────────────────────────
 
@@ -177,19 +231,22 @@ export default function ConsentFormPage() {
   // ── Submit ──────────────────────────────────────────────────────────────────
 
   async function handleSubmit() {
-    if (!allChecked) return
+    if (!allChecked || !owner) return
     setSaving(true)
     setSaveMsg('')
 
+    const canvas = canvasRef.current
+    const signatureData = canvas ? canvas.toDataURL('image/png') : null
     const horsesAcknowledged = horses.map((h) => h.name).join(', ') || null
 
     const { error } = await supabase.from('consent_forms').insert({
       owner_id: ownerId,
-      signed_name: signedName.trim(),
+      signed_name: owner.full_name,
       signed_at: new Date().toISOString(),
       form_version: '1.0',
       horses_acknowledged: horsesAcknowledged,
       notes: formNotes.trim() || null,
+      signature_data: signatureData,
     })
 
     setSaving(false)
@@ -199,7 +256,6 @@ export default function ConsentFormPage() {
       return
     }
 
-    // Reload consents
     const { data: fresh } = await supabase
       .from('consent_forms')
       .select('*')
@@ -210,7 +266,6 @@ export default function ConsentFormPage() {
     setShowForm(false)
     setSaveMsg('Consent form signed and saved.')
 
-    // Return to horse record if we came from one
     if (linkedHorseId) {
       setTimeout(() => router.push(`/horses/${linkedHorseId}`), 1800)
     }
@@ -254,9 +309,7 @@ export default function ConsentFormPage() {
               {backLabel}
             </Link>
             <div>
-              <h1 className="text-lg font-semibold text-slate-900 leading-tight">
-                Consent Form
-              </h1>
+              <h1 className="text-lg font-semibold text-slate-900 leading-tight">Consent Form</h1>
               <p className="text-xs text-slate-500">{owner.full_name}</p>
             </div>
           </div>
@@ -265,7 +318,7 @@ export default function ConsentFormPage() {
             <button
               onClick={() => {
                 setCheckedItems({})
-                setSignedName(owner.full_name || '')
+                clearSignature()
                 setFormNotes('')
                 setSaveMsg('')
                 setShowForm(true)
@@ -312,13 +365,19 @@ export default function ConsentFormPage() {
                       <p className="text-sm font-semibold text-slate-800">{c.signed_name}</p>
                       <p className="text-xs text-slate-500 mt-0.5">{formatDate(c.signed_at)}</p>
                       {c.horses_acknowledged && (
-                        <p className="text-xs text-slate-500 mt-0.5">Horses: {c.horses_acknowledged}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">Animals: {c.horses_acknowledged}</p>
                       )}
                     </div>
                     <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${idx === 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
                       {idx === 0 ? 'Current' : 'Previous'}
                     </span>
                   </div>
+                  {c.signature_data && (
+                    <div className="mt-3 border-t border-slate-200 pt-3">
+                      <p className="text-xs text-slate-400 mb-1">Signature</p>
+                      <img src={c.signature_data} alt="Signature" className="max-h-16 rounded border border-slate-100 bg-white p-1" />
+                    </div>
+                  )}
                   {c.notes && (
                     <p className="mt-2 text-xs text-slate-600 border-t border-slate-200 pt-2">{c.notes}</p>
                   )}
@@ -349,7 +408,7 @@ export default function ConsentFormPage() {
               <p className="mt-2 text-xs text-slate-500">Version 1.0 · {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
             </div>
 
-            {/* Client & horse info */}
+            {/* Client & animal info */}
             <div className="rounded-3xl bg-white px-5 py-5 shadow-sm">
               <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">Client Information</h3>
               <div className="mt-3 grid grid-cols-2 gap-3">
@@ -397,9 +456,7 @@ export default function ConsentFormPage() {
                     <label
                       key={item.key}
                       className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition ${
-                        checked
-                          ? 'border-slate-900 bg-slate-50'
-                          : 'border-slate-200 hover:border-slate-300'
+                        checked ? 'border-slate-900 bg-slate-50' : 'border-slate-200 hover:border-slate-300'
                       }`}
                     >
                       <div className="mt-0.5 flex-shrink-0">
@@ -411,9 +468,7 @@ export default function ConsentFormPage() {
                         />
                       </div>
                       <div>
-                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                          {idx + 1}.
-                        </span>
+                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{idx + 1}.</span>
                         <p className="mt-0.5 text-sm leading-relaxed text-slate-700">{item.text}</p>
                       </div>
                     </label>
@@ -424,22 +479,39 @@ export default function ConsentFormPage() {
 
             {/* Signature */}
             <div className="rounded-3xl bg-white px-5 py-5 shadow-sm">
-              <h3 className="text-base font-semibold text-slate-900">Digital Signature</h3>
+              <h3 className="text-base font-semibold text-slate-900">Signature</h3>
               <p className="mt-1 text-sm text-slate-500">
-                Type your full legal name below to sign this agreement.
+                Sign below using your finger or stylus to confirm your agreement.
               </p>
 
               <div className="mt-4">
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                  Full Name <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={signedName}
-                  onChange={(e) => setSignedName(e.target.value)}
-                  placeholder="Type your full name"
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
-                />
+                <div className="overflow-hidden rounded-2xl border-2 border-dashed border-slate-300 bg-white">
+                  <canvas
+                    ref={canvasRef}
+                    width={600}
+                    height={180}
+                    className="w-full touch-none cursor-crosshair"
+                    onMouseDown={startDraw}
+                    onMouseMove={draw}
+                    onMouseUp={stopDraw}
+                    onMouseLeave={stopDraw}
+                    onTouchStart={startDraw}
+                    onTouchMove={draw}
+                    onTouchEnd={stopDraw}
+                  />
+                </div>
+                <div className="mt-2 flex items-center justify-between">
+                  <p className="text-xs text-slate-400">
+                    {hasSigned ? '✓ Signature captured' : 'Sign in the box above'}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={clearSignature}
+                    className="text-xs text-slate-400 underline hover:text-slate-600"
+                  >
+                    Clear
+                  </button>
+                </div>
               </div>
 
               <div className="mt-4">
@@ -450,14 +522,14 @@ export default function ConsentFormPage() {
                   value={formNotes}
                   onChange={(e) => setFormNotes(e.target.value)}
                   rows={2}
-                  placeholder="Any additional notes or conditions (e.g. allergies, concerns)…"
+                  placeholder="Any additional notes or conditions…"
                   className="w-full resize-none rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900"
                 />
               </div>
 
               <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
                 <p className="text-xs text-slate-500">
-                  By signing above, you confirm that you have read and agree to all items in this consent form and that you are the authorized owner or guardian of the animal(s) listed.
+                  By signing above, <strong>{owner.full_name}</strong> confirms they have read and agree to all items in this consent form and are the authorized owner or guardian of the animal(s) listed.
                 </p>
                 <p className="text-xs text-slate-400 mt-1">
                   Date: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
@@ -485,7 +557,8 @@ export default function ConsentFormPage() {
 
             {!allChecked && (
               <p className="text-center text-xs text-slate-400">
-                {AGREEMENT_ITEMS.filter((i) => !checkedItems[i.key]).length} item{AGREEMENT_ITEMS.filter((i) => !checkedItems[i.key]).length !== 1 ? 's' : ''} remaining · Signature {signedName.trim().length > 2 ? '✓' : 'required'}
+                {AGREEMENT_ITEMS.filter((i) => !checkedItems[i.key]).length} item{AGREEMENT_ITEMS.filter((i) => !checkedItems[i.key]).length !== 1 ? 's' : ''} remaining
+                {!hasSigned ? ' · Signature required' : ''}
               </p>
             )}
           </div>
