@@ -4,8 +4,12 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 
-// These paths bypass the billing check entirely
-const PUBLIC_PATHS = ['/login', '/intake', '/consent', '/billing']
+// These paths bypass billing/onboarding checks entirely.
+// - /login, /signup: unauthenticated entry points
+// - /onboarding: new user setup (can't check billing before onboarding completes)
+// - /intake, /consent: accessed by horse owners without any account
+// - /billing: the paywall destination itself
+const PUBLIC_PATHS = ['/login', '/signup', '/onboarding', '/intake', '/consent', '/billing']
 
 export default function BillingGate({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -16,39 +20,34 @@ export default function BillingGate({ children }: { children: React.ReactNode })
   const isPublic = PUBLIC_PATHS.some((p) => pathname?.startsWith(p))
 
   useEffect(() => {
-    // Public paths (login, intake forms, consent forms, billing page itself) always pass through
+    // Public paths always pass through without any checks
     if (isPublic) {
       setReady(true)
       return
     }
 
-    // Only run the billing check once per mount cycle
+    // Only run once per mount cycle to avoid double-checks
     if (checked.current) return
     checked.current = true
 
-    async function checkBilling() {
+    async function checkAccess() {
       // Get current user
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+      const { data: { user } } = await supabase.auth.getUser()
 
       if (!user) {
-        // Not logged in — let the page handle its own redirect to /login
+        // Not logged in — let the individual page handle its own auth redirect
         setReady(true)
         return
       }
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-
+      const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
         setReady(true)
         return
       }
 
       try {
-        // Ensure practitioner record exists (creates it if first login)
+        // Ensure practitioner record exists (creates a 14-day trial for brand-new signups)
         const res = await fetch('/api/billing/ensure-practitioner', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -56,13 +55,21 @@ export default function BillingGate({ children }: { children: React.ReactNode })
         })
 
         if (!res.ok) {
-          // If the API fails for some reason, don't block the user
+          // If the check fails, don't block the user — fail open
           console.error('BillingGate: ensure-practitioner returned', res.status)
           setReady(true)
           return
         }
 
         const practitioner = await res.json()
+
+        // 1. Onboarding check — new users must complete setup first
+        if (!practitioner.onboarding_complete) {
+          router.push('/onboarding')
+          return
+        }
+
+        // 2. Billing check — block access if trial expired or subscription is not active
         const status = practitioner.subscription_status as string
         const trialEnd = practitioner.trial_ends_at
           ? new Date(practitioner.trial_ends_at)
@@ -77,17 +84,17 @@ export default function BillingGate({ children }: { children: React.ReactNode })
           return
         }
       } catch (err) {
+        // On network error, fail open so we don't lock users out unexpectedly
         console.error('BillingGate error:', err)
-        // On network error, don't block the user
       }
 
       setReady(true)
     }
 
-    checkBilling()
+    checkAccess()
   }, [pathname, isPublic, router])
 
-  // Show a minimal loading state while checking billing (only on protected routes)
+  // Show a minimal loading state while checking (only on gated routes)
   if (!ready && !isPublic) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
