@@ -242,9 +242,6 @@ export default function IntakeFormPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-
-    if (!hasSigned) { setError('Please sign the consent form before submitting.'); return }
-
     setSubmitting(true)
 
     const canvas = canvasRef.current
@@ -270,7 +267,7 @@ export default function IntakeFormPage() {
         .single()
 
       if (horseError || !newHorse) {
-        setError('Could not create patient record. Please try again.')
+        setError(`Could not create patient record: ${horseError?.message || 'unknown error'}`)
         setSubmitting(false)
         return
       }
@@ -286,6 +283,7 @@ export default function IntakeFormPage() {
         form_date: now.split('T')[0],
         referral_source: referralSources,
         animal_name: animalName.trim() || 'Unknown Patient',
+        animal_species: animalSpecies,
         animal_age: animalAge || null,
         animal_breed: animalBreed || null,
         animal_dob: animalDob || null,
@@ -307,7 +305,7 @@ export default function IntakeFormPage() {
       .single()
 
     if (dbError) {
-      setError('There was an error submitting the form. Please try again.')
+      setError(`Submission error: ${dbError.message}`)
       setSubmitting(false)
       return
     }
@@ -380,7 +378,7 @@ export default function IntakeFormPage() {
           <p className="mt-2 text-sm text-slate-500">Short-Go Equine Chiropractic · Dr. Andrew Leo, D.C. c.AVCA</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} noValidate className="space-y-6">
 
           {/* ── Owner Info ── */}
           <Section title="Owner Information">
