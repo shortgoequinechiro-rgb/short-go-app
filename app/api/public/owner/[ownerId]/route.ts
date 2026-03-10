@@ -11,9 +11,9 @@ const supabaseAdmin = createClient(
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { ownerId: string } }
+  { params }: { params: Promise<{ ownerId: string }> }
 ) {
-  const { ownerId } = params
+  const { ownerId } = await params
 
   if (!ownerId) {
     return NextResponse.json({ error: 'ownerId is required' }, { status: 400 })
