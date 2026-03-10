@@ -125,7 +125,7 @@ export default function HorseDetailPage() {
   const [checkingAuth, setCheckingAuth] = useState(true)
   const [userEmail, setUserEmail] = useState('')
   const [message, setMessage] = useState('')
-  const [activeTab, setActiveTab] = useState<'info' | 'visits' | 'photos'>('visits')
+  const [activeTab, setActiveTab] = useState<'info' | 'visits' | 'photos'>('info')
 
   const [owners, setOwners] = useState<Owner[]>([])
   const [horse, setHorse] = useState<Horse | null>(null)
@@ -1298,7 +1298,7 @@ export default function HorseDetailPage() {
 
         {/* Tab navigation */}
         <div className="mt-6 flex gap-1 rounded-2xl bg-[#edf2f7] p-1.5 shadow-sm">
-          {(['visits', 'info', 'photos'] as const).map((tab) => (
+          {(['info', 'visits', 'photos'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
