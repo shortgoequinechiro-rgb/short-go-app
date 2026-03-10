@@ -83,6 +83,8 @@ export default function IntakeFormPage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [submittedHorseId, setSubmittedHorseId] = useState<string | null>(null)
+  const [submittedFormId, setSubmittedFormId] = useState<string | null>(null)
   const [error, setError] = useState('')
 
   // Owner section
@@ -251,31 +253,61 @@ export default function IntakeFormPage() {
     const signatureData = canvas ? canvas.toDataURL('image/png') : null
     const now = new Date().toISOString()
 
-    const { error: dbError } = await supabase.from('intake_forms').insert({
-      owner_id: ownerId,
-      horse_id: selectedHorseId !== 'new' ? selectedHorseId : null,
-      submitted_at: now,
-      form_date: now.split('T')[0],
-      referral_source: referralSources,
-      animal_name: animalName.trim(),
-      animal_species: animalSpecies,
-      animal_age: animalAge || null,
-      animal_breed: animalBreed || null,
-      animal_dob: animalDob || null,
-      animal_gender: animalGender || null,
-      animal_height: animalHeight || null,
-      animal_color: animalColor || null,
-      reason_for_care: reasonForCare || null,
-      health_problems: healthProblems || null,
-      behavior_changes: behaviorChanges || null,
-      conditions_illnesses: conditionsIllnesses || null,
-      medications_supplements: medications || null,
-      use_of_animal: useOfAnimal || null,
-      previous_chiro_care: previousChiroCare,
-      consent_signed: true,
-      signature_data: signatureData,
-      signed_name: `${ownerFirstName} ${ownerLastName}`.trim(),
-    })
+    // ── Auto-create horse record for new patients ────────────────────────────
+    let resolvedHorseId: string | null = selectedHorseId !== 'new' ? selectedHorseId : null
+
+    if (selectedHorseId === 'new') {
+      const { data: newHorse, error: horseError } = await supabase
+        .from('horses')
+        .insert({
+          owner_id: ownerId,
+          name: animalName.trim(),
+          breed: animalBreed || null,
+          age: animalAge || null,
+          sex: animalGender || null,
+          species: animalSpecies,
+          archived: false,
+        })
+        .select('id')
+        .single()
+
+      if (horseError || !newHorse) {
+        setError('Could not create patient record. Please try again.')
+        setSubmitting(false)
+        return
+      }
+      resolvedHorseId = newHorse.id
+    }
+
+    const { data: newForm, error: dbError } = await supabase
+      .from('intake_forms')
+      .insert({
+        owner_id: ownerId,
+        horse_id: resolvedHorseId,
+        submitted_at: now,
+        form_date: now.split('T')[0],
+        referral_source: referralSources,
+        animal_name: animalName.trim(),
+        animal_species: animalSpecies,
+        animal_age: animalAge || null,
+        animal_breed: animalBreed || null,
+        animal_dob: animalDob || null,
+        animal_gender: animalGender || null,
+        animal_height: animalHeight || null,
+        animal_color: animalColor || null,
+        reason_for_care: reasonForCare || null,
+        health_problems: healthProblems || null,
+        behavior_changes: behaviorChanges || null,
+        conditions_illnesses: conditionsIllnesses || null,
+        medications_supplements: medications || null,
+        use_of_animal: useOfAnimal || null,
+        previous_chiro_care: previousChiroCare,
+        consent_signed: true,
+        signature_data: signatureData,
+        signed_name: `${ownerFirstName} ${ownerLastName}`.trim(),
+      })
+      .select('id')
+      .single()
 
     if (dbError) {
       setError('There was an error submitting the form. Please try again.')
@@ -283,6 +315,8 @@ export default function IntakeFormPage() {
       return
     }
 
+    setSubmittedHorseId(resolvedHorseId)
+    setSubmittedFormId(newForm?.id ?? null)
     setSubmitted(true)
     setSubmitting(false)
   }
@@ -311,6 +345,26 @@ export default function IntakeFormPage() {
           <h1 className="text-2xl font-bold text-slate-900">Form Submitted!</h1>
           <p className="mt-2 text-slate-500">Thank you, {ownerFirstName}. Your intake form has been received.</p>
           <p className="mt-1 text-sm text-slate-400">We look forward to seeing you and {animalName}!</p>
+        </div>
+        <div className="flex flex-col items-center gap-3 mt-2">
+          {submittedFormId && (
+            <a
+              href={`/api/intake/${submittedFormId}/pdf`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-2xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-700 transition"
+            >
+              📄 View / Download PDF
+            </a>
+          )}
+          {submittedHorseId && (
+            <a
+              href={`/horses/${submittedHorseId}`}
+              className="rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
+            >
+              View Patient Record →
+            </a>
+          )}
         </div>
       </div>
     )
