@@ -23,8 +23,9 @@ export default function NavBar() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // Don't render on login page or when unauthenticated
-  if (pathname === '/login' || !userEmail) return null
+  // Don't render on public/marketing pages or when unauthenticated
+  const isPublicPage = pathname === '/' || pathname === '/login' || pathname === '/signup' || pathname?.startsWith('/onboarding')
+  if (isPublicPage || !userEmail) return null
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -41,7 +42,7 @@ export default function NavBar() {
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 md:px-6">
 
         {/* Left: logo + brand */}
-        <Link href="/" className="flex min-w-0 items-center gap-3">
+        <Link href="/dashboard" className="flex min-w-0 items-center gap-3">
           <div className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-xl bg-white/10">
             <Image
               src="/logo.png"
@@ -58,7 +59,7 @@ export default function NavBar() {
         {/* Center: breadcrumb on sub-pages */}
         {(isHorse || isAnatomy) && (
           <div className="hidden items-center gap-1.5 text-sm md:flex">
-            <Link href="/" className="text-blue-200 transition-colors hover:text-white">
+            <Link href="/dashboard" className="text-blue-200 transition-colors hover:text-white">
               Dashboard
             </Link>
             <span className="text-white/30">/</span>

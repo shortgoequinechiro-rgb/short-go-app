@@ -67,7 +67,7 @@ export default function OnboardingPage() {
 
     setStep('done')
     // Small pause so the user sees the success state, then redirect
-    setTimeout(() => router.push('/'), 1800)
+    setTimeout(() => router.push('/dashboard'), 1800)
   }
 
   if (checkingAuth) {
