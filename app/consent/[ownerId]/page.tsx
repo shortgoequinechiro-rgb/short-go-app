@@ -121,26 +121,19 @@ export default function ConsentFormPage() {
     async function load() {
       setLoading(true)
 
-      const { data: ownerData, error: ownerError } = await supabase
-        .from('owners')
-        .select('id, full_name, phone, email, practitioner_id')
-        .eq('id', ownerId)
-        .single()
+      const publicRes = await fetch(`/api/public/owner/${ownerId}`)
+      if (!publicRes.ok) {
+        setLoading(false)
+        return
+      }
+      const { owner: ownerData, horses: horseData } = await publicRes.json()
 
-      if (ownerError || !ownerData) {
+      if (!ownerData) {
         setLoading(false)
         return
       }
 
       setOwner(ownerData as Owner)
-
-      const { data: horseData } = await supabase
-        .from('horses')
-        .select('id, name')
-        .eq('owner_id', ownerId)
-        .eq('archived', false)
-        .order('name')
-
       setHorses((horseData || []) as { id: string; name: string }[])
 
       const params = new URLSearchParams(window.location.search)

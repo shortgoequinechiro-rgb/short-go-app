@@ -134,13 +134,12 @@ export default function IntakeFormPage() {
   }, [ownerId])
 
   async function loadOwnerAndAnimals() {
-    const [ownerRes, horsesRes] = await Promise.all([
-      supabase.from('owners').select('id, full_name, phone, email, address, practitioner_id').eq('id', ownerId).single(),
-      supabase.from('horses').select('id, name, species, breed, age, sex, barn_location').eq('owner_id', ownerId).order('name'),
-    ])
+    const res = await fetch(`/api/public/owner/${ownerId}`)
+    if (!res.ok) return
+    const { owner: ownerData, horses: horsesData } = await res.json()
 
-    if (ownerRes.data) {
-      const data = ownerRes.data
+    if (ownerData) {
+      const data = ownerData
       setOwner(data)
       const parts = data.full_name?.split(' ') || []
       setOwnerFirstName(parts[0] || '')
@@ -150,8 +149,8 @@ export default function IntakeFormPage() {
       if (data.address) setStreetAddress(data.address)
     }
 
-    if (horsesRes.data) {
-      setOwnerHorses(horsesRes.data)
+    if (horsesData) {
+      setOwnerHorses(horsesData)
     }
 
     setLoading(false)
