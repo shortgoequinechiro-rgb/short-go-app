@@ -133,8 +133,9 @@ export default function HorseDetailPage() {
   const [selectedOwnerHorseId, setSelectedOwnerHorseId] = useState('')
   const [consentOnFile, setConsentOnFile] = useState<{ signed_at: string; signed_name: string } | null | undefined>(undefined)
   const [upcomingAppointments, setUpcomingAppointments] = useState<{ id: string; appointment_date: string; appointment_time: string | null; reason: string | null; status: string }[]>([])
-  type IntakeForm = { id: string; submitted_at: string; signed_name: string | null; animal_name: string; reason_for_care: string | null; health_problems: string | null; medications_supplements: string | null; previous_chiro_care: boolean | null; referral_source: string[] | null }
+  type IntakeForm = { id: string; submitted_at: string; signed_name: string | null; animal_name: string; reason_for_care: string | null; health_problems: string | null; medications_supplements: string | null; previous_chiro_care: boolean | null; referral_source: string[] | null; archived: boolean | null }
   const [intakeForms, setIntakeForms] = useState<IntakeForm[]>([])
+  const [showArchivedIntake, setShowArchivedIntake] = useState(false)
 
   // Multi-contact roles
   type HorseContact = { id: string; horse_id: string; name: string; role: string; phone: string | null; email: string | null; notes: string | null }
@@ -1081,7 +1082,7 @@ export default function HorseDetailPage() {
     async function loadIntakeForms() {
       const { data } = await supabase
         .from('intake_forms')
-        .select('id, submitted_at, signed_name, animal_name, reason_for_care, health_problems, medications_supplements, previous_chiro_care, referral_source')
+        .select('id, submitted_at, signed_name, animal_name, reason_for_care, health_problems, medications_supplements, previous_chiro_care, referral_source, archived')
         .eq('horse_id', horseId)
         .order('submitted_at', { ascending: false })
       setIntakeForms(data || [])
@@ -1458,51 +1459,74 @@ export default function HorseDetailPage() {
             </div>
 
             {/* ── Intake Forms ── */}
-            {intakeForms.length > 0 && (
-              <div className="rounded-3xl bg-white p-6 shadow-md">
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="text-lg leading-none">📋</span>
-                  <h2 className="text-xl font-semibold text-slate-900">Intake Forms</h2>
+            {intakeForms.length > 0 && (() => {
+              const activeForms = intakeForms.filter(f => !f.archived)
+              const archivedForms = intakeForms.filter(f => f.archived)
+              const visibleForms = showArchivedIntake ? intakeForms : activeForms
+
+              const renderCard = (form: IntakeForm) => (
+                <Link key={form.id} href={`/intake/view/${form.id}`} className={`block rounded-2xl border p-4 transition cursor-pointer ${form.archived ? 'border-slate-100 bg-slate-50/50 opacity-60 hover:opacity-80 hover:border-slate-200' : 'border-slate-100 bg-slate-50 hover:border-slate-300 hover:bg-slate-100'}`}>
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                        {form.animal_name}
+                        {form.archived && <span className="rounded-lg bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-600">Archived</span>}
+                      </p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Signed by {form.signed_name || '—'} · {new Date(form.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {!form.archived && <span className="rounded-xl bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">✓ Signed</span>}
+                      <span className="text-xs text-slate-400">View →</span>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5 text-xs text-slate-600">
+                    {form.reason_for_care && (
+                      <p><span className="font-medium text-slate-700">Reason: </span>{form.reason_for_care}</p>
+                    )}
+                    {form.health_problems && (
+                      <p><span className="font-medium text-slate-700">Health concerns: </span>{form.health_problems}</p>
+                    )}
+                    {form.medications_supplements && (
+                      <p><span className="font-medium text-slate-700">Medications: </span>{form.medications_supplements}</p>
+                    )}
+                    {form.previous_chiro_care !== null && (
+                      <p><span className="font-medium text-slate-700">Previous chiro care: </span>{form.previous_chiro_care ? 'Yes' : 'No'}</p>
+                    )}
+                    {form.referral_source && form.referral_source.length > 0 && (
+                      <p><span className="font-medium text-slate-700">Referred by: </span>{form.referral_source.join(', ')}</p>
+                    )}
+                  </div>
+                </Link>
+              )
+
+              return (
+                <div className="rounded-3xl bg-white p-6 shadow-md">
+                  <div className="flex items-center justify-between gap-2 mb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg leading-none">📋</span>
+                      <h2 className="text-xl font-semibold text-slate-900">Intake Forms</h2>
+                    </div>
+                    {archivedForms.length > 0 && (
+                      <button
+                        onClick={() => setShowArchivedIntake(v => !v)}
+                        className="text-xs text-slate-400 hover:text-slate-600 transition"
+                      >
+                        {showArchivedIntake ? 'Hide archived' : `Show archived (${archivedForms.length})`}
+                      </button>
+                    )}
+                  </div>
+                  <div className="space-y-4">
+                    {visibleForms.length === 0 ? (
+                      <p className="text-sm text-slate-400 italic">All intake forms are archived.</p>
+                    ) : (
+                      visibleForms.map(renderCard)
+                    )}
+                  </div>
                 </div>
-                <div className="space-y-4">
-                  {intakeForms.map((form) => (
-                    <Link key={form.id} href={`/intake/view/${form.id}`} className="block rounded-2xl border border-slate-100 bg-slate-50 p-4 hover:border-slate-300 hover:bg-slate-100 transition cursor-pointer">
-                      <div className="flex items-start justify-between gap-2 mb-3">
-                        <div>
-                          <p className="text-sm font-semibold text-slate-900">
-                            {form.animal_name}
-                          </p>
-                          <p className="text-xs text-slate-400 mt-0.5">
-                            Signed by {form.signed_name || '—'} · {new Date(form.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="rounded-xl bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">✓ Signed</span>
-                          <span className="text-xs text-slate-400">View →</span>
-                        </div>
-                      </div>
-                      <div className="space-y-1.5 text-xs text-slate-600">
-                        {form.reason_for_care && (
-                          <p><span className="font-medium text-slate-700">Reason: </span>{form.reason_for_care}</p>
-                        )}
-                        {form.health_problems && (
-                          <p><span className="font-medium text-slate-700">Health concerns: </span>{form.health_problems}</p>
-                        )}
-                        {form.medications_supplements && (
-                          <p><span className="font-medium text-slate-700">Medications: </span>{form.medications_supplements}</p>
-                        )}
-                        {form.previous_chiro_care !== null && (
-                          <p><span className="font-medium text-slate-700">Previous chiro care: </span>{form.previous_chiro_care ? 'Yes' : 'No'}</p>
-                        )}
-                        {form.referral_source && form.referral_source.length > 0 && (
-                          <p><span className="font-medium text-slate-700">Referred by: </span>{form.referral_source.join(', ')}</p>
-                        )}
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
+              )
+            })()}
 
             <div className="rounded-3xl bg-white p-6 shadow-md">
               <div className="flex items-center justify-between gap-3">
