@@ -905,10 +905,32 @@ export default function HorseDetailPage() {
   }
 
   const [sendingOwnerSummaryId, setSendingOwnerSummaryId] = useState<string | null>(null)
+  const [previewingOwnerSummaryId, setPreviewingOwnerSummaryId] = useState<string | null>(null)
+  const [ownerSummaryPreview, setOwnerSummaryPreview] = useState<{ visitId: string; text: string; subject: string; ownerEmail: string | null } | null>(null)
+
+  async function previewOwnerSummary(visitId: string) {
+    setPreviewingOwnerSummaryId(visitId)
+    setMessage('Generating owner summary preview…')
+    try {
+      const res = await fetch(`/api/visits/${visitId}/owner-summary`)
+      const json = await res.json()
+      if (!res.ok) {
+        setMessage(json.error || 'Failed to generate preview.')
+      } else {
+        setOwnerSummaryPreview({ visitId, text: json.summaryText, subject: json.subject, ownerEmail: json.ownerEmail })
+        setMessage('')
+      }
+    } catch {
+      setMessage('Failed to generate preview.')
+    } finally {
+      setPreviewingOwnerSummaryId(null)
+    }
+  }
 
   async function sendOwnerSummary(visitId: string) {
     setSendingOwnerSummaryId(visitId)
-    setMessage('Generating & sending owner summary…')
+    setOwnerSummaryPreview(null)
+    setMessage('Sending owner summary…')
     try {
       const res = await fetch(`/api/visits/${visitId}/owner-summary`, { method: 'POST' })
       const json = await res.json()
@@ -2132,11 +2154,11 @@ export default function HorseDetailPage() {
                             </button>
 
                             <button
-                              onClick={() => sendOwnerSummary(visit.id)}
-                              disabled={sendingOwnerSummaryId === visit.id}
+                              onClick={() => previewOwnerSummary(visit.id)}
+                              disabled={previewingOwnerSummaryId === visit.id || sendingOwnerSummaryId === visit.id}
                               className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 disabled:opacity-50"
                             >
-                              {sendingOwnerSummaryId === visit.id ? 'Sending…' : 'Owner Summary'}
+                              {previewingOwnerSummaryId === visit.id ? 'Generating…' : 'Owner Summary'}
                             </button>
 
                             <button
@@ -2440,6 +2462,60 @@ export default function HorseDetailPage() {
         </div>
         )}
       </div>
+
+      {/* ── Owner Summary Preview Modal ── */}
+      {ownerSummaryPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="flex w-full max-w-xl flex-col rounded-3xl bg-white shadow-2xl overflow-hidden max-h-[90vh]">
+
+            {/* Modal header */}
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-6 py-4 shrink-0">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">Owner Summary Preview</h3>
+                {ownerSummaryPreview.ownerEmail && (
+                  <p className="text-xs text-slate-400 mt-0.5">Will be sent to {ownerSummaryPreview.ownerEmail}</p>
+                )}
+              </div>
+              <button
+                onClick={() => setOwnerSummaryPreview(null)}
+                className="text-slate-400 hover:text-slate-600 text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Subject line */}
+            <div className="border-b border-slate-100 bg-slate-50 px-6 py-3 shrink-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Subject</p>
+              <p className="mt-0.5 text-sm text-slate-700">{ownerSummaryPreview.subject}</p>
+            </div>
+
+            {/* Email body */}
+            <div className="overflow-y-auto px-6 py-5 text-sm leading-relaxed text-slate-700 space-y-4">
+              {ownerSummaryPreview.text.split(/\n\n+/).filter(Boolean).map((para, i) => (
+                <p key={i}>{para}</p>
+              ))}
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-4 shrink-0">
+              <button
+                onClick={() => setOwnerSummaryPreview(null)}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => sendOwnerSummary(ownerSummaryPreview.visitId)}
+                disabled={sendingOwnerSummaryId === ownerSummaryPreview.visitId}
+                className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-50 transition"
+              >
+                {sendingOwnerSummaryId === ownerSummaryPreview.visitId ? 'Sending…' : 'Send to Owner'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }
