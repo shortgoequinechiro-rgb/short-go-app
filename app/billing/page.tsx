@@ -170,7 +170,7 @@ function BillingPageContent() {
 
         {/* Header */}
         <div className="mb-10">
-          <Link href="/" className="text-sm text-blue-300 hover:text-white transition mb-6 inline-block">
+          <Link href="/dashboard" className="text-sm text-blue-300 hover:text-white transition mb-6 inline-block">
             ← Back to dashboard
           </Link>
           <h1 className="text-3xl font-bold text-white">Billing &amp; Subscription</h1>

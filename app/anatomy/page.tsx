@@ -624,7 +624,7 @@ function AnatomyContent() {
                 </Link>
               ) : (
                 <Link
-                  href="/"
+                  href="/dashboard"
                   className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-900"
                 >
                   {loadingHorseLink ? 'Loading...' : '← Back to Dashboard'}

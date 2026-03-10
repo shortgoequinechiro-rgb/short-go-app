@@ -463,7 +463,7 @@ export default function HorseDetailPage() {
     if (!confirmed) return
     const { error } = await supabase.from('horses').delete().eq('id', horseId)
     if (error) { setMessage(`Error deleting patient: ${error.message}`); return }
-    router.push('/')
+    router.push('/dashboard')
   }
 
   async function saveBehavioralNotes() {

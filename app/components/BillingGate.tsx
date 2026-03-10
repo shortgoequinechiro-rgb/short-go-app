@@ -4,12 +4,13 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 
-// These paths bypass billing/onboarding checks entirely.
+// Paths that bypass billing/onboarding checks entirely.
+// - /: landing page (unauthenticated visitors, exact match only)
 // - /login, /signup: unauthenticated entry points
 // - /onboarding: new user setup (can't check billing before onboarding completes)
 // - /intake, /consent: accessed by horse owners without any account
 // - /billing: the paywall destination itself
-const PUBLIC_PATHS = ['/login', '/signup', '/onboarding', '/intake', '/consent', '/billing']
+const PUBLIC_PREFIXES = ['/login', '/signup', '/onboarding', '/intake', '/consent', '/billing']
 
 export default function BillingGate({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -17,7 +18,9 @@ export default function BillingGate({ children }: { children: React.ReactNode })
   const [ready, setReady] = useState(false)
   const checked = useRef(false)
 
-  const isPublic = PUBLIC_PATHS.some((p) => pathname?.startsWith(p))
+  const isPublic =
+    pathname === '/' ||
+    PUBLIC_PREFIXES.some((p) => pathname?.startsWith(p))
 
   useEffect(() => {
     // Public paths always pass through without any checks

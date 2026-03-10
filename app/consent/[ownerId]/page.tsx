@@ -292,7 +292,7 @@ export default function ConsentFormPage() {
     return (
       <div className="min-h-screen bg-slate-50 p-8">
         <p className="text-slate-600">Owner not found.</p>
-        <Link href="/" className="mt-4 inline-block text-sm text-slate-500 underline">← Dashboard</Link>
+        <Link href="/dashboard" className="mt-4 inline-block text-sm text-slate-500 underline">← Dashboard</Link>
       </div>
     )
   }
