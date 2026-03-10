@@ -17,6 +17,7 @@ type IntakeFormFull = {
   signed_name: string | null
   signature_data: string | null
   consent_signed: boolean
+  archived: boolean | null
   referral_source: string[] | null
   animal_name: string
   animal_age: string | null
@@ -51,6 +52,8 @@ export default function IntakeFormViewPage() {
 
   const [form, setForm] = useState<IntakeFormFull | null>(null)
   const [loading, setLoading] = useState(true)
+  const [archiving, setArchiving] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   useEffect(() => {
     if (!formId) return
@@ -70,6 +73,19 @@ export default function IntakeFormViewPage() {
 
     setForm(data || null)
     setLoading(false)
+  }
+
+  async function toggleArchive() {
+    if (!form) return
+    setArchiving(true)
+    const newArchived = !form.archived
+    const { error } = await supabase
+      .from('intake_forms')
+      .update({ archived: newArchived })
+      .eq('id', formId)
+    if (!error) setForm({ ...form, archived: newArchived })
+    setArchiving(false)
+    setShowConfirm(false)
   }
 
   if (loading) {
@@ -101,13 +117,55 @@ export default function IntakeFormViewPage() {
       <div className="mx-auto max-w-2xl">
 
         {/* Back link */}
-        {form.horses?.id && (
-          <Link
-            href={`/horses/${form.horses.id}`}
-            className="mb-6 inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition"
-          >
-            ← Back to {form.horses.name}&apos;s Record
-          </Link>
+        <div className="mb-6 flex items-center justify-between gap-4">
+          {form.horses?.id ? (
+            <Link
+              href={`/horses/${form.horses.id}`}
+              className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition"
+            >
+              ← Back to {form.horses.name}&apos;s Record
+            </Link>
+          ) : <span />}
+
+          {/* Archive button */}
+          {!showConfirm ? (
+            <button
+              onClick={() => setShowConfirm(true)}
+              className={`rounded-xl border px-4 py-2 text-sm font-medium transition ${
+                form.archived
+                  ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                  : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              {form.archived ? '↩ Unarchive' : '🗄 Archive'}
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-slate-600">
+                {form.archived ? 'Unarchive this form?' : 'Archive this form?'}
+              </span>
+              <button
+                onClick={toggleArchive}
+                disabled={archiving}
+                className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
+              >
+                {archiving ? 'Saving…' : 'Confirm'}
+              </button>
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Archived banner */}
+        {form.archived && (
+          <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700">
+            🗄 This intake form has been archived and is hidden from the patient record.
+          </div>
         )}
 
         {/* Header */}
