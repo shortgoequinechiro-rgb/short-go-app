@@ -122,7 +122,7 @@ export async function GET(
       return NextResponse.json({ error: 'Consent form not found.' }, { status: 404 })
     }
 
-    const owner = consent.owners as { full_name: string; phone: string | null; email: string | null; address: string | null } | null
+    const owner = (Array.isArray(consent.owners) ? consent.owners[0] : consent.owners) as { full_name: string; phone: string | null; email: string | null; address: string | null } | null
 
     // ── Build PDF ─────────────────────────────────────────────────────────────
 
