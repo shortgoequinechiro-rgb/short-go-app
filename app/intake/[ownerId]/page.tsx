@@ -243,8 +243,6 @@ export default function IntakeFormPage() {
     e.preventDefault()
     setError('')
 
-    if (!animalName.trim()) { setError('Animal name is required.'); return }
-    if (!referralSources.length) { setError('Please tell us how you heard about us.'); return }
     if (!hasSigned) { setError('Please sign the consent form before submitting.'); return }
 
     setSubmitting(true)
@@ -388,9 +386,9 @@ export default function IntakeFormPage() {
           {/* ── Owner Info ── */}
           <Section title="Owner Information">
             <div className="grid grid-cols-2 gap-4">
-              <Field label="First Name" required>
+              <Field label="First Name">
                 <input value={ownerFirstName} onChange={e => setOwnerFirstName(e.target.value)}
-                  className={inputCls} placeholder="First Name" required />
+                  className={inputCls} placeholder="First Name" />
               </Field>
               <Field label="Last Name">
                 <input value={ownerLastName} onChange={e => setOwnerLastName(e.target.value)}
@@ -402,15 +400,15 @@ export default function IntakeFormPage() {
               <Field label="Today's Date">
                 <input value={today} readOnly className={`${inputCls} bg-slate-50 text-slate-500`} />
               </Field>
-              <Field label="Phone Number" required>
+              <Field label="Phone Number">
                 <input value={phone} onChange={e => setPhone(e.target.value)}
-                  className={inputCls} placeholder="(000) 000-0000" type="tel" required />
+                  className={inputCls} placeholder="(000) 000-0000" type="tel" />
               </Field>
             </div>
 
-            <Field label="Address" required>
+            <Field label="Address">
               <input value={streetAddress} onChange={e => setStreetAddress(e.target.value)}
-                className={`${inputCls} mb-3`} placeholder="Street Address" required />
+                className={`${inputCls} mb-3`} placeholder="Street Address" />
               <input value={streetAddress2} onChange={e => setStreetAddress2(e.target.value)}
                 className={`${inputCls} mb-3`} placeholder="Street Address Line 2" />
               <div className="grid grid-cols-2 gap-3">
@@ -423,15 +421,15 @@ export default function IntakeFormPage() {
                 className={`${inputCls} mt-3`} placeholder="Postal / Zip Code" />
             </Field>
 
-            <Field label="Email" required>
+            <Field label="Email">
               <input value={email} onChange={e => setEmail(e.target.value)}
-                className={inputCls} placeholder="example@example.com" type="email" required />
+                className={inputCls} placeholder="example@example.com" type="email" />
             </Field>
           </Section>
 
           {/* ── Referral ── */}
           <Section title="">
-            <Field label="How did you hear about our Animal Chiropractic services? We are always sure to thank our referral sources." required>
+            <Field label="How did you hear about our Animal Chiropractic services? We are always sure to thank our referral sources.">
               <div className="mt-2 space-y-3">
                 {REFERRAL_OPTIONS.map(opt => (
                   <label key={opt} className="flex cursor-pointer items-center gap-3">
@@ -474,7 +472,7 @@ export default function IntakeFormPage() {
               </Field>
             )}
 
-            <Field label="Species" required>
+            <Field label="Species">
               <div className="flex gap-4 mt-2">
                 {[
                   { value: 'equine', label: '🐴 Horse / Equine' },
@@ -496,20 +494,20 @@ export default function IntakeFormPage() {
             </Field>
 
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Animal Name" required>
+              <Field label="Animal Name">
                 <input value={animalName} onChange={e => setAnimalName(e.target.value)}
-                  className={inputCls} placeholder="Animal's name" required />
+                  className={inputCls} placeholder="Animal's name" />
               </Field>
-              <Field label="Age" required>
+              <Field label="Age">
                 <input value={animalAge} onChange={e => setAnimalAge(e.target.value)}
-                  className={inputCls} placeholder="e.g. 7" required />
+                  className={inputCls} placeholder="e.g. 7" />
               </Field>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Breed" required>
+              <Field label="Breed">
                 <input value={animalBreed} onChange={e => setAnimalBreed(e.target.value)}
-                  className={inputCls} placeholder="e.g. Quarter Horse" required />
+                  className={inputCls} placeholder="e.g. Quarter Horse" />
               </Field>
               <Field label="Date of Birth">
                 <input value={animalDob} onChange={e => setAnimalDob(e.target.value)}
@@ -518,7 +516,7 @@ export default function IntakeFormPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Sex" required>
+              <Field label="Sex">
                 <div className="mt-2 space-y-2">
                   {GENDER_OPTIONS[animalSpecies].map(g => (
                     <label key={g} className="flex cursor-pointer items-center gap-3">
@@ -535,16 +533,16 @@ export default function IntakeFormPage() {
                   ))}
                 </div>
               </Field>
-              <Field label="Height" required>
+              <Field label="Height">
                 <input value={animalHeight} onChange={e => setAnimalHeight(e.target.value)}
-                  className={inputCls} placeholder="e.g. 15.2 hh" required />
+                  className={inputCls} placeholder="e.g. 15.2 hh" />
               </Field>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Color" required>
+              <Field label="Color">
                 <input value={animalColor} onChange={e => setAnimalColor(e.target.value)}
-                  className={inputCls} placeholder="e.g. Bay" required />
+                  className={inputCls} placeholder="e.g. Bay" />
               </Field>
               <Field label="Reason for Seeking Chiropractic Care">
                 <textarea value={reasonForCare} onChange={e => setReasonForCare(e.target.value)}
@@ -583,7 +581,7 @@ export default function IntakeFormPage() {
                 className={`${inputCls} min-h-24 resize-none`} placeholder="e.g. Barrel racing, trail riding, companion…" />
             </Field>
 
-            <Field label="Has your animal had previous chiropractic care?" required>
+            <Field label="Has your animal had previous chiropractic care?">
               <div className="mt-2 flex gap-6">
                 {[true, false].map(val => (
                   <label key={String(val)} className="flex cursor-pointer items-center gap-2">
@@ -642,7 +640,7 @@ export default function IntakeFormPage() {
               </p>
             </div>
 
-            <Field label="Pet Owner's Signature" required>
+            <Field label="Pet Owner's Signature">
               <div className="mt-2 overflow-hidden rounded-2xl border-2 border-dashed border-slate-300 bg-white">
                 <canvas
                   ref={canvasRef}
