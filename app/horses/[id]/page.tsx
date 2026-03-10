@@ -1578,31 +1578,23 @@ export default function HorseDetailPage() {
                   {/* Consent status */}
                   {horse?.owner_id && consentOnFile !== undefined && (
                     <div className="pt-2 border-t border-slate-100">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          {consentOnFile ? (
-                            <>
-                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 text-xs font-bold">✓</span>
-                              <div>
-                                <p className="text-xs font-semibold text-emerald-700">Consent on file</p>
-                                <p className="text-xs text-slate-400">
-                                  Signed {new Date(consentOnFile.signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                </p>
-                              </div>
-                            </>
-                          ) : (
-                            <>
-                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-600 text-xs font-bold">!</span>
-                              <p className="text-xs font-semibold text-amber-700">No consent on file</p>
-                            </>
-                          )}
-                        </div>
-                        <Link
-                          href={`/consent/${horse.owner_id}?horseId=${horseId}`}
-                          className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 transition"
-                        >
-                          {consentOnFile ? 'View / Renew' : 'Get Consent →'}
-                        </Link>
+                      <div className="flex items-center gap-2">
+                        {consentOnFile ? (
+                          <>
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 text-xs font-bold">✓</span>
+                            <div>
+                              <p className="text-xs font-semibold text-emerald-700">Consent on file</p>
+                              <p className="text-xs text-slate-400">
+                                Signed {new Date(consentOnFile.signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </p>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-600 text-xs font-bold">!</span>
+                            <p className="text-xs font-semibold text-amber-700">No consent on file</p>
+                          </>
+                        )}
                       </div>
                     </div>
                   )}
