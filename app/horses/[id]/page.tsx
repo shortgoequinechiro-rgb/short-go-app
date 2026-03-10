@@ -1636,7 +1636,7 @@ export default function HorseDetailPage() {
               )}
 
               <div className="mt-5 border-t border-slate-200 pt-5">
-                <Field label="Other Horses For This Owner">
+                <Field label="Other Patients For This Owner">
                   <select
                     value={selectedOwnerHorseId}
                     onChange={(e) => handleOwnerHorseJump(e.target.value)}
