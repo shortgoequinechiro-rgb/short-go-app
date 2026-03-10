@@ -131,7 +131,8 @@ export default function HorseDetailPage() {
   const [horse, setHorse] = useState<Horse | null>(null)
   const [ownerOtherHorses, setOwnerOtherHorses] = useState<Horse[]>([])
   const [selectedOwnerHorseId, setSelectedOwnerHorseId] = useState('')
-  const [consentOnFile, setConsentOnFile] = useState<{ signed_at: string; signed_name: string } | null | undefined>(undefined)
+  const [consentOnFile, setConsentOnFile] = useState<{ id: string; signed_at: string; signed_name: string; signature_data: string | null; horses_acknowledged: string | null; notes: string | null; form_version: string | null } | null | undefined>(undefined)
+  const [showConsentModal, setShowConsentModal] = useState(false)
   const [upcomingAppointments, setUpcomingAppointments] = useState<{ id: string; appointment_date: string; appointment_time: string | null; reason: string | null; status: string }[]>([])
   type IntakeForm = { id: string; submitted_at: string; signed_name: string | null; animal_name: string; reason_for_care: string | null; health_problems: string | null; medications_supplements: string | null; previous_chiro_care: boolean | null; referral_source: string[] | null; archived: boolean | null }
   const [intakeForms, setIntakeForms] = useState<IntakeForm[]>([])
@@ -1080,7 +1081,7 @@ export default function HorseDetailPage() {
         try {
           const { data } = await supabase
             .from('consent_forms')
-            .select('signed_at, signed_name')
+            .select('id, signed_at, signed_name, signature_data, horses_acknowledged, notes, form_version')
             .eq('owner_id', horse!.owner_id!)
             .order('signed_at', { ascending: false })
             .limit(1)
@@ -1578,22 +1579,32 @@ export default function HorseDetailPage() {
                   {/* Consent status */}
                   {horse?.owner_id && consentOnFile !== undefined && (
                     <div className="pt-2 border-t border-slate-100">
-                      <div className="flex items-center gap-2">
-                        {consentOnFile ? (
-                          <>
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 text-xs font-bold">✓</span>
-                            <div>
-                              <p className="text-xs font-semibold text-emerald-700">Consent on file</p>
-                              <p className="text-xs text-slate-400">
-                                Signed {new Date(consentOnFile.signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                              </p>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-600 text-xs font-bold">!</span>
-                            <p className="text-xs font-semibold text-amber-700">No consent on file</p>
-                          </>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          {consentOnFile ? (
+                            <>
+                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 text-xs font-bold">✓</span>
+                              <div>
+                                <p className="text-xs font-semibold text-emerald-700">Consent on file</p>
+                                <p className="text-xs text-slate-400">
+                                  Signed {new Date(consentOnFile.signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                </p>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-600 text-xs font-bold">!</span>
+                              <p className="text-xs font-semibold text-amber-700">No consent on file</p>
+                            </>
+                          )}
+                        </div>
+                        {consentOnFile && (
+                          <button
+                            onClick={() => setShowConsentModal(true)}
+                            className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 transition"
+                          >
+                            View
+                          </button>
                         )}
                       </div>
                     </div>
@@ -2504,6 +2515,84 @@ export default function HorseDetailPage() {
               >
                 {sendingOwnerSummaryId === ownerSummaryPreview.visitId ? 'Sending…' : 'Send to Owner'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Consent Form Modal ── */}
+      {showConsentModal && consentOnFile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowConsentModal(false)}>
+          <div className="absolute inset-0 bg-black/50" />
+          <div
+            className="relative z-50 w-full max-w-md rounded-3xl bg-white shadow-2xl max-h-[90vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+              <div>
+                <h2 className="text-base font-semibold text-slate-900">Signed Consent Form</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Version {consentOnFile.form_version || '1.0'}</p>
+              </div>
+              <button
+                onClick={() => setShowConsentModal(false)}
+                className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4 px-6 py-5">
+              {/* Signer info */}
+              <div className="rounded-2xl bg-emerald-50 border border-emerald-100 px-4 py-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-200 text-emerald-700 text-xs font-bold">✓</span>
+                  <p className="text-sm font-semibold text-emerald-800">Consent on File</p>
+                </div>
+                <p className="text-sm text-slate-700"><span className="font-medium">Signed by:</span> {consentOnFile.signed_name}</p>
+                <p className="text-sm text-slate-700 mt-1"><span className="font-medium">Date:</span> {new Date(consentOnFile.signed_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
+                {consentOnFile.horses_acknowledged && (
+                  <p className="text-sm text-slate-700 mt-1"><span className="font-medium">Animals:</span> {consentOnFile.horses_acknowledged}</p>
+                )}
+              </div>
+
+              {/* Signature */}
+              {consentOnFile.signature_data ? (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Signature</p>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <img
+                      src={consentOnFile.signature_data}
+                      alt="Client signature"
+                      className="max-h-28 w-full object-contain"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-xs text-slate-400">No signature image stored</p>
+                </div>
+              )}
+
+              {/* Notes */}
+              {consentOnFile.notes && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Notes</p>
+                  <p className="text-sm text-slate-700 rounded-2xl bg-slate-50 px-4 py-3">{consentOnFile.notes}</p>
+                </div>
+              )}
+
+              {/* Link to full consent page */}
+              {horse?.owner_id && (
+                <a
+                  href={`/consent/${horse.owner_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full rounded-2xl border border-slate-200 py-3 text-center text-sm font-medium text-slate-600 hover:bg-slate-50 transition"
+                >
+                  View Full Consent History ↗
+                </a>
+              )}
             </div>
           </div>
         </div>
