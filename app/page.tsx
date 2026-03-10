@@ -79,6 +79,7 @@ export default function Home() {
 
   const [checkingAuth, setCheckingAuth] = useState(true)
   const [userEmail, setUserEmail] = useState('')
+  const [userId, setUserId] = useState('')
   const [message, setMessage] = useState('')
 
   const [owners, setOwners] = useState<Owner[]>([])
@@ -175,6 +176,7 @@ export default function Home() {
     }
 
     setUserEmail(user.email || '')
+    setUserId(user.id)
     setCheckingAuth(false)
     return true
   }
@@ -350,6 +352,7 @@ export default function Home() {
         email: email || null,
         address: address || null,
         archived: false,
+        practitioner_id: userId,
       },
     ])
 
@@ -388,6 +391,7 @@ export default function Home() {
         barn_location: barnLocation || null,
         species: addSpecies,
         archived: false,
+        practitioner_id: userId,
       },
     ])
 

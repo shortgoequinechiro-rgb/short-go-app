@@ -64,6 +64,9 @@ export const offlineDb = new OfflineDB()
 export async function syncPendingData(supabase: SupabaseClient) {
   if (!navigator.onLine) return { synced: 0, failed: 0 }
 
+  const { data: { user } } = await supabase.auth.getUser()
+  const practitionerId = user?.id || null
+
   const horses = await offlineDb.pendingHorses.toArray()
   const forms = await offlineDb.pendingIntakeForms.toArray()
 
@@ -81,6 +84,7 @@ export async function syncPendingData(supabase: SupabaseClient) {
       sex: horse.sex,
       species: horse.species,
       archived: horse.archived,
+      practitioner_id: practitionerId,
     })
     if (!error) {
       await offlineDb.pendingHorses.delete(horse.localId)
@@ -121,6 +125,7 @@ export async function syncPendingData(supabase: SupabaseClient) {
       consent_signed: form.consentSigned,
       signature_data: form.signatureData,
       signed_name: form.signedName,
+      practitioner_id: practitionerId,
     })
     if (!error) {
       await offlineDb.pendingIntakeForms.delete(form.localId)

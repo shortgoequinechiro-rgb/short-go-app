@@ -34,6 +34,7 @@ export default function NavBar() {
   const isAnatomy = pathname?.startsWith('/anatomy')
   const isHorse = pathname?.startsWith('/horses')
   const isAppointments = pathname?.startsWith('/appointments')
+  const isBilling = pathname?.startsWith('/billing')
 
   return (
     <nav className="sticky top-0 z-50 border-b border-[#1a3358] bg-[#0f2040] shadow-lg">
@@ -86,6 +87,14 @@ export default function NavBar() {
               className="whitespace-nowrap rounded-xl border border-[#c9a227] bg-[#c9a227] px-3 py-2 text-sm font-semibold text-[#0f2040] transition hover:bg-[#b89020] hover:border-[#b89020]"
             >
               Anatomy Viewer
+            </Link>
+          )}
+          {!isBilling && (
+            <Link
+              href="/billing"
+              className="whitespace-nowrap rounded-xl border border-white/25 bg-transparent px-3 py-2 text-sm font-medium text-white/70 transition hover:bg-white/10 hover:text-white"
+            >
+              Billing
             </Link>
           )}
           <button

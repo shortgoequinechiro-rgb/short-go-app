@@ -12,6 +12,7 @@ type Owner = {
   full_name: string
   phone: string | null
   email: string | null
+  practitioner_id: string | null
 }
 
 type ConsentRecord = {
@@ -122,7 +123,7 @@ export default function ConsentFormPage() {
 
       const { data: ownerData, error: ownerError } = await supabase
         .from('owners')
-        .select('id, full_name, phone, email')
+        .select('id, full_name, phone, email, practitioner_id')
         .eq('id', ownerId)
         .single()
 
@@ -247,6 +248,7 @@ export default function ConsentFormPage() {
       horses_acknowledged: horsesAcknowledged,
       notes: formNotes.trim() || null,
       signature_data: signatureData,
+      practitioner_id: owner.practitioner_id,
     })
 
     setSaving(false)

@@ -210,6 +210,7 @@ function AppointmentsContent() {
 
   const today = todayISO()
   const [checkingAuth, setCheckingAuth] = useState(true)
+  const [userId, setUserId] = useState('')
   const [noTable, setNoTable] = useState(false)
 
   const [appointments, setAppointments] = useState<Appointment[]>([])
@@ -246,6 +247,7 @@ function AppointmentsContent() {
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) { router.push('/login'); return }
+      setUserId(user.id)
       setCheckingAuth(false)
     })
   }, [router])
@@ -431,6 +433,7 @@ function AppointmentsContent() {
       status: form.status,
       provider_name: form.provider_name || null,
       notes: form.notes || null,
+      practitioner_id: userId,
     }
 
     let error

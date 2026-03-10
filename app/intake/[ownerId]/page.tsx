@@ -49,6 +49,7 @@ type Owner = {
   phone: string | null
   email: string | null
   address: string | null
+  practitioner_id: string | null
 }
 
 type PatientAnimal = {
@@ -134,7 +135,7 @@ export default function IntakeFormPage() {
 
   async function loadOwnerAndAnimals() {
     const [ownerRes, horsesRes] = await Promise.all([
-      supabase.from('owners').select('id, full_name, phone, email, address').eq('id', ownerId).single(),
+      supabase.from('owners').select('id, full_name, phone, email, address, practitioner_id').eq('id', ownerId).single(),
       supabase.from('horses').select('id, name, species, breed, age, sex, barn_location').eq('owner_id', ownerId).order('name'),
     ])
 
@@ -324,6 +325,7 @@ export default function IntakeFormPage() {
           sex: animalGender || null,
           species: animalSpecies,
           archived: false,
+          practitioner_id: owner?.practitioner_id,
         })
         .select('id')
         .single()
@@ -342,6 +344,7 @@ export default function IntakeFormPage() {
         owner_id: ownerId,
         horse_id: resolvedHorseId,
         submitted_at: now,
+        practitioner_id: owner?.practitioner_id,
         form_date: now.split('T')[0],
         referral_source: referralSources,
         animal_name: resolvedAnimalName,

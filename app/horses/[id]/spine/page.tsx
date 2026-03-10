@@ -200,12 +200,14 @@ function SpineInner() {
     setSaving(true)
     setSaveMsg('')
 
+    const { data: { user } } = await supabase.auth.getUser()
     const { error } = await supabase.from('spine_assessments').insert({
-      horse_id:    horseId,
-      visit_id:    selectedVisitId || null,
+      horse_id:       horseId,
+      visit_id:       selectedVisitId || null,
       findings,
       notes,
-      assessed_at: new Date().toISOString(),
+      assessed_at:    new Date().toISOString(),
+      practitioner_id: user?.id,
     })
 
     setSaving(false)

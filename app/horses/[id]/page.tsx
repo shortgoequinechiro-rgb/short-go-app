@@ -124,6 +124,7 @@ export default function HorseDetailPage() {
 
   const [checkingAuth, setCheckingAuth] = useState(true)
   const [userEmail, setUserEmail] = useState('')
+  const [userId, setUserId] = useState('')
   const [message, setMessage] = useState('')
   const [activeTab, setActiveTab] = useState<'info' | 'visits' | 'photos'>('info')
 
@@ -214,6 +215,7 @@ export default function HorseDetailPage() {
     }
 
     setUserEmail(user.email || '')
+    setUserId(user.id)
     setCheckingAuth(false)
     return true
   }
@@ -712,6 +714,7 @@ export default function HorseDetailPage() {
       treated_areas: treatedAreas || null,
       recommendations: recommendations || null,
       follow_up: followUp || null,
+      practitioner_id: userId,
     }
 
     let savedVisitId: string | null = editingVisitId
@@ -808,6 +811,7 @@ export default function HorseDetailPage() {
           taken_at: photoTakenAt || null,
           image_url: null,
           image_path: filePath,
+          practitioner_id: userId,
         },
       ])
 
