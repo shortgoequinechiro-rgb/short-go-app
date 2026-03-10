@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
+import { offlineDb, syncPendingData } from '../../lib/offlineDb'
 
 // ── SQL Setup ──────────────────────────────────────────────────────────────────
 // Run once in Supabase SQL editor:
@@ -85,6 +86,7 @@ export default function IntakeFormPage() {
   const [submitted, setSubmitted] = useState(false)
   const [submittedHorseId, setSubmittedHorseId] = useState<string | null>(null)
   const [submittedFormId, setSubmittedFormId] = useState<string | null>(null)
+  const [offlineSaved, setOfflineSaved] = useState(false)
   const [error, setError] = useState('')
 
   // Owner section
@@ -247,8 +249,68 @@ export default function IntakeFormPage() {
     const canvas = canvasRef.current
     const signatureData = canvas ? canvas.toDataURL('image/png') : null
     const now = new Date().toISOString()
+    const resolvedAnimalName = animalName.trim() || 'Unknown Patient'
+    const resolvedSignedName = `${ownerFirstName} ${ownerLastName}`.trim()
 
-    // ── Auto-create horse record for new patients ────────────────────────────
+    // ── OFFLINE PATH ──────────────────────────────────────────────────────────
+    if (!navigator.onLine) {
+      const horseLocalId = crypto.randomUUID()
+      const formLocalId = crypto.randomUUID()
+      const resolvedHorseId = selectedHorseId !== 'new' ? selectedHorseId : horseLocalId
+
+      if (selectedHorseId === 'new') {
+        await offlineDb.pendingHorses.add({
+          localId: horseLocalId,
+          ownerId,
+          name: resolvedAnimalName,
+          breed: animalBreed || null,
+          age: animalAge || null,
+          sex: animalGender || null,
+          species: animalSpecies,
+          archived: false,
+          createdAt: now,
+        })
+      }
+
+      await offlineDb.pendingIntakeForms.add({
+        localId: formLocalId,
+        localHorseId: resolvedHorseId,
+        isNewHorse: selectedHorseId === 'new',
+        ownerId,
+        submittedAt: now,
+        formDate: now.split('T')[0],
+        referralSource: referralSources,
+        animalName: resolvedAnimalName,
+        animalAge: animalAge || null,
+        animalBreed: animalBreed || null,
+        animalDob: animalDob || null,
+        animalGender: animalGender || null,
+        animalHeight: animalHeight || null,
+        animalColor: animalColor || null,
+        reasonForCare: reasonForCare || null,
+        healthProblems: healthProblems || null,
+        behaviorChanges: behaviorChanges || null,
+        conditionsIllnesses: conditionsIllnesses || null,
+        medicationsSupplements: medications || null,
+        useOfAnimal: useOfAnimal || null,
+        previousChiroCare: previousChiroCare,
+        consentSigned: true,
+        signatureData,
+        signedName: resolvedSignedName,
+      })
+
+      setSubmittedHorseId(selectedHorseId !== 'new' ? selectedHorseId : null)
+      setSubmittedFormId(null)
+      setOfflineSaved(true)
+      setSubmitted(true)
+      setSubmitting(false)
+      return
+    }
+
+    // ── ONLINE PATH ───────────────────────────────────────────────────────────
+    // Flush any previously queued offline data first
+    await syncPendingData(supabase)
+
     let resolvedHorseId: string | null = selectedHorseId !== 'new' ? selectedHorseId : null
 
     if (selectedHorseId === 'new') {
@@ -256,7 +318,7 @@ export default function IntakeFormPage() {
         .from('horses')
         .insert({
           owner_id: ownerId,
-          name: animalName.trim() || 'Unknown Patient',
+          name: resolvedAnimalName,
           breed: animalBreed || null,
           age: animalAge || null,
           sex: animalGender || null,
@@ -282,7 +344,7 @@ export default function IntakeFormPage() {
         submitted_at: now,
         form_date: now.split('T')[0],
         referral_source: referralSources,
-        animal_name: animalName.trim() || 'Unknown Patient',
+        animal_name: resolvedAnimalName,
         animal_age: animalAge || null,
         animal_breed: animalBreed || null,
         animal_dob: animalDob || null,
@@ -298,13 +360,12 @@ export default function IntakeFormPage() {
         previous_chiro_care: previousChiroCare,
         consent_signed: true,
         signature_data: signatureData,
-        signed_name: `${ownerFirstName} ${ownerLastName}`.trim(),
+        signed_name: resolvedSignedName,
       })
       .select('id')
       .single()
 
     if (dbError) {
-      // Roll back the horse record we just created so retrying doesn't duplicate it
       if (selectedHorseId === 'new' && resolvedHorseId) {
         await supabase.from('horses').delete().eq('id', resolvedHorseId)
       }
@@ -338,32 +399,49 @@ export default function IntakeFormPage() {
   if (submitted) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[#edf2f7] p-8 text-center">
-        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 text-4xl">✓</div>
+        <div className={`flex h-20 w-20 items-center justify-center rounded-full text-4xl ${offlineSaved ? 'bg-amber-100' : 'bg-emerald-100'}`}>
+          {offlineSaved ? '📵' : '✓'}
+        </div>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Form Submitted!</h1>
-          <p className="mt-2 text-slate-500">Thank you, {ownerFirstName}. Your intake form has been received.</p>
-          <p className="mt-1 text-sm text-slate-400">We look forward to seeing you and {animalName}!</p>
-        </div>
-        <div className="flex flex-col items-center gap-3 mt-2">
-          {submittedFormId && (
-            <a
-              href={`/api/intake/${submittedFormId}/pdf`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-2xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-700 transition"
-            >
-              📄 View / Download PDF
-            </a>
-          )}
-          {submittedHorseId && (
-            <a
-              href={`/horses/${submittedHorseId}`}
-              className="rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
-            >
-              View Patient Record →
-            </a>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {offlineSaved ? 'Saved Offline' : 'Form Submitted!'}
+          </h1>
+          {offlineSaved ? (
+            <>
+              <p className="mt-2 text-slate-500">Thank you, {ownerFirstName}. Your form has been saved to this device.</p>
+              <p className="mt-2 max-w-xs text-sm text-amber-700 bg-amber-50 rounded-2xl px-4 py-2">
+                No internet connection detected. This form will automatically upload to the system when signal is restored.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="mt-2 text-slate-500">Thank you, {ownerFirstName}. Your intake form has been received.</p>
+              <p className="mt-1 text-sm text-slate-400">We look forward to seeing you and {animalName}!</p>
+            </>
           )}
         </div>
+        {!offlineSaved && (
+          <div className="flex flex-col items-center gap-3 mt-2">
+            {submittedFormId && (
+              <a
+                href={`/api/intake/${submittedFormId}/pdf`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-2xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-700 transition"
+              >
+                📄 View / Download PDF
+              </a>
+            )}
+            {submittedHorseId && (
+              <a
+                href={`/horses/${submittedHorseId}`}
+                className="rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
+              >
+                View Patient Record →
+              </a>
+            )}
+          </div>
+        )}
       </div>
     )
   }
