@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { supabase } from '../../lib/supabase'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -140,17 +139,14 @@ export default function ConsentFormPage() {
       const horseIdParam = params.get('horseId')
       if (horseIdParam) setLinkedHorseId(horseIdParam)
 
-      const { data: consentData, error: consentError } = await supabase
-        .from('consent_forms')
-        .select('*')
-        .eq('owner_id', ownerId)
-        .order('signed_at', { ascending: false })
-
-      if (consentError) {
-        if (consentError.code === '42P01') setNoTable(true)
+      const consentRes = await fetch(`/api/public/consent/${ownerId}`)
+      if (!consentRes.ok) {
+        const err = await consentRes.json().catch(() => ({}))
+        if (err?.error?.includes('42P01')) setNoTable(true)
         setLoading(false)
         return
       }
+      const { consents: consentData } = await consentRes.json()
 
       setExistingConsents((consentData || []) as ConsentRecord[])
       if (!consentData || consentData.length === 0) setShowForm(true)
@@ -233,31 +229,40 @@ export default function ConsentFormPage() {
     const signatureData = canvas ? canvas.toDataURL('image/png') : null
     const horsesAcknowledged = horses.map((h) => h.name).join(', ') || null
 
-    const { error } = await supabase.from('consent_forms').insert({
-      owner_id: ownerId,
-      signed_name: owner.full_name,
-      signed_at: new Date().toISOString(),
-      form_version: '1.0',
-      horses_acknowledged: horsesAcknowledged,
-      notes: formNotes.trim() || null,
-      signature_data: signatureData,
-      practitioner_id: owner.practitioner_id,
-    })
+    try {
+      const res = await fetch('/api/consent/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ownerId,
+          signedName: owner.full_name,
+          signatureData,
+          horsesAcknowledged,
+          notes: formNotes.trim() || null,
+        }),
+      })
 
-    setSaving(false)
+      const data = await res.json()
 
-    if (error) {
-      setSaveMsg(`Error: ${error.message}`)
+      if (!res.ok) {
+        setSaveMsg(`Error: ${data.error || 'Submission failed.'}`)
+        setSaving(false)
+        return
+      }
+    } catch {
+      setSaveMsg('Network error. Please try again.')
+      setSaving(false)
       return
     }
 
-    const { data: fresh } = await supabase
-      .from('consent_forms')
-      .select('*')
-      .eq('owner_id', ownerId)
-      .order('signed_at', { ascending: false })
+    // Reload consents via service-role API
+    const freshRes = await fetch(`/api/public/consent/${ownerId}`)
+    if (freshRes.ok) {
+      const { consents } = await freshRes.json()
+      setExistingConsents((consents || []) as ConsentRecord[])
+    }
 
-    setExistingConsents((fresh || []) as ConsentRecord[])
+    setSaving(false)
     setShowForm(false)
     setSaveMsg('Consent form signed and saved.')
 
