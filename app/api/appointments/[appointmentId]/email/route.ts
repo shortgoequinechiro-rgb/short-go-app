@@ -148,6 +148,9 @@ export async function POST(
     const duration = appt.duration_minutes ? `\nDuration: ${appt.duration_minutes} minutes` : ''
 
     const isConfirmation = type === 'confirmation'
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://short-go-app.vercel.app'
+    const confirmUrl = `${appUrl}/api/appointments/${appointmentId}/confirm`
+
     const subject = isConfirmation
       ? `Appointment Confirmed — ${horseName} on ${dateStr}`
       : `Reminder: ${horseName}'s appointment is ${dateStr}`
@@ -156,7 +159,17 @@ export async function POST(
 
     const body_text = isConfirmation
       ? `${greeting}Your appointment for ${horseName} has been confirmed.\n\nDate: ${dateStr}${timeStr}${duration}${location}${reason}\n\nIf you need to reschedule or have any questions, please don't hesitate to reach out.\n\nThank you,\nDr. Andrew Leo D.C., M.S., cAVCA\nShort-Go Equine Chiropractic`
-      : `${greeting}This is a friendly reminder that ${horseName}'s chiropractic appointment is coming up.\n\nDate: ${dateStr}${timeStr}${duration}${location}${reason}\n\nWe look forward to seeing you!\n\nDr. Andrew Leo D.C., M.S., cAVCA\nShort-Go Equine Chiropractic`
+      : `${greeting}This is a friendly reminder that ${horseName}'s chiropractic appointment is coming up.\n\nDate: ${dateStr}${timeStr}${duration}${location}${reason}\n\nPlease confirm your appointment by visiting:\n${confirmUrl}\n\nWe look forward to seeing you!\n\nDr. Andrew Leo D.C., M.S., cAVCA\nShort-Go Equine Chiropractic`
+
+    // Confirm button block — only shown in reminder emails
+    const confirmBlock = !isConfirmation ? `
+      <div style="text-align:center;margin:24px 0;">
+        <a href="${confirmUrl}"
+           style="display:inline-block;background:#16a34a;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 32px;border-radius:12px;letter-spacing:0.01em;">
+          ✓ Confirm My Appointment
+        </a>
+        <p style="margin:10px 0 0;color:#94a3b8;font-size:11px;">One click — no login required</p>
+      </div>` : ''
 
     const htmlBody = `
 <!DOCTYPE html>
@@ -188,10 +201,12 @@ export async function POST(
         </table>
       </div>
 
+      ${confirmBlock}
+
       <p style="margin:0;color:#64748b;font-size:13px;line-height:1.6;">
         ${isConfirmation
           ? 'If you need to reschedule or have any questions, please reach out.'
-          : 'We look forward to seeing you!'}
+          : 'If you need to reschedule, please contact us directly.'}
       </p>
     </div>
     <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 32px;">

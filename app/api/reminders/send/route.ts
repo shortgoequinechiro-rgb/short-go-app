@@ -52,8 +52,9 @@ function buildReminderEmail(opts: {
   durationMinutes: number | null
   practiceName: string
   providerName: string
+  confirmUrl: string
 }) {
-  const { ownerName, patientName, dateStr, timeStr, location, reason, durationMinutes, practiceName, providerName } = opts
+  const { ownerName, patientName, dateStr, timeStr, location, reason, durationMinutes, practiceName, providerName, confirmUrl } = opts
 
   const subject = `Reminder: ${patientName}'s appointment is ${dateStr}`
 
@@ -64,7 +65,8 @@ function buildReminderEmail(opts: {
     (durationMinutes ? `Duration: ${durationMinutes} minutes\n` : '') +
     (location ? `Location: ${location}\n` : '') +
     (reason ? `Reason: ${reason}\n` : '') +
-    `\nWe look forward to seeing you!\n\n${providerName}\n${practiceName}`
+    `\nPlease confirm your appointment here:\n${confirmUrl}\n\n` +
+    `We look forward to seeing you!\n\n${providerName}\n${practiceName}`
 
   const html = `
 <!DOCTYPE html>
@@ -92,8 +94,15 @@ function buildReminderEmail(opts: {
           ${reason ? `<tr><td style="padding:6px 0;color:#64748b;font-size:13px;font-weight:600;">Reason</td><td style="padding:6px 0;color:#1e293b;font-size:13px;">${reason}</td></tr>` : ''}
         </table>
       </div>
+      <div style="text-align:center;margin:24px 0;">
+        <a href="${confirmUrl}"
+           style="display:inline-block;background:#16a34a;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 32px;border-radius:12px;letter-spacing:0.01em;">
+          ✓ Confirm My Appointment
+        </a>
+        <p style="margin:10px 0 0;color:#94a3b8;font-size:11px;">One click — no login required</p>
+      </div>
       <p style="margin:0;color:#64748b;font-size:13px;line-height:1.6;">
-        If you need to reschedule or have any questions, please reach out.
+        If you need to reschedule, please contact us directly.
       </p>
     </div>
     <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 32px;">
@@ -114,9 +123,10 @@ function buildReminderSms(opts: {
   dateStr: string
   timeStr: string
   providerName: string
+  confirmUrl: string
 }) {
-  const { ownerFirstName, patientName, dateStr, timeStr, providerName } = opts
-  return `Hi ${ownerFirstName}! Reminder: ${patientName}'s chiropractic appointment with ${providerName} is ${dateStr}${timeStr}. Reply STOP to unsubscribe.`
+  const { ownerFirstName, patientName, dateStr, timeStr, providerName, confirmUrl } = opts
+  return `Hi ${ownerFirstName}! Reminder: ${patientName}'s appt with ${providerName} is ${dateStr}${timeStr}. Confirm here: ${confirmUrl} — Reply STOP to unsubscribe.`
 }
 
 function normalizePhone(raw: string): string {
@@ -210,6 +220,8 @@ export async function GET(req: NextRequest) {
     const timeStr        = fmtTime(appt.appointment_time)
     const providerName   = appt.provider_name ?? 'Dr. Andrew Leo D.C., M.S., cAVCA'
     const practiceName   = 'Short-Go Equine Chiropractic'
+    const appUrl         = process.env.NEXT_PUBLIC_APP_URL || 'https://short-go-app.vercel.app'
+    const confirmUrl     = `${appUrl}/api/appointments/${appt.id}/confirm`
 
     const result: { id: string; email?: string; sms?: string; error?: string } = { id: appt.id }
     let anySent = false
@@ -227,6 +239,7 @@ export async function GET(req: NextRequest) {
           durationMinutes: appt.duration_minutes,
           practiceName,
           providerName,
+          confirmUrl,
         })
 
         const emailResult = await resend.emails.send({
@@ -251,7 +264,7 @@ export async function GET(req: NextRequest) {
     // ── SMS ────────────────────────────────────────────────────────────────
     if (hasSms && smsClient && owner.phone) {
       try {
-        const body = buildReminderSms({ ownerFirstName, patientName, dateStr, timeStr, providerName })
+        const body = buildReminderSms({ ownerFirstName, patientName, dateStr, timeStr, providerName, confirmUrl })
         const msg = await smsClient.messages.create({
           from: twilioFrom!,
           to: normalizePhone(owner.phone),
