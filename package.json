@@ -21,7 +21,8 @@
     "react-dom": "19.2.3",
     "resend": "^6.9.3",
     "stripe": "^20.4.1",
-    "three": "^0.183.2"
+    "three": "^0.183.2",
+    "twilio": "^5.12.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
