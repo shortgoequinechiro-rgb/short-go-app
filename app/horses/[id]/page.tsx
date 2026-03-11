@@ -990,15 +990,24 @@ export default function HorseDetailPage() {
       }
 
       // 2. Update the DB to point at the new file
-      const { error: updateError } = await supabase
+      const { data: updateData, error: updateError } = await supabase
         .from('horses')
         .update({ profile_photo_path: filePath })
         .eq('id', horseId)
+        .select('id')
 
       if (updateError) {
         // DB update failed — remove the orphaned upload so storage stays clean
         await supabase.storage.from('horse-photos').remove([filePath])
         setMessage(`Error saving profile photo: ${updateError.message}`)
+        setProfilePhotoUrl(null)
+        return
+      }
+
+      if (!updateData || updateData.length === 0) {
+        // RLS silently blocked the update — the photo uploaded but won't persist
+        await supabase.storage.from('horse-photos').remove([filePath])
+        setMessage('Photo saved to storage but could not be linked to this record. Make sure migration 006 has been run in Supabase (adds the profile_photo_path column).')
         setProfilePhotoUrl(null)
         return
       }
