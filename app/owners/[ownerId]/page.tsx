@@ -52,6 +52,17 @@ export default function OwnerPage() {
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
+  // Intake / consent status
+  const [hasIntake, setHasIntake] = useState(false)
+  const [hasConsent, setHasConsent] = useState(false)
+
+  // Sending state
+  const [sendingIntake, setSendingIntake] = useState(false)
+  const [sendingIntakeSms, setSendingIntakeSms] = useState(false)
+  const [sendingConsent, setSendingConsent] = useState(false)
+  const [sendingConsentSms, setSendingConsentSms] = useState(false)
+  const [message, setMessage] = useState('')
+
   // ── Auth ──────────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -108,10 +119,64 @@ export default function OwnerPage() {
         setVisitCounts(counts)
       }
 
+      // Intake / consent status
+      const [intakeRes, consentRes] = await Promise.all([
+        supabase.from('intake_forms').select('id').eq('owner_id', ownerId).limit(1),
+        supabase.from('consent_forms').select('id').eq('owner_id', ownerId).limit(1),
+      ])
+      setHasIntake(!intakeRes.error && (intakeRes.data?.length ?? 0) > 0)
+      setHasConsent(!consentRes.error && (consentRes.data?.length ?? 0) > 0)
+
       setLoading(false)
     }
     load()
   }, [checkingAuth, ownerId])
+
+  // ── Send helpers ─────────────────────────────────────────────────────────
+
+  async function sendIntakeEmail() {
+    if (!owner?.email) { setMessage('This owner does not have an email address on file.'); return }
+    setSendingIntake(true); setMessage('')
+    try {
+      const res = await fetch(`/api/owners/${ownerId}/send-intake`, { method: 'POST' })
+      const data = await res.json()
+      setMessage(res.ok ? `Intake form link sent to ${owner.email}.` : (data.error || 'Failed to send intake email.'))
+    } catch { setMessage('Failed to send intake email.') }
+    finally { setSendingIntake(false) }
+  }
+
+  async function sendIntakeSms() {
+    if (!owner?.phone) { setMessage('This owner does not have a phone number on file.'); return }
+    setSendingIntakeSms(true); setMessage('')
+    try {
+      const res = await fetch(`/api/owners/${ownerId}/send-intake-sms`, { method: 'POST' })
+      const data = await res.json()
+      setMessage(res.ok ? `Intake form link texted to ${owner.phone}.` : (data.error || 'Failed to send text.'))
+    } catch { setMessage('Failed to send text.') }
+    finally { setSendingIntakeSms(false) }
+  }
+
+  async function sendConsentEmail() {
+    if (!owner?.email) { setMessage('This owner does not have an email address on file.'); return }
+    setSendingConsent(true); setMessage('')
+    try {
+      const res = await fetch(`/api/owners/${ownerId}/send-consent`, { method: 'POST' })
+      const data = await res.json()
+      setMessage(res.ok ? `Consent form link sent to ${owner.email}.` : (data.error || 'Failed to send consent email.'))
+    } catch { setMessage('Failed to send consent email.') }
+    finally { setSendingConsent(false) }
+  }
+
+  async function sendConsentSms() {
+    if (!owner?.phone) { setMessage('This owner does not have a phone number on file.'); return }
+    setSendingConsentSms(true); setMessage('')
+    try {
+      const res = await fetch(`/api/owners/${ownerId}/send-consent-sms`, { method: 'POST' })
+      const data = await res.json()
+      setMessage(res.ok ? `Consent form link texted to ${owner.phone}.` : (data.error || 'Failed to send text.'))
+    } catch { setMessage('Failed to send text.') }
+    finally { setSendingConsentSms(false) }
+  }
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -165,14 +230,23 @@ export default function OwnerPage() {
           </div>
         )}
 
+        {/* ── Status message ── */}
+        {message && (
+          <div className="rounded-2xl bg-white px-4 py-3 text-sm text-slate-700 shadow-sm border border-slate-200">
+            {message}
+          </div>
+        )}
+
         {!loading && owner && (
           <>
             {/* ── Owner contact card ── */}
             <div className="rounded-3xl bg-white p-6 shadow-sm">
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+
+                {/* Left: contact info */}
                 <div className="space-y-1">
                   <h2 className="text-2xl font-bold text-slate-900">{owner.full_name}</h2>
-                  {owner.phone && (
+                  {owner.phone ? (
                     <a
                       href={`tel:${owner.phone}`}
                       className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 transition w-fit"
@@ -180,8 +254,12 @@ export default function OwnerPage() {
                       <span className="text-slate-400">📞</span>
                       {formatPhone(owner.phone)}
                     </a>
+                  ) : (
+                    <p className="flex items-center gap-1.5 text-sm text-slate-400">
+                      <span>📞</span> No phone on file
+                    </p>
                   )}
-                  {owner.email && (
+                  {owner.email ? (
                     <a
                       href={`mailto:${owner.email}`}
                       className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 transition w-fit"
@@ -189,6 +267,10 @@ export default function OwnerPage() {
                       <span className="text-slate-400">✉️</span>
                       {owner.email}
                     </a>
+                  ) : (
+                    <p className="flex items-center gap-1.5 text-sm text-slate-400">
+                      <span>✉️</span> No email on file
+                    </p>
                   )}
                   {owner.address && (
                     <p className="flex items-center gap-1.5 text-sm text-slate-500">
@@ -196,13 +278,94 @@ export default function OwnerPage() {
                       {owner.address}
                     </p>
                   )}
+
+                  {/* ── Intake / Consent status badges ── */}
+                  <div className="pt-2 flex flex-wrap items-center gap-2">
+                    {hasIntake ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                        ✓ Intake on file
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-600">
+                        ✗ No intake on file
+                      </span>
+                    )}
+                    {hasConsent ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                        ✓ Consent on file
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-600">
+                        ✗ No consent on file
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <Link
-                  href={`/appointments?ownerId=${owner.id}`}
-                  className="shrink-0 rounded-xl bg-[#0f2040] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#162d55] transition"
-                >
-                  + Book Appointment
-                </Link>
+
+                {/* Right: actions */}
+                <div className="flex flex-col gap-2 sm:min-w-[230px]">
+                  {/* Book appointment */}
+                  <Link
+                    href={`/appointments?ownerId=${owner.id}`}
+                    className="w-full rounded-xl bg-[#0f2040] px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-[#162d55] transition"
+                  >
+                    + Book Appointment
+                  </Link>
+
+                  {/* Intake row */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-16 shrink-0 text-[10px] font-semibold uppercase tracking-widest text-slate-400">Intake</span>
+                    <a
+                      href={`/intake/${owner.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition"
+                    >
+                      📋 Open
+                    </a>
+                    <button
+                      onClick={sendIntakeEmail}
+                      disabled={sendingIntake}
+                      className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 transition disabled:opacity-50"
+                    >
+                      {sendingIntake ? '…' : '📧 Email'}
+                    </button>
+                    <button
+                      onClick={sendIntakeSms}
+                      disabled={sendingIntakeSms}
+                      className="rounded-lg border border-green-200 bg-green-50 px-2.5 py-1.5 text-xs font-medium text-green-700 hover:bg-green-100 transition disabled:opacity-50"
+                    >
+                      {sendingIntakeSms ? '…' : '📱 Text'}
+                    </button>
+                  </div>
+
+                  {/* Consent row */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-16 shrink-0 text-[10px] font-semibold uppercase tracking-widest text-slate-400">Consent</span>
+                    <a
+                      href={`/consent/${owner.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition"
+                    >
+                      📝 Open
+                    </a>
+                    <button
+                      onClick={sendConsentEmail}
+                      disabled={sendingConsent}
+                      className="rounded-lg border border-purple-200 bg-purple-50 px-2.5 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-100 transition disabled:opacity-50"
+                    >
+                      {sendingConsent ? '…' : '📧 Email'}
+                    </button>
+                    <button
+                      onClick={sendConsentSms}
+                      disabled={sendingConsentSms}
+                      className="rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-1.5 text-xs font-medium text-orange-700 hover:bg-orange-100 transition disabled:opacity-50"
+                    >
+                      {sendingConsentSms ? '…' : '📱 Text'}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
