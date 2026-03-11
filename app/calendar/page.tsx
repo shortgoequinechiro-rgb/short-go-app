@@ -25,14 +25,12 @@ type Appointment = {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-// Grid starts at 7:00 AM, ends at 7:00 PM
 const GRID_START_HOUR = 7
 const GRID_END_HOUR = 19
-const GRID_TOTAL_MINS = (GRID_END_HOUR - GRID_START_HOUR) * 60 // 720
+const GRID_TOTAL_MINS = (GRID_END_HOUR - GRID_START_HOUR) * 60
 
-// Pixels per minute — drives all positioning
 const PX_PER_MIN = 1.6
-const GRID_HEIGHT = GRID_TOTAL_MINS * PX_PER_MIN // 1152px
+const GRID_HEIGHT = GRID_TOTAL_MINS * PX_PER_MIN
 
 const HOUR_LABELS: string[] = []
 for (let h = GRID_START_HOUR; h <= GRID_END_HOUR; h++) {
@@ -42,32 +40,30 @@ for (let h = GRID_START_HOUR; h <= GRID_END_HOUR; h++) {
 }
 
 const STATUS_BG: Record<string, string> = {
-  scheduled:  'bg-blue-500',
+  scheduled: 'bg-blue-500',
   confirmed:  'bg-emerald-500',
   completed:  'bg-slate-400',
   cancelled:  'bg-red-400',
 }
 
 const STATUS_BORDER: Record<string, string> = {
-  scheduled:  'border-blue-700',
+  scheduled: 'border-blue-700',
   confirmed:  'border-emerald-700',
   completed:  'border-slate-600',
   cancelled:  'border-red-600',
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  scheduled:  'Scheduled',
+  scheduled: 'Scheduled',
   confirmed:  'Confirmed',
   completed:  'Completed',
   cancelled:  'Cancelled',
 }
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-const DAY_FULL  = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Returns a copy of `date` with the time zeroed out */
 function startOfDay(date: Date): Date {
   const d = new Date(date)
   d.setHours(0, 0, 0, 0)
@@ -92,7 +88,6 @@ function formatDayNum(date: Date): number {
   return date.getDate()
 }
 
-/** Convert "HH:MM:SS" → minutes from midnight */
 function timeToMins(t: string | null): number {
   if (!t) return -1
   const [h, m] = t.split(':').map(Number)
@@ -109,6 +104,19 @@ function formatTime12(t: string | null): string {
   return `${hh}:${String(m).padStart(2, '0')} ${ampm}`
 }
 
+// ── Mobile detection ──────────────────────────────────────────────────────────
+
+function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+  return isMobile
+}
+
 // ── Mini Calendar ─────────────────────────────────────────────────────────────
 
 function MiniCalendar({
@@ -120,9 +128,9 @@ function MiniCalendar({
 }) {
   const [view, setView] = useState(new Date(selected.getFullYear(), selected.getMonth(), 1))
 
-  const year  = view.getFullYear()
-  const month = view.getMonth()
-  const firstDay = new Date(year, month, 1).getDay() // 0=Sun
+  const year      = view.getFullYear()
+  const month     = view.getMonth()
+  const firstDay  = new Date(year, month, 1).getDay()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
 
   const cells: (number | null)[] = Array(firstDay).fill(null)
@@ -133,27 +141,18 @@ function MiniCalendar({
 
   return (
     <div className="rounded-xl border border-[#1a3358] bg-[#0d1b30] p-3 select-none">
-      {/* Month nav */}
       <div className="mb-2 flex items-center justify-between">
-        <button
-          onClick={() => setView(new Date(year, month - 1, 1))}
-          className="rounded p-1 text-blue-300 hover:bg-white/10"
-        >◀</button>
+        <button onClick={() => setView(new Date(year, month - 1, 1))} className="rounded p-1 text-blue-300 hover:bg-white/10">◀</button>
         <span className="text-xs font-semibold text-white">
           {view.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
         </span>
-        <button
-          onClick={() => setView(new Date(year, month + 1, 1))}
-          className="rounded p-1 text-blue-300 hover:bg-white/10"
-        >▶</button>
+        <button onClick={() => setView(new Date(year, month + 1, 1))} className="rounded p-1 text-blue-300 hover:bg-white/10">▶</button>
       </div>
-      {/* Day headers */}
       <div className="mb-1 grid grid-cols-7 text-center">
         {['S','M','T','W','T','F','S'].map((d, i) => (
           <div key={i} className="text-[10px] font-bold text-blue-400">{d}</div>
         ))}
       </div>
-      {/* Day grid */}
       <div className="grid grid-cols-7 gap-px text-center">
         {cells.map((day, i) => {
           if (!day) return <div key={i} />
@@ -178,17 +177,19 @@ function MiniCalendar({
   )
 }
 
-// ── Appointment Popup ─────────────────────────────────────────────────────────
+// ── Appointment Popup (desktop: positioned card | mobile: bottom sheet) ────────
 
 function ApptPopup({
   appt,
   onClose,
   style,
+  isMobile,
   onNotesSaved,
 }: {
   appt: Appointment
   onClose: () => void
   style: React.CSSProperties
+  isMobile: boolean
   onNotesSaved: (id: string, notes: string) => void
 }) {
   const ownerName   = appt.owners?.full_name ?? appt.horses?.owners?.full_name ?? 'Unknown Owner'
@@ -219,12 +220,15 @@ function ApptPopup({
     }
   }
 
-  return (
-    <div
-      className="fixed z-50 w-72 rounded-xl border border-[#1a3358] bg-[#0d1b30] shadow-2xl"
-      style={style}
-      onClick={e => e.stopPropagation()}
-    >
+  const inner = (
+    <div onClick={e => e.stopPropagation()}>
+      {/* Handle bar (mobile only) */}
+      {isMobile && (
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="h-1 w-10 rounded-full bg-white/20" />
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between p-4 pb-2">
         <div className="flex items-center gap-2">
@@ -270,15 +274,11 @@ function ApptPopup({
         </div>
       </div>
 
-      {/* Notes section */}
+      {/* Notes */}
       <div className="px-4 pt-3 pb-1">
         <div className="mb-1 flex items-center justify-between">
-          <label className="text-[11px] font-bold uppercase tracking-wider text-blue-400">
-            Notes
-          </label>
-          {saved && (
-            <span className="text-[10px] text-emerald-400 font-semibold">✓ Saved</span>
-          )}
+          <label className="text-[11px] font-bold uppercase tracking-wider text-blue-400">Notes</label>
+          {saved && <span className="text-[10px] text-emerald-400 font-semibold">✓ Saved</span>}
         </div>
         <textarea
           value={notes}
@@ -292,9 +292,7 @@ function ApptPopup({
           onClick={handleSave}
           disabled={saving || !isDirty}
           className={`mt-2 w-full rounded-lg py-1.5 text-xs font-semibold transition
-            ${isDirty
-              ? 'bg-[#c9a227] text-[#0f2040] hover:bg-[#b89020]'
-              : 'bg-white/5 text-white/30 cursor-not-allowed'}`}
+            ${isDirty ? 'bg-[#c9a227] text-[#0f2040] hover:bg-[#b89020]' : 'bg-white/5 text-white/30 cursor-not-allowed'}`}
         >
           {saving ? 'Saving…' : 'Save Notes'}
         </button>
@@ -305,18 +303,43 @@ function ApptPopup({
         {appt.owner_id && (
           <Link
             href={`/owners/${appt.owner_id}`}
-            className="flex-1 rounded-lg bg-[#c9a227] px-3 py-1.5 text-center text-xs font-semibold text-[#0f2040] transition hover:bg-[#b89020]"
+            className="flex-1 rounded-lg bg-[#c9a227] px-3 py-2 text-center text-xs font-semibold text-[#0f2040] transition hover:bg-[#b89020]"
           >
             View Owner
           </Link>
         )}
         <Link
           href={`/appointments?highlight=${appt.id}`}
-          className="flex-1 rounded-lg border border-white/20 px-3 py-1.5 text-center text-xs font-medium text-white transition hover:bg-white/10"
+          className="flex-1 rounded-lg border border-white/20 px-3 py-2 text-center text-xs font-medium text-white transition hover:bg-white/10"
         >
           Edit Appt
         </Link>
       </div>
+    </div>
+  )
+
+  if (isMobile) {
+    return (
+      <>
+        {/* Backdrop */}
+        <div
+          className="fixed inset-0 z-40 bg-black/50"
+          onClick={onClose}
+        />
+        {/* Bottom sheet */}
+        <div className="fixed bottom-0 left-0 right-0 z-50 max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-[#1a3358] bg-[#0d1b30] shadow-2xl">
+          {inner}
+        </div>
+      </>
+    )
+  }
+
+  return (
+    <div
+      className="fixed z-50 w-72 rounded-xl border border-[#1a3358] bg-[#0d1b30] shadow-2xl"
+      style={style}
+    >
+      {inner}
     </div>
   )
 }
@@ -325,22 +348,22 @@ function ApptPopup({
 
 export default function CalendarPage() {
   const router = useRouter()
+  const isMobile = useIsMobile()
   const [checkingAuth, setCheckingAuth] = useState(true)
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  const [weekStart, setWeekStart] = useState<Date>(() => startOfDay(today))
+  const [weekStart, setWeekStart]   = useState<Date>(() => startOfDay(today))
+  const [mobileDay, setMobileDay]   = useState<Date>(() => startOfDay(today))
   const [appointments, setAppointments] = useState<Appointment[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading]       = useState(true)
   const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null)
   const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({})
   const [miniCalDate, setMiniCalDate] = useState<Date>(today)
 
-  const gridRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Auth check
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (!data.session) router.push('/login')
@@ -348,7 +371,6 @@ export default function CalendarPage() {
     })
   }, [router])
 
-  // Auto-scroll to 8 AM on mount
   useEffect(() => {
     if (scrollRef.current) {
       const offset = (8 - GRID_START_HOUR) * 60 * PX_PER_MIN - 20
@@ -356,7 +378,17 @@ export default function CalendarPage() {
     }
   }, [])
 
-  // Load appointments for the visible week
+  // Ensure weekStart covers mobileDay when on mobile
+  useEffect(() => {
+    if (!isMobile) return
+    const mobileDayISO = toISO(mobileDay)
+    const weekEndISO   = toISO(addDays(weekStart, 6))
+    const weekStartISO = toISO(weekStart)
+    if (mobileDayISO < weekStartISO || mobileDayISO > weekEndISO) {
+      setWeekStart(startOfDay(mobileDay))
+    }
+  }, [mobileDay, isMobile, weekStart])
+
   useEffect(() => {
     if (checkingAuth) return
     loadWeek()
@@ -386,33 +418,44 @@ export default function CalendarPage() {
 
   function goToToday() {
     setWeekStart(startOfDay(today))
+    setMobileDay(startOfDay(today))
     setMiniCalDate(today)
   }
 
-  function prevWeek() {
-    setWeekStart(w => addDays(w, -7))
-  }
+  function prevWeek() { setWeekStart(w => addDays(w, -7)) }
+  function nextWeek() { setWeekStart(w => addDays(w, 7)) }
 
-  function nextWeek() {
-    setWeekStart(w => addDays(w, 7))
+  function prevDay() {
+    const next = addDays(mobileDay, -1)
+    setMobileDay(next)
+  }
+  function nextDay() {
+    const next = addDays(mobileDay, 1)
+    setMobileDay(next)
   }
 
   function handleMiniCalSelect(d: Date) {
     setMiniCalDate(d)
-    setWeekStart(startOfDay(d))
+    if (isMobile) {
+      setMobileDay(startOfDay(d))
+    } else {
+      setWeekStart(startOfDay(d))
+    }
   }
 
-  // Build 7-day columns: today + next 6 days
-  const days: Date[] = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+  // On desktop: 7-day columns. On mobile: just the single selected day.
+  const desktopDays: Date[] = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+  const displayDays: Date[] = isMobile ? [mobileDay] : desktopDays
 
-  // Group appointments by ISO date string
   const apptsByDay: Record<string, Appointment[]> = {}
   for (const appt of appointments) {
     if (!apptsByDay[appt.appointment_date]) apptsByDay[appt.appointment_date] = []
     apptsByDay[appt.appointment_date].push(appt)
   }
 
-  // Stats
+  // For mobile, also look up appointments in loaded range that match mobileDay
+  const mobileDayAppts = apptsByDay[toISO(mobileDay)] ?? []
+
   const counts = {
     scheduled: appointments.filter(a => a.status === 'scheduled').length,
     confirmed:  appointments.filter(a => a.status === 'confirmed').length,
@@ -426,35 +469,153 @@ export default function CalendarPage() {
       setSelectedAppt(null)
       return
     }
-
-    // Position popup: try to keep it on screen
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    const popupW = 256
-    let left = rect.right + 8
-    if (left + popupW > window.innerWidth) left = rect.left - popupW - 8
-    const top = Math.min(rect.top, window.innerHeight - 300)
-
-    setPopupStyle({ position: 'fixed', top, left, zIndex: 9999 })
+    if (!isMobile) {
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+      const popupW = 256
+      let left = rect.right + 8
+      if (left + popupW > window.innerWidth) left = rect.left - popupW - 8
+      const top = Math.min(rect.top, window.innerHeight - 300)
+      setPopupStyle({ position: 'fixed', top, left, zIndex: 9999 })
+    }
     setSelectedAppt(appt)
   }
 
   if (checkingAuth) return null
 
   const isCurrentWeek = toISO(weekStart) === toISO(startOfDay(today))
+  const isTodayMobile = toISO(mobileDay) === toISO(today)
 
+  // ── Mobile layout: day-list view ─────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <div className="flex h-[calc(100vh-64px)] flex-col overflow-hidden bg-[#081120] text-white">
+
+        {/* Mobile toolbar */}
+        <div className="flex flex-shrink-0 items-center justify-between gap-2 border-b border-[#1a3358] bg-[#0a1628] px-3 py-2">
+          <button
+            onClick={prevDay}
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/20 text-white hover:bg-white/10 transition"
+          >◀</button>
+
+          <div className="flex flex-col items-center">
+            <div className={`text-sm font-bold ${isTodayMobile ? 'text-[#c9a227]' : 'text-white'}`}>
+              {DAY_NAMES[mobileDay.getDay()]} · {mobileDay.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </div>
+            <div className="text-[10px] text-blue-300">
+              {mobileDayAppts.length} appointment{mobileDayAppts.length !== 1 ? 's' : ''}
+            </div>
+          </div>
+
+          <button
+            onClick={nextDay}
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/20 text-white hover:bg-white/10 transition"
+          >▶</button>
+        </div>
+
+        {/* Today + New Appointment row */}
+        <div className="flex flex-shrink-0 items-center justify-between gap-2 border-b border-[#1a3358] bg-[#0d1b30] px-3 py-2">
+          <button
+            onClick={goToToday}
+            className={`rounded-xl border px-4 py-1.5 text-sm font-medium transition
+              ${isTodayMobile ? 'border-[#c9a227] bg-[#c9a227] text-[#0f2040]' : 'border-white/20 text-white hover:bg-white/10'}`}
+          >
+            Today
+          </button>
+          <Link
+            href="/appointments"
+            className="rounded-xl bg-[#c9a227] px-4 py-1.5 text-sm font-semibold text-[#0f2040] hover:bg-[#b89020] transition"
+          >
+            + New Appointment
+          </Link>
+        </div>
+
+        {/* Day appointments: card list on mobile (easier than pixel grid) */}
+        <div className="flex-1 overflow-y-auto px-3 py-3">
+          {loading ? (
+            <div className="flex h-32 items-center justify-center text-blue-300 text-sm">Loading…</div>
+          ) : mobileDayAppts.length === 0 ? (
+            <div className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[#1a3358] text-center">
+              <span className="text-3xl">📭</span>
+              <p className="text-sm text-blue-300">No appointments this day</p>
+              <Link
+                href="/appointments"
+                className="rounded-xl bg-[#c9a227] px-4 py-2 text-sm font-semibold text-[#0f2040] hover:bg-[#b89020] transition"
+              >
+                + Schedule One
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {mobileDayAppts.map(appt => {
+                const ownerName   = appt.owners?.full_name ?? appt.horses?.owners?.full_name ?? 'Unknown Owner'
+                const patientName = appt.horses?.name ?? 'No patient'
+                const species     = appt.horses?.species
+                return (
+                  <button
+                    key={appt.id}
+                    onClick={e => handleApptClick(appt, e)}
+                    className={`w-full rounded-2xl border-l-4 bg-[#0d1b30] p-4 text-left transition hover:brightness-110 active:scale-[0.99] ${STATUS_BORDER[appt.status]}`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-xl flex-shrink-0">{species === 'canine' ? '🐕' : '🐴'}</span>
+                        <div className="min-w-0">
+                          <div className="font-semibold text-white truncate">{patientName}</div>
+                          <div className="text-xs text-blue-300 truncate">{ownerName}</div>
+                        </div>
+                      </div>
+                      <span className={`flex-shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-white ${STATUS_BG[appt.status]}`}>
+                        {STATUS_LABEL[appt.status]}
+                      </span>
+                    </div>
+                    <div className="mt-2.5 flex flex-wrap gap-2 text-xs text-blue-300">
+                      {appt.appointment_time && (
+                        <span className="flex items-center gap-1">
+                          🕐 {formatTime12(appt.appointment_time)}
+                          {appt.duration_minutes && ` · ${appt.duration_minutes} min`}
+                        </span>
+                      )}
+                      {appt.location && (
+                        <span className="flex items-center gap-1">📍 {appt.location}</span>
+                      )}
+                      {appt.reason && (
+                        <span className="flex items-center gap-1 italic opacity-80">{appt.reason}</span>
+                      )}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Popup (bottom sheet on mobile) */}
+        {selectedAppt && (
+          <ApptPopup
+            appt={selectedAppt}
+            onClose={() => setSelectedAppt(null)}
+            style={popupStyle}
+            isMobile={true}
+            onNotesSaved={(id, newNotes) => {
+              setAppointments(prev => prev.map(a => a.id === id ? { ...a, notes: newNotes } : a))
+              setSelectedAppt(prev => prev?.id === id ? { ...prev, notes: newNotes } : prev)
+            }}
+          />
+        )}
+      </div>
+    )
+  }
+
+  // ── Desktop layout: week grid ─────────────────────────────────────────────
   return (
     <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-[#081120] text-white">
 
-      {/* ── Sidebar ─────────────────────────────────────────────────────── */}
+      {/* Sidebar */}
       <aside className="hidden lg:flex w-56 flex-shrink-0 flex-col gap-4 border-r border-[#1a3358] bg-[#0a1628] p-4 overflow-y-auto">
-        {/* Mini calendar */}
         <MiniCalendar selected={miniCalDate} onSelect={handleMiniCalSelect} />
 
-        {/* Week stats */}
         <div className="rounded-xl border border-[#1a3358] bg-[#0d1b30] p-3">
-          <div className="mb-2 text-xs font-bold uppercase tracking-wider text-blue-400">
-            This Week
-          </div>
+          <div className="mb-2 text-xs font-bold uppercase tracking-wider text-blue-400">This Week</div>
           <div className="space-y-1.5">
             {([
               ['scheduled', 'Scheduled',  'text-blue-300'],
@@ -474,21 +635,13 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        {/* Quick links */}
         <div className="rounded-xl border border-[#1a3358] bg-[#0d1b30] p-3 space-y-1">
           <div className="mb-2 text-xs font-bold uppercase tracking-wider text-blue-400">Quick Links</div>
-          <Link href="/appointments" className="block rounded-lg px-2 py-1.5 text-xs text-blue-200 hover:bg-white/10 transition">
-            + New Appointment
-          </Link>
-          <Link href="/dashboard" className="block rounded-lg px-2 py-1.5 text-xs text-blue-200 hover:bg-white/10 transition">
-            Dashboard
-          </Link>
-          <Link href="/dashboard" className="block rounded-lg px-2 py-1.5 text-xs text-blue-200 hover:bg-white/10 transition">
-            Owners &amp; Patients
-          </Link>
+          <Link href="/appointments" className="block rounded-lg px-2 py-1.5 text-xs text-blue-200 hover:bg-white/10 transition">+ New Appointment</Link>
+          <Link href="/dashboard"    className="block rounded-lg px-2 py-1.5 text-xs text-blue-200 hover:bg-white/10 transition">Dashboard</Link>
+          <Link href="/dashboard"    className="block rounded-lg px-2 py-1.5 text-xs text-blue-200 hover:bg-white/10 transition">Owners &amp; Patients</Link>
         </div>
 
-        {/* Legend */}
         <div className="rounded-xl border border-[#1a3358] bg-[#0d1b30] p-3">
           <div className="mb-2 text-xs font-bold uppercase tracking-wider text-blue-400">Legend</div>
           <div className="space-y-1.5">
@@ -502,32 +655,23 @@ export default function CalendarPage() {
         </div>
       </aside>
 
-      {/* ── Main calendar area ──────────────────────────────────────────── */}
+      {/* Main area */}
       <div className="flex flex-1 flex-col overflow-hidden">
 
-        {/* ── Toolbar ─────────────────────────────────────────────────── */}
+        {/* Toolbar */}
         <div className="flex flex-shrink-0 items-center justify-between gap-3 border-b border-[#1a3358] bg-[#0a1628] px-4 py-2">
           <div className="flex items-center gap-2">
-            <button
-              onClick={prevWeek}
-              className="rounded-lg border border-white/20 px-3 py-1.5 text-sm text-white hover:bg-white/10 transition"
-            >◀</button>
-            <button
-              onClick={nextWeek}
-              className="rounded-lg border border-white/20 px-3 py-1.5 text-sm text-white hover:bg-white/10 transition"
-            >▶</button>
+            <button onClick={prevWeek} className="rounded-lg border border-white/20 px-3 py-1.5 text-sm text-white hover:bg-white/10 transition">◀</button>
+            <button onClick={nextWeek} className="rounded-lg border border-white/20 px-3 py-1.5 text-sm text-white hover:bg-white/10 transition">▶</button>
             <button
               onClick={goToToday}
               className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition
-                ${isCurrentWeek
-                  ? 'border-[#c9a227] bg-[#c9a227] text-[#0f2040]'
-                  : 'border-white/20 text-white hover:bg-white/10'}`}
+                ${isCurrentWeek ? 'border-[#c9a227] bg-[#c9a227] text-[#0f2040]' : 'border-white/20 text-white hover:bg-white/10'}`}
             >
               Today
             </button>
           </div>
 
-          {/* Week label */}
           <div className="text-center">
             <div className="text-base font-bold text-white">
               {formatMonthYear(weekStart)}
@@ -549,28 +693,24 @@ export default function CalendarPage() {
           </Link>
         </div>
 
-        {/* ── Day headers ─────────────────────────────────────────────── */}
+        {/* Day headers */}
         <div className="flex flex-shrink-0 border-b border-[#1a3358] bg-[#0d1b30]">
-          {/* Spacer for time column */}
           <div className="w-14 flex-shrink-0 border-r border-[#1a3358]" />
-          {days.map((day, i) => {
-            const iso = toISO(day)
+          {displayDays.map((day, i) => {
+            const iso     = toISO(day)
             const isToday = iso === toISO(today)
-            const count = apptsByDay[iso]?.length ?? 0
+            const count   = apptsByDay[iso]?.length ?? 0
             return (
               <div
                 key={i}
                 className={`flex flex-1 flex-col items-center justify-center py-2 border-r border-[#1a3358] last:border-r-0
                   ${isToday ? 'bg-[#c9a227]/10' : ''}`}
               >
-                <div className={`text-xs font-bold uppercase tracking-wider
-                  ${isToday ? 'text-[#c9a227]' : 'text-blue-400'}`}>
+                <div className={`text-xs font-bold uppercase tracking-wider ${isToday ? 'text-[#c9a227]' : 'text-blue-400'}`}>
                   {DAY_NAMES[day.getDay()]}
                 </div>
                 <div className={`text-xl font-bold leading-tight
-                  ${isToday
-                    ? 'flex h-8 w-8 items-center justify-center rounded-full bg-[#c9a227] text-[#0f2040]'
-                    : 'text-white'}`}>
+                  ${isToday ? 'flex h-8 w-8 items-center justify-center rounded-full bg-[#c9a227] text-[#0f2040]' : 'text-white'}`}>
                   {formatDayNum(day)}
                 </div>
                 {count > 0 && (
@@ -583,7 +723,7 @@ export default function CalendarPage() {
           })}
         </div>
 
-        {/* ── Grid body (scrollable) ───────────────────────────────────── */}
+        {/* Grid body */}
         <div
           ref={scrollRef}
           className="flex flex-1 overflow-auto"
@@ -595,7 +735,7 @@ export default function CalendarPage() {
             </div>
           )}
 
-          {/* Time labels column */}
+          {/* Time labels */}
           <div className="relative w-14 flex-shrink-0 border-r border-[#1a3358]" style={{ height: GRID_HEIGHT }}>
             {HOUR_LABELS.map((label, i) => (
               <div
@@ -609,37 +749,25 @@ export default function CalendarPage() {
           </div>
 
           {/* Day columns */}
-          {days.map((day, colIdx) => {
-            const iso = toISO(day)
-            const isToday = iso === toISO(today)
+          {displayDays.map((day, colIdx) => {
+            const iso      = toISO(day)
+            const isToday  = iso === toISO(today)
             const dayAppts = apptsByDay[iso] ?? []
-            const nowMins = today.getHours() * 60 + today.getMinutes()
+            const nowMins  = today.getHours() * 60 + today.getMinutes()
 
             return (
               <div
                 key={colIdx}
-                className={`relative flex-1 border-r border-[#1a3358] last:border-r-0
-                  ${isToday ? 'bg-[#c9a227]/5' : ''}`}
+                className={`relative flex-1 border-r border-[#1a3358] last:border-r-0 ${isToday ? 'bg-[#c9a227]/5' : ''}`}
                 style={{ height: GRID_HEIGHT, minWidth: 90 }}
               >
-                {/* Hour lines */}
                 {HOUR_LABELS.map((_, i) => (
-                  <div
-                    key={i}
-                    className="absolute left-0 right-0 border-t border-[#1a3358]/60"
-                    style={{ top: i * 60 * PX_PER_MIN }}
-                  />
+                  <div key={i} className="absolute left-0 right-0 border-t border-[#1a3358]/60" style={{ top: i * 60 * PX_PER_MIN }} />
                 ))}
-                {/* 30-min lines (lighter) */}
                 {HOUR_LABELS.map((_, i) => (
-                  <div
-                    key={`half-${i}`}
-                    className="absolute left-0 right-0 border-t border-[#1a3358]/25"
-                    style={{ top: i * 60 * PX_PER_MIN + 30 * PX_PER_MIN }}
-                  />
+                  <div key={`half-${i}`} className="absolute left-0 right-0 border-t border-[#1a3358]/25" style={{ top: i * 60 * PX_PER_MIN + 30 * PX_PER_MIN }} />
                 ))}
 
-                {/* "Now" indicator — only on today's column */}
                 {isToday && nowMins >= GRID_START_HOUR * 60 && nowMins <= GRID_END_HOUR * 60 && (
                   <div
                     className="absolute left-0 right-0 z-10 flex items-center pointer-events-none"
@@ -650,18 +778,16 @@ export default function CalendarPage() {
                   </div>
                 )}
 
-                {/* Appointments */}
                 {dayAppts.map(appt => {
                   const startMins = timeToMins(appt.appointment_time)
                   if (startMins < GRID_START_HOUR * 60 || startMins > GRID_END_HOUR * 60) return null
-                  const relMins = startMins - GRID_START_HOUR * 60
-                  const dur = appt.duration_minutes ?? 30
-                  const top = relMins * PX_PER_MIN
-                  const height = Math.max(dur * PX_PER_MIN, 22)
-
-                  const ownerName = appt.owners?.full_name ?? appt.horses?.owners?.full_name ?? ''
+                  const relMins    = startMins - GRID_START_HOUR * 60
+                  const dur        = appt.duration_minutes ?? 30
+                  const top        = relMins * PX_PER_MIN
+                  const height     = Math.max(dur * PX_PER_MIN, 22)
+                  const ownerName  = appt.owners?.full_name ?? appt.horses?.owners?.full_name ?? ''
                   const patientName = appt.horses?.name ?? ''
-                  const species = appt.horses?.species
+                  const species    = appt.horses?.species
 
                   return (
                     <button
@@ -696,7 +822,7 @@ export default function CalendarPage() {
           })}
         </div>
 
-        {/* ── Bottom status bar ────────────────────────────────────────── */}
+        {/* Status bar */}
         <div className="flex flex-shrink-0 flex-wrap gap-x-4 gap-y-1 border-t border-[#1a3358] bg-[#0a1628] px-4 py-1.5 text-xs text-blue-200">
           <span>📅 <strong className="text-white">{appointments.length}</strong> appointments this week</span>
           <span>✅ Scheduled: <strong className="text-blue-300">{counts.scheduled}</strong></span>
@@ -706,17 +832,16 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* ── Floating appointment popup ───────────────────────────────────── */}
+      {/* Desktop popup */}
       {selectedAppt && (
         <ApptPopup
           appt={selectedAppt}
           onClose={() => setSelectedAppt(null)}
           style={popupStyle}
+          isMobile={false}
           onNotesSaved={(id, newNotes) => {
-            setAppointments(prev =>
-              prev.map(a => a.id === id ? { ...a, notes: newNotes } : a)
-            )
-            setSelectedAppt(prev => prev && prev.id === id ? { ...prev, notes: newNotes } : prev)
+            setAppointments(prev => prev.map(a => a.id === id ? { ...a, notes: newNotes } : a))
+            setSelectedAppt(prev => prev?.id === id ? { ...prev, notes: newNotes } : prev)
           }}
         />
       )}

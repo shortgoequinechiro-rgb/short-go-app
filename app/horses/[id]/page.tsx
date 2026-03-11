@@ -1254,11 +1254,11 @@ export default function HorseDetailPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#edf2f7] p-6 md:p-8">
+    <main className="min-h-screen bg-[#edf2f7] p-3 md:p-6 lg:p-8">
       <div className="mx-auto max-w-7xl">
-        <div className="rounded-3xl bg-white p-6 shadow-md">
+        <div className="rounded-3xl bg-white p-4 shadow-md md:p-6">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-3xl font-bold text-slate-900">
+            <h1 className="text-xl font-bold text-slate-900 md:text-3xl">
               {horse?.name || 'Patient Record'}
             </h1>
             {horse?.species === 'canine' ? (
@@ -1286,8 +1286,16 @@ export default function HorseDetailPage() {
               </span>
             )}
           </div>
-          <p className="mt-2 text-slate-600">
-            {horse?.breed || '—'} • {horse?.sex || '—'} • {horse?.age || '—'} • {horse?.discipline || '—'} • {horse?.barn_location || '—'}
+          <p className="mt-2 flex flex-wrap gap-x-2 text-sm text-slate-600 md:text-base">
+            <span>{horse?.breed || '—'}</span>
+            <span className="text-slate-300">•</span>
+            <span>{horse?.sex || '—'}</span>
+            <span className="text-slate-300">•</span>
+            <span>{horse?.age || '—'}</span>
+            <span className="text-slate-300">•</span>
+            <span>{horse?.discipline || '—'}</span>
+            <span className="text-slate-300">•</span>
+            <span>{horse?.barn_location || '—'}</span>
           </p>
           {horse?.medical_alerts && (
             <div className="mt-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
@@ -1856,7 +1864,7 @@ export default function HorseDetailPage() {
             </div>
 
             {/* Spine Assessment + Progress Tracker Banners */}
-            <div className="flex items-center justify-between rounded-3xl border border-[#0f2040]/10 bg-white px-6 py-4 shadow-md">
+            <div className="flex flex-col gap-3 rounded-3xl border border-[#0f2040]/10 bg-white p-4 shadow-md sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
               <div>
                 <p className="font-semibold text-slate-900">Spine Assessment</p>
                 <p className="mt-0.5 text-sm text-slate-500">

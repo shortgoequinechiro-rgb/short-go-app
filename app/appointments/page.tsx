@@ -581,24 +581,34 @@ function AppointmentsContent() {
 
       {/* ── Header ── */}
       <div className="sticky top-0 z-20 border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-          <div className="flex items-center gap-3">
-            <Link href="/dashboard" className="flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">
-              ← Dashboard
+        <div className="mx-auto max-w-6xl px-4">
+          {/* Row 1: back + title */}
+          <div className="flex items-center gap-3 py-3">
+            <Link href="/dashboard" className="flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50 flex-shrink-0">
+              <span className="sm:hidden">←</span>
+              <span className="hidden sm:inline">← Dashboard</span>
             </Link>
-            <div>
-              <h1 className="text-lg font-semibold text-slate-900 leading-tight">Appointments</h1>
-              <p className="text-xs text-slate-500">Schedule & manage visits</p>
+            <div className="min-w-0">
+              <h1 className="text-base font-semibold text-slate-900 leading-tight sm:text-lg">Appointments</h1>
+              <p className="hidden text-xs text-slate-500 sm:block">Schedule &amp; manage visits</p>
             </div>
+            {/* Mobile: + New button inline */}
+            <button
+              onClick={() => openNewForm()}
+              className="ml-auto rounded-xl bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-700 transition sm:hidden flex-shrink-0"
+            >
+              + New
+            </button>
           </div>
-          <div className="flex items-center gap-2">
+          {/* Row 2: toggle + desktop new button */}
+          <div className="flex items-center gap-2 pb-2">
             <div className="flex rounded-xl border border-slate-200 overflow-hidden">
-              <button onClick={() => setView('calendar')} className={`px-3 py-2 text-sm font-medium transition ${view === 'calendar' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>Calendar</button>
-              <button onClick={() => setView('list')} className={`px-3 py-2 text-sm font-medium transition ${view === 'list' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>List</button>
+              <button onClick={() => setView('calendar')} className={`px-3 py-1.5 text-sm font-medium transition ${view === 'calendar' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>Calendar</button>
+              <button onClick={() => setView('list')} className={`px-3 py-1.5 text-sm font-medium transition ${view === 'list' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>List</button>
             </div>
             <button
               onClick={() => openNewForm()}
-              className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 transition"
+              className="hidden rounded-xl bg-slate-900 px-4 py-1.5 text-sm font-semibold text-white hover:bg-slate-700 transition sm:block"
             >
               + New Appointment
             </button>
@@ -1095,10 +1105,11 @@ function AppointmentCard({
           {appt.status !== 'cancelled' && (
             <button
               onClick={() => downloadIcs(appt)}
-              title="Add to Apple Calendar"
+              title="Add to Calendar"
               className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition"
             >
-              📅 Add to Calendar
+              <span className="hidden sm:inline">📅 Add to Calendar</span>
+              <span className="sm:hidden">📅</span>
             </button>
           )}
           <button onClick={onEdit} className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition">Edit</button>
