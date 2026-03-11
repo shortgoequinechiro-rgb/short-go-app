@@ -1052,57 +1052,71 @@ export default function Home() {
                         </div>
 
                         {!editingOwner ? (
-                          <div className="flex flex-wrap gap-2">
-                            <a
-                              href={`/intake/${selectedOwner.id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 hover:bg-slate-50 transition"
-                            >
-                              📋 Intake Form
-                            </a>
-                            <button
-                              onClick={() => sendIntakeEmail(selectedOwner.id, selectedOwner.email)}
-                              disabled={sendingIntake}
-                              className="rounded-xl border border-blue-300 bg-blue-50 px-3 py-2 text-sm text-blue-800 hover:bg-blue-100 transition disabled:opacity-50"
-                            >
-                              {sendingIntake ? 'Sending…' : '📧 Email Intake Link'}
-                            </button>
-                            <button
-                              onClick={() => sendIntakeSms(selectedOwner.id, selectedOwner.phone)}
-                              disabled={sendingIntakeSms}
-                              className="rounded-xl border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-800 hover:bg-green-100 transition disabled:opacity-50"
-                            >
-                              {sendingIntakeSms ? 'Sending…' : '📱 Text Intake Link'}
-                            </button>
-                            <a
-                              href={`/consent/${selectedOwner.id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 hover:bg-slate-50 transition"
-                            >
-                              📝 Consent Form
-                            </a>
-                            <button
-                              onClick={() => sendConsentEmail(selectedOwner.id, selectedOwner.email)}
-                              disabled={sendingConsent}
-                              className="rounded-xl border border-purple-300 bg-purple-50 px-3 py-2 text-sm text-purple-800 hover:bg-purple-100 transition disabled:opacity-50"
-                            >
-                              {sendingConsent ? 'Sending…' : '📧 Email Consent Link'}
-                            </button>
-                            <button
-                              onClick={() => sendConsentSms(selectedOwner.id, selectedOwner.phone)}
-                              disabled={sendingConsentSms}
-                              className="rounded-xl border border-orange-300 bg-orange-50 px-3 py-2 text-sm text-orange-800 hover:bg-orange-100 transition disabled:opacity-50"
-                            >
-                              {sendingConsentSms ? 'Sending…' : '📱 Text Consent Link'}
-                            </button>
-                            <button
-                              onClick={() => startOwnerEdit(selectedOwner)}
-                              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
-                            >
-                              Edit Owner
-                            </button>
+                          <div className="flex flex-col gap-2 min-w-[220px]">
+                            {/* Intake row */}
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-16 shrink-0 text-[10px] font-semibold uppercase tracking-widest text-slate-400">Intake</span>
+                              <a
+                                href={`/intake/${selectedOwner.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition"
+                              >
+                                📋 Open
+                              </a>
+                              <button
+                                onClick={() => sendIntakeEmail(selectedOwner.id, selectedOwner.email)}
+                                disabled={sendingIntake}
+                                className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 transition disabled:opacity-50"
+                              >
+                                {sendingIntake ? '…' : '📧 Email'}
+                              </button>
+                              <button
+                                onClick={() => sendIntakeSms(selectedOwner.id, selectedOwner.phone)}
+                                disabled={sendingIntakeSms}
+                                className="rounded-lg border border-green-200 bg-green-50 px-2.5 py-1.5 text-xs font-medium text-green-700 hover:bg-green-100 transition disabled:opacity-50"
+                              >
+                                {sendingIntakeSms ? '…' : '📱 Text'}
+                              </button>
+                            </div>
+
+                            {/* Consent row */}
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-16 shrink-0 text-[10px] font-semibold uppercase tracking-widest text-slate-400">Consent</span>
+                              <a
+                                href={`/consent/${selectedOwner.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition"
+                              >
+                                📝 Open
+                              </a>
+                              <button
+                                onClick={() => sendConsentEmail(selectedOwner.id, selectedOwner.email)}
+                                disabled={sendingConsent}
+                                className="rounded-lg border border-purple-200 bg-purple-50 px-2.5 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-100 transition disabled:opacity-50"
+                              >
+                                {sendingConsent ? '…' : '📧 Email'}
+                              </button>
+                              <button
+                                onClick={() => sendConsentSms(selectedOwner.id, selectedOwner.phone)}
+                                disabled={sendingConsentSms}
+                                className="rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-1.5 text-xs font-medium text-orange-700 hover:bg-orange-100 transition disabled:opacity-50"
+                              >
+                                {sendingConsentSms ? '…' : '📱 Text'}
+                              </button>
+                            </div>
+
+                            {/* Edit row */}
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-16 shrink-0 text-[10px] font-semibold uppercase tracking-widest text-slate-400"></span>
+                              <button
+                                onClick={() => startOwnerEdit(selectedOwner)}
+                                className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition"
+                              >
+                                ✏️ Edit Owner
+                              </button>
+                            </div>
                           </div>
                         ) : null}
                       </div>
