@@ -70,7 +70,7 @@ function blankAnimal(): AnimalEntry {
     name: '',
     age: '',
     breed: '',
-    dob: '',
+    barnLocation: '',
     gender: '',
     height: '',
     color: '',
@@ -291,7 +291,6 @@ export default function IntakeFormPage() {
           animalName: resolvedAnimalName,
           animalAge: animal.age || null,
           animalBreed: animal.breed || null,
-          animalDob: animal.dob || null,
           animalGender: animal.gender || null,
           animalHeight: animal.height || null,
           animalColor: animal.color || null,
@@ -330,7 +329,6 @@ export default function IntakeFormPage() {
             name: a.name,
             age: a.age,
             breed: a.breed,
-            dob: a.dob,
             gender: a.gender,
             height: a.height,
             color: a.color,
@@ -710,16 +708,10 @@ function AnimalSection({
           </Field>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Breed">
-            <input value={animal.breed} onChange={e => onUpdate({ breed: e.target.value })}
-              className={inputCls} placeholder="e.g. Quarter Horse" />
-          </Field>
-          <Field label="Date of Birth">
-            <input value={animal.dob} onChange={e => onUpdate({ dob: e.target.value })}
-              className={inputCls} type="date" />
-          </Field>
-        </div>
+        <Field label="Breed">
+          <input value={animal.breed} onChange={e => onUpdate({ breed: e.target.value })}
+            className={inputCls} placeholder="e.g. Quarter Horse" />
+        </Field>
 
         <div className="grid grid-cols-2 gap-4">
           <Field label="Sex">
