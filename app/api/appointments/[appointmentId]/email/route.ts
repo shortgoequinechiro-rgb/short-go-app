@@ -114,6 +114,7 @@ export async function POST(
       .from('appointments')
       .select(`
         *,
+        owners ( full_name, email ),
         horses (
           name,
           breed,
@@ -128,13 +129,17 @@ export async function POST(
     }
 
     const horse = appt.horses as any
-    const owner = horse?.owners as any
+    // For owner-based appointments the direct owners join is the source of truth;
+    // fall back to horse → owners for legacy horse-based appointments.
+    const owner = (appt.owners as any) || (horse?.owners as any)
 
     if (!owner?.email) {
       return NextResponse.json({ error: 'Owner does not have an email address on file.' }, { status: 400 })
     }
 
-    const horseName = horse?.name || 'your horse'
+    // For owner-based appointments there is no horse; show animal count instead.
+    const numAnimals = appt.duration_minutes ? Math.max(1, Math.round(appt.duration_minutes / 15)) : 1
+    const horseName = horse?.name || (numAnimals > 1 ? `${numAnimals} animals` : 'your animal')
     const ownerName = owner?.full_name || ''
     const dateStr = fmtDate(appt.appointment_date)
     const timeStr = fmtTime(appt.appointment_time)
@@ -200,7 +205,7 @@ export async function POST(
 
     // Attach .ics calendar invite to confirmation emails
     const attachments = isConfirmation ? [{
-      filename: `${(horse?.name || 'appointment').replace(/\s+/g, '-')}-${appt.appointment_date}.ics`,
+      filename: `${(horse?.name || ownerName || 'appointment').replace(/\s+/g, '-')}-${appt.appointment_date}.ics`,
       content: Buffer.from(generateIcs({
         id: appt.id,
         appointment_date: appt.appointment_date,

@@ -950,10 +950,19 @@ export default function Home() {
                     ? Math.max(1, Math.round(appt.duration_minutes / 15))
                     : 1
 
+                  // Link to the owner's page if we have an owner_id, otherwise
+                  // fall back to the horse record or the appointments page.
+                  const cardHref =
+                    appt.owner_id
+                      ? `/owners/${appt.owner_id}`
+                      : appt.horses?.id
+                      ? `/horses/${appt.horses.id}`
+                      : '/appointments'
+
                   return (
                     <Link
                       key={appt.id}
-                      href="/appointments"
+                      href={cardHref}
                       className={`group relative flex flex-col rounded-2xl border-l-4 bg-slate-50 p-4 transition hover:bg-white hover:shadow-md ${
                         appt.status === 'confirmed' ? 'border-emerald-400' :
                         appt.status === 'completed' ? 'border-slate-300' :
@@ -996,7 +1005,7 @@ export default function Home() {
 
                       {/* "View" hint on hover */}
                       <span className="mt-2 text-xs font-medium text-slate-400 opacity-0 transition-opacity group-hover:opacity-100">
-                        View appointment →
+                        {appt.owner_id ? 'View owner & animals →' : 'View record →'}
                       </span>
                     </Link>
                   )
