@@ -206,9 +206,10 @@ export default function OwnerPage() {
           </div>
           <Link
             href="/appointments"
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 transition"
+            className="flex-shrink-0 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 transition"
           >
-            📅 Appointments
+            <span className="hidden sm:inline">📅 Appointments</span>
+            <span className="sm:hidden">📅</span>
           </Link>
         </div>
       </div>
@@ -240,7 +241,7 @@ export default function OwnerPage() {
         {!loading && owner && (
           <>
             {/* ── Owner contact card ── */}
-            <div className="rounded-3xl bg-white p-6 shadow-sm">
+            <div className="rounded-3xl bg-white p-4 shadow-sm md:p-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 
                 {/* Left: contact info */}

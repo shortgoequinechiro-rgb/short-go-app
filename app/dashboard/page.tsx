@@ -882,10 +882,10 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#edf2f7] p-4 md:p-6 xl:p-8">
       <div className="mx-auto max-w-7xl">
-        <div className="rounded-3xl bg-white p-5 shadow-md md:p-6">
-          <div className="flex items-center justify-between gap-5">
-            <div className="flex items-center gap-5">
-              <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-2xl bg-[#edf2f7]">
+        <div className="rounded-3xl bg-white p-4 shadow-md md:p-6">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded-xl bg-[#edf2f7] md:h-16 md:w-16 md:rounded-2xl">
                 <Image
                   src="/logo.png"
                   alt="Short-Go logo"
@@ -894,10 +894,10 @@ export default function Home() {
                 />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">
+                <h1 className="text-lg font-bold text-slate-900 md:text-3xl">
                   Client Dashboard
                 </h1>
-                <p className="mt-1 text-sm text-slate-600 md:text-base">
+                <p className="hidden text-sm text-slate-600 md:block md:text-base mt-1">
                   Search by owner or horse, then open the full horse record.
                 </p>
               </div>
@@ -905,32 +905,34 @@ export default function Home() {
             <div className="flex flex-shrink-0 gap-2">
               <button
                 onClick={() => setShowAddOwnerModal(true)}
-                className="rounded-xl bg-[#0f2040] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#162d55] transition"
+                className="rounded-xl bg-[#0f2040] px-3 py-2 text-sm font-semibold text-white hover:bg-[#162d55] transition md:px-4 md:py-2.5"
               >
-                + Add Owner
+                <span className="hidden sm:inline">+ Add Owner</span>
+                <span className="sm:hidden">+ Owner</span>
               </button>
               <button
                 onClick={() => setShowAddPatientModal(true)}
-                className="rounded-xl border border-[#0f2040] px-4 py-2.5 text-sm font-semibold text-[#0f2040] hover:bg-slate-50 transition"
+                className="rounded-xl border border-[#0f2040] px-3 py-2 text-sm font-semibold text-[#0f2040] hover:bg-slate-50 transition md:px-4 md:py-2.5"
               >
-                + Add Patient
+                <span className="hidden sm:inline">+ Add Patient</span>
+                <span className="sm:hidden">+ Patient</span>
               </button>
             </div>
           </div>
         </div>
 
         {/* ── Today's Appointments ── */}
-        <div className="mt-5 rounded-3xl bg-white p-5 shadow-md md:p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-slate-900 md:text-2xl">Today's Appointments</h2>
-              <p className="mt-0.5 text-sm text-slate-500">
+        <div className="mt-5 rounded-3xl bg-white p-4 shadow-md md:p-6">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold text-slate-900 md:text-2xl">Today&apos;s Appointments</h2>
+              <p className="mt-0.5 text-xs text-slate-500 md:text-sm">
                 {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
               </p>
             </div>
             <Link
               href="/appointments"
-              className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 transition"
+              className="flex-shrink-0 rounded-xl border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition md:px-4 md:py-2"
             >
               View All →
             </Link>
