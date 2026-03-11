@@ -27,7 +27,7 @@ export async function GET(
       .single(),
     supabaseAdmin
       .from('horses')
-      .select('id, name, species, breed, age, sex, barn_location, gender')
+      .select('id, name, species, breed, age, sex, barn_location')
       .eq('owner_id', ownerId)
       .order('name'),
   ])
