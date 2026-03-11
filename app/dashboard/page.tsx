@@ -116,6 +116,8 @@ export default function Home() {
 
   const [sendingIntake, setSendingIntake] = useState(false)
   const [sendingIntakeSms, setSendingIntakeSms] = useState(false)
+  const [sendingConsent, setSendingConsent] = useState(false)
+  const [sendingConsentSms, setSendingConsentSms] = useState(false)
   const [editingOwner, setEditingOwner] = useState(false)
   const [ownerNameEdit, setOwnerNameEdit] = useState('')
   const [ownerPhoneEdit, setOwnerPhoneEdit] = useState('')
@@ -661,6 +663,50 @@ export default function Home() {
     }
   }
 
+  async function sendConsentEmail(ownerId: string, ownerEmail: string | null) {
+    if (!ownerEmail) {
+      setMessage('This owner does not have an email address on file.')
+      return
+    }
+    setSendingConsent(true)
+    setMessage('')
+    try {
+      const res = await fetch(`/api/owners/${ownerId}/send-consent`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) {
+        setMessage(data.error || 'Failed to send consent email.')
+      } else {
+        setMessage(`Consent form link sent to ${ownerEmail}.`)
+      }
+    } catch {
+      setMessage('Failed to send consent email.')
+    } finally {
+      setSendingConsent(false)
+    }
+  }
+
+  async function sendConsentSms(ownerId: string, ownerPhone: string | null) {
+    if (!ownerPhone) {
+      setMessage('This owner does not have a phone number on file.')
+      return
+    }
+    setSendingConsentSms(true)
+    setMessage('')
+    try {
+      const res = await fetch(`/api/owners/${ownerId}/send-consent-sms`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) {
+        setMessage(data.error || 'Failed to send consent text message.')
+      } else {
+        setMessage(`Consent form link texted to ${ownerPhone}.`)
+      }
+    } catch {
+      setMessage('Failed to send consent text message.')
+    } finally {
+      setSendingConsentSms(false)
+    }
+  }
+
   const filteredOwners = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
     if (!query) return owners
@@ -1037,6 +1083,20 @@ export default function Home() {
                             >
                               📝 Consent Form
                             </a>
+                            <button
+                              onClick={() => sendConsentEmail(selectedOwner.id, selectedOwner.email)}
+                              disabled={sendingConsent}
+                              className="rounded-xl border border-purple-300 bg-purple-50 px-3 py-2 text-sm text-purple-800 hover:bg-purple-100 transition disabled:opacity-50"
+                            >
+                              {sendingConsent ? 'Sending…' : '📧 Email Consent Link'}
+                            </button>
+                            <button
+                              onClick={() => sendConsentSms(selectedOwner.id, selectedOwner.phone)}
+                              disabled={sendingConsentSms}
+                              className="rounded-xl border border-orange-300 bg-orange-50 px-3 py-2 text-sm text-orange-800 hover:bg-orange-100 transition disabled:opacity-50"
+                            >
+                              {sendingConsentSms ? 'Sending…' : '📱 Text Consent Link'}
+                            </button>
                             <button
                               onClick={() => startOwnerEdit(selectedOwner)}
                               className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
