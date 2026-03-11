@@ -24,6 +24,7 @@ type Appointment = {
   confirmation_sent: boolean
   visit_id: string | null
   horses?: { name: string; owners?: { full_name: string; email: string | null } | null } | null
+  owners?: { full_name: string; email: string | null } | null
 }
 
 type Horse = {
@@ -32,6 +33,13 @@ type Horse = {
   owner_id: string | null
   species?: 'equine' | 'canine' | null
   owners?: { full_name: string } | null
+}
+
+type Owner = {
+  id: string
+  full_name: string
+  email: string | null
+  phone: string | null
 }
 
 const SQL_SETUP = `
@@ -176,7 +184,8 @@ function downloadIcs(appt: Appointment) {
 // ── Empty appointment form state ──────────────────────────────────────────────
 
 type FormState = {
-  horse_id: string
+  owner_id: string
+  num_animals: number
   appointment_date: string
   appointment_time: string
   duration_minutes: number
@@ -189,10 +198,11 @@ type FormState = {
 
 function emptyForm(date = ''): FormState {
   return {
-    horse_id: '',
+    owner_id: '',
+    num_animals: 1,
     appointment_date: date,
     appointment_time: '09:00',
-    duration_minutes: 60,
+    duration_minutes: 15,
     location: '',
     reason: '',
     status: 'scheduled',
@@ -215,6 +225,7 @@ function AppointmentsContent() {
 
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [horses, setHorses] = useState<Horse[]>([])
+  const [owners, setOwners] = useState<Owner[]>([])
   const [loading, setLoading] = useState(true)
 
   // Calendar state
@@ -297,7 +308,8 @@ function AppointmentsContent() {
         horses (
           name,
           owners ( full_name, email )
-        )
+        ),
+        owners ( full_name, email )
       `)
       .order('appointment_date', { ascending: true })
       .order('appointment_time', { ascending: true })
@@ -307,7 +319,7 @@ function AppointmentsContent() {
       return
     }
 
-    setAppointments((data || []) as Appointment[])
+    setAppointments((data || []) as unknown as Appointment[])
   }
 
   async function loadHorses() {
@@ -319,11 +331,20 @@ function AppointmentsContent() {
     setHorses((data || []) as unknown as Horse[])
   }
 
+  async function loadOwners() {
+    const { data } = await supabase
+      .from('owners')
+      .select('id, full_name, email, phone')
+      .eq('archived', false)
+      .order('full_name')
+    setOwners((data || []) as Owner[])
+  }
+
   useEffect(() => {
     if (checkingAuth) return
     async function init() {
       setLoading(true)
-      await Promise.all([loadAppointments(), loadHorses()])
+      await Promise.all([loadAppointments(), loadHorses(), loadOwners()])
       setLoading(false)
     }
     init()
@@ -391,18 +412,21 @@ function AppointmentsContent() {
 
   function openNewForm(date?: string) {
     setEditingId(null)
-    setForm({ ...emptyForm(date || today), horse_id: preselectedHorseId || '' })
+    setForm(emptyForm(date || today))
     setFormMsg('')
     setShowForm(true)
   }
 
   function openEditForm(appt: Appointment) {
     setEditingId(appt.id)
+    const dur = appt.duration_minutes || 15
+    const numAnimals = Math.max(1, Math.round(dur / 15))
     setForm({
-      horse_id: appt.horse_id || '',
+      owner_id: appt.owner_id || '',
+      num_animals: numAnimals,
       appointment_date: appt.appointment_date,
       appointment_time: appt.appointment_time || '09:00',
-      duration_minutes: appt.duration_minutes || 60,
+      duration_minutes: numAnimals * 15,
       location: appt.location || '',
       reason: appt.reason || '',
       status: appt.status,
@@ -414,17 +438,16 @@ function AppointmentsContent() {
   }
 
   async function saveForm() {
-    if (!form.horse_id || !form.appointment_date) {
-      setFormMsg('Patient and date are required.')
+    if (!form.owner_id || !form.appointment_date) {
+      setFormMsg('Owner and date are required.')
       return
     }
     setSaving(true)
     setFormMsg('')
 
-    const horse = horses.find(h => h.id === form.horse_id)
     const payload = {
-      horse_id: form.horse_id,
-      owner_id: horse?.owner_id || null,
+      horse_id: null,
+      owner_id: form.owner_id,
       appointment_date: form.appointment_date,
       appointment_time: form.appointment_time || null,
       duration_minutes: form.duration_minutes,
@@ -701,21 +724,42 @@ function AppointmentsContent() {
             </div>
 
             <div className="space-y-4">
-              {/* Patient */}
+              {/* Owner */}
               <div>
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700">Patient <span className="text-red-400">*</span></label>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700">Owner <span className="text-red-400">*</span></label>
                 <select
-                  value={form.horse_id}
-                  onChange={e => setForm(f => ({ ...f, horse_id: e.target.value }))}
+                  value={form.owner_id}
+                  onChange={e => setForm(f => ({ ...f, owner_id: e.target.value }))}
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
                 >
-                  <option value="">— Select patient —</option>
-                  {horses.map(h => (
-                    <option key={h.id} value={h.id}>
-                      {h.species === 'canine' ? '🐕' : '🐴'} {h.name}{h.owners?.full_name ? ` (${h.owners.full_name})` : ''}
-                    </option>
+                  <option value="">— Select owner —</option>
+                  {owners.map(o => (
+                    <option key={o.id} value={o.id}>{o.full_name}</option>
                   ))}
                 </select>
+              </div>
+
+              {/* Number of animals */}
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700">Number of Animals</label>
+                <select
+                  value={form.num_animals}
+                  onChange={e => {
+                    const n = Number(e.target.value)
+                    setForm(f => ({ ...f, num_animals: n, duration_minutes: n * 15 }))
+                  }}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                >
+                  {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                    <option key={n} value={n}>{n} animal{n > 1 ? 's' : ''} — {n * 15} min</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Duration auto-display */}
+              <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                <span>⏱</span>
+                <span>Total duration: <strong className="text-slate-900">{form.duration_minutes} min</strong> ({form.num_animals} animal{form.num_animals > 1 ? 's' : ''} × 15 min each)</span>
               </div>
 
               {/* Date + Time */}
@@ -740,31 +784,19 @@ function AppointmentsContent() {
                 </div>
               </div>
 
-              {/* Duration + Status */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1.5 block text-sm font-semibold text-slate-700">Duration (min)</label>
-                  <select
-                    value={form.duration_minutes}
-                    onChange={e => setForm(f => ({ ...f, duration_minutes: Number(e.target.value) }))}
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
-                  >
-                    {[15, 30, 45, 60, 90, 120].map(d => <option key={d} value={d}>{d} min</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-semibold text-slate-700">Status</label>
-                  <select
-                    value={form.status}
-                    onChange={e => { const s = e.target.value as Appointment['status']; setForm(f => ({ ...f, status: s })) }}
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
-                  >
-                    <option value="scheduled">Scheduled</option>
-                    <option value="confirmed">Confirmed</option>
-                    <option value="completed">Completed</option>
-                    <option value="cancelled">Cancelled</option>
-                  </select>
-                </div>
+              {/* Status */}
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700">Status</label>
+                <select
+                  value={form.status}
+                  onChange={e => { const s = e.target.value as Appointment['status']; setForm(f => ({ ...f, status: s })) }}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                >
+                  <option value="scheduled">Scheduled</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
               </div>
 
               {/* Reason */}
@@ -874,9 +906,11 @@ function AppointmentCard({
   emailing: boolean
   emailMsg: string
 }) {
-  const horseName = appt.horses?.name || '—'
-  const ownerName = appt.horses?.owners?.full_name || '—'
-  const ownerEmail = appt.horses?.owners?.email
+  // Support both owner-based (new) and horse-based (legacy) appointments
+  const horseName = appt.horses?.name || null
+  const ownerName = appt.owners?.full_name || appt.horses?.owners?.full_name || '—'
+  const ownerEmail = appt.owners?.email || appt.horses?.owners?.email
+  const numAnimals = appt.duration_minutes ? Math.max(1, Math.round(appt.duration_minutes / 15)) : null
   const canEmail = !!ownerEmail && appt.status !== 'cancelled'
 
   return (
@@ -889,18 +923,25 @@ function AppointmentCard({
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <Link href={`/horses/${appt.horse_id}`} className="text-base font-semibold text-slate-900 hover:underline truncate">
-              {horseName}
-            </Link>
+            <span className="text-base font-semibold text-slate-900 truncate">{ownerName}</span>
             <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[appt.status]}`}>
               {STATUS_LABELS[appt.status]}
             </span>
           </div>
-          <p className="text-sm text-slate-500 mt-0.5">{ownerName}</p>
+          {horseName && (
+            <p className="text-sm text-slate-500 mt-0.5">
+              {appt.horse_id
+                ? <Link href={`/horses/${appt.horse_id}`} className="hover:underline">{horseName}</Link>
+                : horseName}
+            </p>
+          )}
+          {numAnimals && !horseName && (
+            <p className="text-sm text-slate-500 mt-0.5">{numAnimals} animal{numAnimals > 1 ? 's' : ''}</p>
+          )}
         </div>
         <div className="text-right flex-shrink-0">
           <p className="text-sm font-semibold text-slate-800">{fmtDate(appt.appointment_date)}</p>
-          {appt.appointment_time && <p className="text-xs text-slate-500">{fmtTime(appt.appointment_time)} · {appt.duration_minutes || 60} min</p>}
+          {appt.appointment_time && <p className="text-xs text-slate-500">{fmtTime(appt.appointment_time)} · {appt.duration_minutes || 15} min</p>}
         </div>
       </div>
 
