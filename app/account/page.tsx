@@ -20,7 +20,7 @@ type Practitioner = {
   stripe_customer_id: string | null
 }
 
-type Tab = 'profile' | 'security' | 'billing'
+type Tab = 'profile' | 'security' | 'billing' | 'reminders'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -434,6 +434,126 @@ function BillingTab({ practitioner }: { practitioner: Practitioner }) {
   )
 }
 
+// ── Reminders Tab ────────────────────────────────────────────────────────────
+
+function RemindersTab() {
+  const [running,  setRunning]  = useState(false)
+  const [result,   setResult]   = useState<{ sent: number; skipped: number; errors?: unknown[] } | null>(null)
+  const [error,    setError]    = useState('')
+
+  async function handleRunNow() {
+    setRunning(true); setError(''); setResult(null)
+    try {
+      const res = await fetch('/api/reminders/send')
+      const data = await res.json()
+      if (!res.ok) setError(data.error || 'Reminder run failed.')
+      else setResult(data)
+    } catch {
+      setError('Network error — could not reach reminder endpoint.')
+    }
+    setRunning(false)
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-bold text-white">Appointment Reminders</h2>
+        <p className="text-sm text-blue-300 mt-0.5">
+          Automatically email and text owners the day before their appointment.
+        </p>
+      </div>
+
+      {/* How it works */}
+      <div className="rounded-2xl border border-[#1a3358] bg-[#0d1b30] p-5 space-y-3">
+        <p className="text-xs font-bold uppercase tracking-wider text-blue-400">How It Works</p>
+        <ul className="space-y-2 text-sm text-blue-200">
+          <li className="flex gap-2">
+            <span className="text-[#c9a227] shrink-0 mt-0.5">✓</span>
+            Runs automatically every day at <strong className="text-white">8:00 AM</strong> via Vercel Cron.
+          </li>
+          <li className="flex gap-2">
+            <span className="text-[#c9a227] shrink-0 mt-0.5">✓</span>
+            Finds all <strong className="text-white">scheduled or confirmed</strong> appointments for tomorrow that haven&apos;t had a reminder sent yet.
+          </li>
+          <li className="flex gap-2">
+            <span className="text-[#c9a227] shrink-0 mt-0.5">✓</span>
+            Sends a <strong className="text-white">reminder email</strong> to any owner with an email address on file.
+          </li>
+          <li className="flex gap-2">
+            <span className="text-[#c9a227] shrink-0 mt-0.5">✓</span>
+            Sends a <strong className="text-white">reminder text (SMS)</strong> to any owner with a phone number on file (requires Twilio).
+          </li>
+          <li className="flex gap-2">
+            <span className="text-[#c9a227] shrink-0 mt-0.5">✓</span>
+            Marks each appointment&apos;s <em>reminder sent</em> flag so no one gets contacted twice.
+          </li>
+        </ul>
+      </div>
+
+      {/* Required env vars */}
+      <div className="rounded-2xl border border-[#1a3358] bg-[#0d1b30] p-5">
+        <p className="text-xs font-bold uppercase tracking-wider text-blue-400 mb-3">Required Configuration</p>
+        <div className="space-y-2">
+          {[
+            ['RESEND_API_KEY',         'Email delivery (required)', true],
+            ['FROM_EMAIL',             'Sender address (required)', true],
+            ['TWILIO_ACCOUNT_SID',     'SMS delivery (optional)', false],
+            ['TWILIO_AUTH_TOKEN',      'SMS delivery (optional)', false],
+            ['TWILIO_PHONE_NUMBER',    'SMS sender number (optional)', false],
+            ['CRON_SECRET',            'Secures the cron endpoint (recommended)', false],
+          ].map(([key, desc, required]) => (
+            <div key={key as string} className="flex items-start gap-3 text-xs">
+              <code className={`rounded px-1.5 py-0.5 font-mono shrink-0 ${required ? 'bg-red-500/20 text-red-300' : 'bg-blue-500/20 text-blue-300'}`}>
+                {key}
+              </code>
+              <span className="text-blue-200/70">{desc}</span>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-[11px] text-blue-400/60">
+          Set these in your Vercel project → Settings → Environment Variables.
+          Add <code className="bg-white/10 px-1 rounded font-mono">CRON_SECRET</code> to the same place and Vercel will pass it automatically on scheduled runs.
+        </p>
+      </div>
+
+      {/* Manual trigger */}
+      <div className="rounded-2xl border border-[#1a3358] bg-[#0d1b30] p-5">
+        <p className="text-xs font-bold uppercase tracking-wider text-blue-400 mb-1">Manual Trigger</p>
+        <p className="text-sm text-blue-200/70 mb-4">
+          Run the reminder job right now to test it or catch up on any missed runs.
+        </p>
+
+        <button
+          onClick={handleRunNow}
+          disabled={running}
+          className={`rounded-xl px-5 py-2.5 text-sm font-semibold transition
+            ${running ? 'bg-white/10 text-white/40 cursor-not-allowed' : 'bg-[#c9a227] text-[#0f2040] hover:bg-[#b89020]'}`}
+        >
+          {running ? 'Running…' : 'Run Reminders Now'}
+        </button>
+
+        {error && (
+          <div className="mt-3 rounded-xl bg-red-500/10 border border-red-500/30 px-4 py-3">
+            <p className="text-sm text-red-300">{error}</p>
+          </div>
+        )}
+
+        {result && (
+          <div className="mt-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 px-4 py-3 space-y-1">
+            <p className="text-sm font-semibold text-emerald-300">✓ Run complete</p>
+            <p className="text-xs text-emerald-200/80">
+              {result.sent} reminder{result.sent !== 1 ? 's' : ''} sent · {result.skipped} skipped
+            </p>
+            {result.errors && result.errors.length > 0 && (
+              <p className="text-xs text-amber-300">{result.errors.length} error{result.errors.length !== 1 ? 's' : ''} — check server logs.</p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Main Account Page ─────────────────────────────────────────────────────────
 
 function AccountPageContent() {
@@ -443,7 +563,7 @@ function AccountPageContent() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>(() => {
     const t = searchParams.get('tab')
-    return (t === 'security' || t === 'billing') ? t : 'profile'
+    return (t === 'security' || t === 'billing' || t === 'reminders') ? t as Tab : 'profile'
   })
 
   useEffect(() => {
@@ -486,9 +606,10 @@ function AccountPageContent() {
   }
 
   const tabs: { id: Tab; label: string; icon: string }[] = [
-    { id: 'profile',  label: 'Profile',  icon: '👤' },
-    { id: 'security', label: 'Security', icon: '🔒' },
-    { id: 'billing',  label: 'Billing',  icon: '💳' },
+    { id: 'profile',   label: 'Profile',   icon: '👤' },
+    { id: 'security',  label: 'Security',  icon: '🔒' },
+    { id: 'billing',   label: 'Billing',   icon: '💳' },
+    { id: 'reminders', label: 'Reminders', icon: '🔔' },
   ]
 
   return (
@@ -538,8 +659,9 @@ function AccountPageContent() {
               onSaved={updated => setPractitioner(updated)}
             />
           )}
-          {tab === 'security' && <SecurityTab />}
-          {tab === 'billing' && <BillingTab practitioner={practitioner} />}
+          {tab === 'security'  && <SecurityTab />}
+          {tab === 'billing'   && <BillingTab practitioner={practitioner} />}
+          {tab === 'reminders' && <RemindersTab />}
         </div>
       </div>
     </main>
