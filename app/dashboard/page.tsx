@@ -119,6 +119,15 @@ export default function Home() {
   const [sendingConsent, setSendingConsent] = useState(false)
   const [sendingConsentSms, setSendingConsentSms] = useState(false)
   const [editingOwner, setEditingOwner] = useState(false)
+
+  // Inline add patient (in owner panel)
+  const [showInlineAddPatient, setShowInlineAddPatient] = useState(false)
+  const [inlineHorseName, setInlineHorseName] = useState('')
+  const [inlineHorseBreed, setInlineHorseBreed] = useState('')
+  const [inlineHorseDiscipline, setInlineHorseDiscipline] = useState('')
+  const [inlineHorseAge, setInlineHorseAge] = useState('')
+  const [inlineHorseGender, setInlineHorseGender] = useState('')
+  const [inlineSpecies, setInlineSpecies] = useState<'equine' | 'canine'>('equine')
   const [ownerNameEdit, setOwnerNameEdit] = useState('')
   const [ownerPhoneEdit, setOwnerPhoneEdit] = useState('')
   const [ownerEmailEdit, setOwnerEmailEdit] = useState('')
@@ -603,6 +612,43 @@ export default function Home() {
     await loadPhotoCount()
   }
 
+  async function addInlineHorse() {
+    setMessage('')
+
+    if (!selectedOwnerId) return
+    if (!inlineHorseName.trim()) {
+      setMessage('Patient name is required.')
+      return
+    }
+
+    const { error } = await supabase.from('horses').insert([{
+      owner_id: selectedOwnerId,
+      name: inlineHorseName,
+      breed: inlineHorseBreed || null,
+      discipline: inlineHorseDiscipline || null,
+      age: inlineHorseAge || null,
+      gender: inlineHorseGender || null,
+      species: inlineSpecies,
+      archived: false,
+      practitioner_id: userId,
+    }])
+
+    if (error) {
+      setMessage(`Error saving patient: ${error.message}`)
+      return
+    }
+
+    setInlineHorseName('')
+    setInlineHorseBreed('')
+    setInlineHorseDiscipline('')
+    setInlineHorseAge('')
+    setInlineHorseGender('')
+    setInlineSpecies('equine')
+    setShowInlineAddPatient(false)
+    setMessage('Patient saved successfully.')
+    await loadHorses()
+  }
+
   function startOwnerEdit(owner: Owner) {
     setEditingOwner(true)
     setOwnerNameEdit(owner.full_name || '')
@@ -983,6 +1029,7 @@ export default function Home() {
                           onClick={() => {
                             setSelectedOwnerId(owner.id)
                             setEditingOwner(false)
+                            setShowInlineAddPatient(false)
                           }}
                           className={`w-full rounded-2xl border p-4 text-left transition ${
                             isSelected
@@ -1215,9 +1262,116 @@ export default function Home() {
                     </div>
 
                     <div className="mt-5">
-                      <h4 className="text-lg font-semibold text-slate-900">
-                        Patients
-                      </h4>
+                      <div className="flex items-center justify-between gap-3">
+                        <h4 className="text-lg font-semibold text-slate-900">Patients</h4>
+                        <button
+                          onClick={() => {
+                            setShowInlineAddPatient(v => !v)
+                            setInlineHorseName('')
+                            setInlineHorseBreed('')
+                            setInlineHorseDiscipline('')
+                            setInlineHorseAge('')
+                            setInlineHorseGender('')
+                            setInlineSpecies('equine')
+                          }}
+                          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition"
+                        >
+                          {showInlineAddPatient ? '✕ Cancel' : '+ Add Patient'}
+                        </button>
+                      </div>
+
+                      {/* Inline add patient form */}
+                      {showInlineAddPatient && (
+                        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="mb-1 block text-xs font-semibold text-slate-600">Species</label>
+                              <select
+                                value={inlineSpecies}
+                                onChange={e => { setInlineSpecies(e.target.value as 'equine' | 'canine'); setInlineHorseGender('') }}
+                                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                              >
+                                <option value="equine">🐴 Equine</option>
+                                <option value="canine">🐕 Canine</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-xs font-semibold text-slate-600">Patient Name *</label>
+                              <input
+                                value={inlineHorseName}
+                                onChange={e => setInlineHorseName(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm placeholder:text-slate-400"
+                                placeholder={inlineSpecies === 'canine' ? 'Dog name' : 'Horse name'}
+                                autoFocus
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="mb-1 block text-xs font-semibold text-slate-600">Breed</label>
+                              <input
+                                value={inlineHorseBreed}
+                                onChange={e => setInlineHorseBreed(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm placeholder:text-slate-400"
+                                placeholder="Breed"
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-xs font-semibold text-slate-600">{inlineSpecies === 'canine' ? 'Activity / Sport' : 'Discipline'}</label>
+                              <input
+                                value={inlineHorseDiscipline}
+                                onChange={e => setInlineHorseDiscipline(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm placeholder:text-slate-400"
+                                placeholder={inlineSpecies === 'canine' ? 'Agility, sport…' : 'Barrel, dressage…'}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="mb-1 block text-xs font-semibold text-slate-600">Age</label>
+                              <input
+                                value={inlineHorseAge}
+                                onChange={e => setInlineHorseAge(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm placeholder:text-slate-400"
+                                placeholder="e.g. 5 years"
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-xs font-semibold text-slate-600">Gender</label>
+                              <select
+                                value={inlineHorseGender}
+                                onChange={e => setInlineHorseGender(e.target.value)}
+                                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                              >
+                                <option value="">Select gender</option>
+                                {inlineSpecies === 'equine' ? (
+                                  <>
+                                    <option value="Mare">Mare</option>
+                                    <option value="Stallion">Stallion</option>
+                                    <option value="Gelding">Gelding</option>
+                                  </>
+                                ) : (
+                                  <>
+                                    <option value="Female">Female</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female (Spayed)">Female (Spayed)</option>
+                                    <option value="Male (Neutered)">Male (Neutered)</option>
+                                  </>
+                                )}
+                              </select>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={addInlineHorse}
+                            className="w-full rounded-xl bg-slate-900 py-2.5 text-sm font-semibold text-white hover:bg-slate-700 transition"
+                          >
+                            Save Patient
+                          </button>
+                        </div>
+                      )}
 
                       <div className="mt-4 grid gap-4 md:grid-cols-2">
                         {filteredHorses.length === 0 ? (
