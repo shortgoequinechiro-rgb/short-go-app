@@ -24,7 +24,7 @@ type Horse = {
   discipline: string | null
   barn_location: string | null
   age: string | null
-  gender: string | null
+  sex: string | null
   species: 'equine' | 'canine' | null
   archived: boolean
   created_at: string
@@ -142,6 +142,10 @@ export default function Home() {
 
   const [recentOwnerIds, setRecentOwnerIds] = useState<string[]>([])
   const [recentHorseIds, setRecentHorseIds] = useState<string[]>([])
+
+  // Intake / consent status per owner
+  const [ownerIntakeStatus, setOwnerIntakeStatus] = useState<Record<string, boolean>>({})
+  const [ownerConsentStatus, setOwnerConsentStatus] = useState<Record<string, boolean>>({})
 
   // ── Address autocomplete ─────────────────────────────────────────────────────
   const addAddressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -328,6 +332,29 @@ export default function Home() {
     if (!error) setTodayAppointments((data || []) as unknown as TodayAppointment[])
   }
 
+  async function loadFormStatuses() {
+    const [intakeRes, consentRes] = await Promise.all([
+      supabase.from('intake_forms').select('owner_id'),
+      supabase.from('consent_forms').select('owner_id'),
+    ])
+
+    if (!intakeRes.error && intakeRes.data) {
+      const map: Record<string, boolean> = {}
+      for (const row of intakeRes.data) {
+        if (row.owner_id) map[row.owner_id] = true
+      }
+      setOwnerIntakeStatus(map)
+    }
+
+    if (!consentRes.error && consentRes.data) {
+      const map: Record<string, boolean> = {}
+      for (const row of consentRes.data) {
+        if (row.owner_id) map[row.owner_id] = true
+      }
+      setOwnerConsentStatus(map)
+    }
+  }
+
   function loadRecentItems() {
     if (typeof window === 'undefined') return
 
@@ -411,7 +438,7 @@ export default function Home() {
         breed: horseBreed || null,
         discipline: horseDiscipline || null,
         age: horseAge || null,
-        gender: horseGender || null,
+        sex: horseGender || null,
         species: addSpecies,
         archived: false,
         practitioner_id: userId,
@@ -638,7 +665,7 @@ export default function Home() {
       breed: inlineHorseBreed || null,
       discipline: inlineHorseDiscipline || null,
       age: inlineHorseAge || null,
-      gender: inlineHorseGender || null,
+      sex: inlineHorseGender || null,
       species: inlineSpecies,
       archived: false,
       practitioner_id: userId,
@@ -825,6 +852,7 @@ export default function Home() {
       await loadPhotoCount()
       await loadVisitData()
       await loadTodayAppointments()
+      await loadFormStatuses()
       loadRecentItems()
     }
 
@@ -1137,6 +1165,28 @@ export default function Home() {
                           <p className="text-sm text-slate-600">
                             Address: {selectedOwner.address || '—'}
                           </p>
+
+                          {/* Intake / Consent status badges */}
+                          <div className="mt-3 flex items-center gap-2">
+                            {ownerIntakeStatus[selectedOwner.id] ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                                ✓ Intake on file
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-600">
+                                ✗ No intake on file
+                              </span>
+                            )}
+                            {ownerConsentStatus[selectedOwner.id] ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                                ✓ Consent on file
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-600">
+                                ✗ No consent on file
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         {!editingOwner ? (

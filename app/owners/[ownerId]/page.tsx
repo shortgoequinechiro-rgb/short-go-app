@@ -21,7 +21,7 @@ type Animal = {
   species: 'equine' | 'canine' | null
   breed: string | null
   age: string | null
-  gender: string | null
+  sex: string | null
   discipline: string | null
   barn_location: string | null
   archived: boolean
@@ -85,7 +85,7 @@ export default function OwnerPage() {
       // Animals
       const { data: animalData } = await supabase
         .from('horses')
-        .select('id, name, species, breed, age, gender, discipline, barn_location, archived')
+        .select('id, name, species, breed, age, sex, discipline, barn_location, archived')
         .eq('owner_id', ownerId)
         .eq('archived', false)
         .order('name')
@@ -260,9 +260,9 @@ export default function OwnerPage() {
                               {animal.age}
                             </span>
                           )}
-                          {animal.gender && (
+                          {animal.sex && (
                             <span className="rounded-full bg-white border border-slate-200 px-2.5 py-0.5 text-xs text-slate-600">
-                              {animal.gender}
+                              {animal.sex}
                             </span>
                           )}
                           {animal.discipline && (
