@@ -683,6 +683,17 @@ export default function CalendarPage() {
     setBlockedTimes(prev => prev.filter(b => b.id !== id))
   }
 
+  function openNewApptModal(date?: string) {
+    // Default to the viewed date; snap time to next 30-min slot
+    const now = new Date()
+    const mins = Math.ceil((now.getHours() * 60 + now.getMinutes()) / 30) * 30
+    const hh = Math.min(Math.floor(mins / 60), 18)
+    const mm = mins % 60
+    const time = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`
+    setSelectedAppt(null)
+    setQuickBook({ date: date ?? toISO(today), time })
+  }
+
   function goToToday() {
     setWeekStart(startOfDay(today))
     setMobileDay(startOfDay(today))
@@ -800,12 +811,12 @@ export default function CalendarPage() {
           >
             🚫 Block
           </button>
-          <Link
-            href="/appointments"
+          <button
+            onClick={() => openNewApptModal(toISO(mobileDay))}
             className="rounded-xl bg-[#c9a227] px-3 py-1.5 text-sm font-semibold text-[#0f2040] hover:bg-[#b89020] transition"
           >
             + New
-          </Link>
+          </button>
         </div>
 
         {/* Day appointments: card list on mobile (easier than pixel grid) */}
@@ -977,7 +988,7 @@ export default function CalendarPage() {
 
         <div className="rounded-xl border border-[#1a3358] bg-[#0d1b30] p-3 space-y-1">
           <div className="mb-2 text-xs font-bold uppercase tracking-wider text-blue-400">Quick Links</div>
-          <Link href="/appointments" className="block rounded-lg px-2 py-1.5 text-xs text-blue-200 hover:bg-white/10 transition">+ New Appointment</Link>
+          <button onClick={() => openNewApptModal(toISO(miniCalDate))} className="block w-full text-left rounded-lg px-2 py-1.5 text-xs text-blue-200 hover:bg-white/10 transition">+ New Appointment</button>
           <Link href="/dashboard"    className="block rounded-lg px-2 py-1.5 text-xs text-blue-200 hover:bg-white/10 transition">Dashboard</Link>
           <Link href="/dashboard"    className="block rounded-lg px-2 py-1.5 text-xs text-blue-200 hover:bg-white/10 transition">Owners &amp; Patients</Link>
         </div>
@@ -1033,12 +1044,12 @@ export default function CalendarPage() {
             >
               🚫 Block Time
             </button>
-            <Link
-              href="/appointments"
+            <button
+              onClick={() => openNewApptModal(toISO(miniCalDate))}
               className="rounded-lg bg-[#c9a227] px-4 py-1.5 text-sm font-semibold text-[#0f2040] hover:bg-[#b89020] transition"
             >
               + New Appointment
-            </Link>
+            </button>
           </div>
         </div>
 
