@@ -36,7 +36,7 @@ type AnimalEntry = {
   name: string
   age: string
   breed: string
-  dob: string
+  barnLocation: string
   gender: string
   height: string
   color: string
