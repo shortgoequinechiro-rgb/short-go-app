@@ -5,39 +5,6 @@ import { useParams } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import { offlineDb, syncPendingData } from '../../lib/offlineDb'
 
-// ── SQL Setup ──────────────────────────────────────────────────────────────────
-// Run once in Supabase SQL editor:
-//
-// CREATE TABLE intake_forms (
-//   id                    uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-//   owner_id              uuid REFERENCES owners(id) ON DELETE CASCADE NOT NULL,
-//   horse_id              uuid REFERENCES horses(id) ON DELETE SET NULL,
-//   submitted_at          timestamptz DEFAULT now() NOT NULL,
-//   form_date             date,
-//   referral_source       text[],
-//   animal_name           text NOT NULL,
-//   animal_age            text,
-//   animal_breed          text,
-//   animal_dob            date,
-//   animal_gender         text,
-//   animal_height         text,
-//   animal_color          text,
-//   reason_for_care       text,
-//   health_problems       text,
-//   behavior_changes      text,
-//   conditions_illnesses  text,
-//   medications_supplements text,
-//   use_of_animal         text,
-//   previous_chiro_care   boolean,
-//   consent_signed        boolean DEFAULT false,
-//   signature_data        text,
-//   signed_name           text,
-//   created_at            timestamptz DEFAULT now()
-// );
-//
-// If table already exists, add horse_id column:
-// ALTER TABLE intake_forms ADD COLUMN IF NOT EXISTS horse_id uuid REFERENCES horses(id) ON DELETE SET NULL;
-
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -62,6 +29,26 @@ type PatientAnimal = {
   barn_location: string | null
 }
 
+type AnimalEntry = {
+  localKey: string
+  selectedHorseId: string
+  species: 'equine' | 'canine'
+  name: string
+  age: string
+  breed: string
+  dob: string
+  gender: string
+  height: string
+  color: string
+  reasonForCare: string
+  healthProblems: string
+  behaviorChanges: string
+  conditionsIllnesses: string
+  medications: string
+  useOfAnimal: string
+  previousChiroCare: boolean | null
+}
+
 const REFERRAL_OPTIONS = [
   'Friend/Family member',
   'Other Chiropractor/Veterinarian',
@@ -75,18 +62,37 @@ const GENDER_OPTIONS: Record<string, string[]> = {
   canine: ['Female', 'Male', 'Female (Spayed)', 'Male (Neutered)'],
 }
 
+function blankAnimal(): AnimalEntry {
+  return {
+    localKey: crypto.randomUUID(),
+    selectedHorseId: 'new',
+    species: 'equine',
+    name: '',
+    age: '',
+    breed: '',
+    dob: '',
+    gender: '',
+    height: '',
+    color: '',
+    reasonForCare: '',
+    healthProblems: '',
+    behaviorChanges: '',
+    conditionsIllnesses: '',
+    medications: '',
+    useOfAnimal: '',
+    previousChiroCare: null,
+  }
+}
+
 export default function IntakeFormPage() {
   const params = useParams()
   const ownerId = params?.ownerId as string
 
   const [owner, setOwner] = useState<Owner | null>(null)
   const [ownerHorses, setOwnerHorses] = useState<PatientAnimal[]>([])
-  const [selectedHorseId, setSelectedHorseId] = useState<string>('new')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
-  const [submittedHorseId, setSubmittedHorseId] = useState<string | null>(null)
-  const [submittedFormId, setSubmittedFormId] = useState<string | null>(null)
   const [offlineSaved, setOfflineSaved] = useState(false)
   const [error, setError] = useState('')
 
@@ -98,26 +104,12 @@ export default function IntakeFormPage() {
   const [streetAddress, setStreetAddress] = useState('')
   const [streetAddress2, setStreetAddress2] = useState('')
   const [city, setCity] = useState('')
-  const [state, setState] = useState('')
+  const [stateVal, setStateVal] = useState('')
   const [zip, setZip] = useState('')
   const [referralSources, setReferralSources] = useState<string[]>([])
 
-  // Animal section
-  const [animalSpecies, setAnimalSpecies] = useState<'equine' | 'canine'>('equine')
-  const [animalName, setAnimalName] = useState('')
-  const [animalAge, setAnimalAge] = useState('')
-  const [animalBreed, setAnimalBreed] = useState('')
-  const [animalDob, setAnimalDob] = useState('')
-  const [animalGender, setAnimalGender] = useState('')
-  const [animalHeight, setAnimalHeight] = useState('')
-  const [animalColor, setAnimalColor] = useState('')
-  const [reasonForCare, setReasonForCare] = useState('')
-  const [healthProblems, setHealthProblems] = useState('')
-  const [behaviorChanges, setBehaviorChanges] = useState('')
-  const [conditionsIllnesses, setConditionsIllnesses] = useState('')
-  const [medications, setMedications] = useState('')
-  const [useOfAnimal, setUseOfAnimal] = useState('')
-  const [previousChiroCare, setPreviousChiroCare] = useState<boolean | null>(null)
+  // Multiple animal entries
+  const [animals, setAnimals] = useState<AnimalEntry[]>([blankAnimal()])
 
   // Signature
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -139,14 +131,13 @@ export default function IntakeFormPage() {
     const { owner: ownerData, horses: horsesData } = await res.json()
 
     if (ownerData) {
-      const data = ownerData
-      setOwner(data)
-      const parts = data.full_name?.split(' ') || []
+      setOwner(ownerData)
+      const parts = ownerData.full_name?.split(' ') || []
       setOwnerFirstName(parts[0] || '')
       setOwnerLastName(parts.slice(1).join(' ') || '')
-      setPhone(data.phone || '')
-      setEmail(data.email || '')
-      if (data.address) setStreetAddress(data.address)
+      setPhone(ownerData.phone || '')
+      setEmail(ownerData.email || '')
+      if (ownerData.address) setStreetAddress(ownerData.address)
     }
 
     if (horsesData) {
@@ -156,28 +147,43 @@ export default function IntakeFormPage() {
     setLoading(false)
   }
 
-  // When the dropdown selection changes, pre-fill animal fields
-  function handleAnimalSelect(horseId: string) {
-    setSelectedHorseId(horseId)
+  // ── Animal entry helpers ────────────────────────────────────────────────────
+  function updateAnimal(localKey: string, updates: Partial<AnimalEntry>) {
+    setAnimals(prev =>
+      prev.map(a => (a.localKey === localKey ? { ...a, ...updates } : a))
+    )
+  }
+
+  function handleAnimalSelect(localKey: string, horseId: string) {
     if (horseId === 'new') {
-      setAnimalName('')
-      setAnimalAge('')
-      setAnimalBreed('')
-      setAnimalGender('')
+      updateAnimal(localKey, {
+        selectedHorseId: 'new',
+        name: '', age: '', breed: '', gender: '',
+      })
       return
     }
     const horse = ownerHorses.find(h => h.id === horseId)
     if (!horse) return
-    setAnimalName(horse.name || '')
-    setAnimalAge(horse.age || '')
-    setAnimalBreed(horse.breed || '')
-    setAnimalGender(horse.sex || '')
-    setAnimalSpecies(horse.species === 'canine' ? 'canine' : 'equine')
+    updateAnimal(localKey, {
+      selectedHorseId: horseId,
+      name: horse.name || '',
+      age: horse.age || '',
+      breed: horse.breed || '',
+      gender: horse.sex || '',
+      species: horse.species === 'canine' ? 'canine' : 'equine',
+    })
   }
 
-  function handleSpeciesChange(species: 'equine' | 'canine') {
-    setAnimalSpecies(species)
-    setAnimalGender('') // reset gender when species changes
+  function handleSpeciesChange(localKey: string, species: 'equine' | 'canine') {
+    updateAnimal(localKey, { species, gender: '' })
+  }
+
+  function addAnimal() {
+    setAnimals(prev => [...prev, blankAnimal()])
+  }
+
+  function removeAnimal(localKey: string) {
+    setAnimals(prev => prev.filter(a => a.localKey !== localKey))
   }
 
   // ── Signature canvas ────────────────────────────────────────────────────────
@@ -241,6 +247,7 @@ export default function IntakeFormPage() {
     )
   }
 
+  // ── Submit ──────────────────────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
@@ -249,58 +256,58 @@ export default function IntakeFormPage() {
     const canvas = canvasRef.current
     const signatureData = canvas ? canvas.toDataURL('image/png') : null
     const now = new Date().toISOString()
-    const resolvedAnimalName = animalName.trim() || 'Unknown Patient'
     const resolvedSignedName = `${ownerFirstName} ${ownerLastName}`.trim()
 
     // ── OFFLINE PATH ──────────────────────────────────────────────────────────
     if (!navigator.onLine) {
-      const horseLocalId = crypto.randomUUID()
-      const formLocalId = crypto.randomUUID()
-      const resolvedHorseId = selectedHorseId !== 'new' ? selectedHorseId : horseLocalId
+      for (const animal of animals) {
+        const horseLocalId = crypto.randomUUID()
+        const formLocalId = crypto.randomUUID()
+        const resolvedAnimalName = animal.name.trim() || 'Unknown Patient'
+        const resolvedHorseId = animal.selectedHorseId !== 'new' ? animal.selectedHorseId : horseLocalId
 
-      if (selectedHorseId === 'new') {
-        await offlineDb.pendingHorses.add({
-          localId: horseLocalId,
+        if (animal.selectedHorseId === 'new') {
+          await offlineDb.pendingHorses.add({
+            localId: horseLocalId,
+            ownerId,
+            name: resolvedAnimalName,
+            breed: animal.breed || null,
+            age: animal.age || null,
+            sex: animal.gender || null,
+            species: animal.species,
+            archived: false,
+            createdAt: now,
+          })
+        }
+
+        await offlineDb.pendingIntakeForms.add({
+          localId: formLocalId,
+          localHorseId: resolvedHorseId,
+          isNewHorse: animal.selectedHorseId === 'new',
           ownerId,
-          name: resolvedAnimalName,
-          breed: animalBreed || null,
-          age: animalAge || null,
-          sex: animalGender || null,
-          species: animalSpecies,
-          archived: false,
-          createdAt: now,
+          submittedAt: now,
+          formDate: now.split('T')[0],
+          referralSource: referralSources,
+          animalName: resolvedAnimalName,
+          animalAge: animal.age || null,
+          animalBreed: animal.breed || null,
+          animalDob: animal.dob || null,
+          animalGender: animal.gender || null,
+          animalHeight: animal.height || null,
+          animalColor: animal.color || null,
+          reasonForCare: animal.reasonForCare || null,
+          healthProblems: animal.healthProblems || null,
+          behaviorChanges: animal.behaviorChanges || null,
+          conditionsIllnesses: animal.conditionsIllnesses || null,
+          medicationsSupplements: animal.medications || null,
+          useOfAnimal: animal.useOfAnimal || null,
+          previousChiroCare: animal.previousChiroCare,
+          consentSigned: true,
+          signatureData,
+          signedName: resolvedSignedName,
         })
       }
 
-      await offlineDb.pendingIntakeForms.add({
-        localId: formLocalId,
-        localHorseId: resolvedHorseId,
-        isNewHorse: selectedHorseId === 'new',
-        ownerId,
-        submittedAt: now,
-        formDate: now.split('T')[0],
-        referralSource: referralSources,
-        animalName: resolvedAnimalName,
-        animalAge: animalAge || null,
-        animalBreed: animalBreed || null,
-        animalDob: animalDob || null,
-        animalGender: animalGender || null,
-        animalHeight: animalHeight || null,
-        animalColor: animalColor || null,
-        reasonForCare: reasonForCare || null,
-        healthProblems: healthProblems || null,
-        behaviorChanges: behaviorChanges || null,
-        conditionsIllnesses: conditionsIllnesses || null,
-        medicationsSupplements: medications || null,
-        useOfAnimal: useOfAnimal || null,
-        previousChiroCare: previousChiroCare,
-        consentSigned: true,
-        signatureData,
-        signedName: resolvedSignedName,
-      })
-
-      setSubmittedHorseId(selectedHorseId !== 'new' ? selectedHorseId : null)
-      setSubmittedFormId(null)
       setOfflineSaved(true)
       setSubmitted(true)
       setSubmitting(false)
@@ -308,76 +315,71 @@ export default function IntakeFormPage() {
     }
 
     // ── ONLINE PATH ───────────────────────────────────────────────────────────
-    // Flush any previously queued offline data first
     await syncPendingData(supabase)
 
-    let resolvedHorseId: string | null = selectedHorseId !== 'new' ? selectedHorseId : null
+    for (const animal of animals) {
+      const resolvedAnimalName = animal.name.trim() || 'Unknown Patient'
+      let resolvedHorseId: string | null = animal.selectedHorseId !== 'new' ? animal.selectedHorseId : null
 
-    if (selectedHorseId === 'new') {
-      const { data: newHorse, error: horseError } = await supabase
-        .from('horses')
+      if (animal.selectedHorseId === 'new') {
+        const { data: newHorse, error: horseError } = await supabase
+          .from('horses')
+          .insert({
+            owner_id: ownerId,
+            name: resolvedAnimalName,
+            breed: animal.breed || null,
+            age: animal.age || null,
+            sex: animal.gender || null,
+            species: animal.species,
+            archived: false,
+            practitioner_id: owner?.practitioner_id,
+          })
+          .select('id')
+          .single()
+
+        if (horseError || !newHorse) {
+          setError(`Could not create patient record for "${resolvedAnimalName}": ${horseError?.message || 'unknown error'}`)
+          setSubmitting(false)
+          return
+        }
+        resolvedHorseId = newHorse.id
+      }
+
+      const { error: dbError } = await supabase
+        .from('intake_forms')
         .insert({
           owner_id: ownerId,
-          name: resolvedAnimalName,
-          breed: animalBreed || null,
-          age: animalAge || null,
-          sex: animalGender || null,
-          species: animalSpecies,
-          archived: false,
+          horse_id: resolvedHorseId,
+          submitted_at: now,
           practitioner_id: owner?.practitioner_id,
+          form_date: now.split('T')[0],
+          referral_source: referralSources,
+          animal_name: resolvedAnimalName,
+          animal_age: animal.age || null,
+          animal_breed: animal.breed || null,
+          animal_dob: animal.dob || null,
+          animal_gender: animal.gender || null,
+          animal_height: animal.height || null,
+          animal_color: animal.color || null,
+          reason_for_care: animal.reasonForCare || null,
+          health_problems: animal.healthProblems || null,
+          behavior_changes: animal.behaviorChanges || null,
+          conditions_illnesses: animal.conditionsIllnesses || null,
+          medications_supplements: animal.medications || null,
+          use_of_animal: animal.useOfAnimal || null,
+          previous_chiro_care: animal.previousChiroCare,
+          consent_signed: true,
+          signature_data: signatureData,
+          signed_name: resolvedSignedName,
         })
-        .select('id')
-        .single()
 
-      if (horseError || !newHorse) {
-        setError(`Could not create patient record: ${horseError?.message || 'unknown error'}`)
+      if (dbError) {
+        setError(`Submission error for "${resolvedAnimalName}": ${dbError.message}`)
         setSubmitting(false)
         return
       }
-      resolvedHorseId = newHorse.id
     }
 
-    const { data: newForm, error: dbError } = await supabase
-      .from('intake_forms')
-      .insert({
-        owner_id: ownerId,
-        horse_id: resolvedHorseId,
-        submitted_at: now,
-        practitioner_id: owner?.practitioner_id,
-        form_date: now.split('T')[0],
-        referral_source: referralSources,
-        animal_name: resolvedAnimalName,
-        animal_age: animalAge || null,
-        animal_breed: animalBreed || null,
-        animal_dob: animalDob || null,
-        animal_gender: animalGender || null,
-        animal_height: animalHeight || null,
-        animal_color: animalColor || null,
-        reason_for_care: reasonForCare || null,
-        health_problems: healthProblems || null,
-        behavior_changes: behaviorChanges || null,
-        conditions_illnesses: conditionsIllnesses || null,
-        medications_supplements: medications || null,
-        use_of_animal: useOfAnimal || null,
-        previous_chiro_care: previousChiroCare,
-        consent_signed: true,
-        signature_data: signatureData,
-        signed_name: resolvedSignedName,
-      })
-      .select('id')
-      .single()
-
-    if (dbError) {
-      if (selectedHorseId === 'new' && resolvedHorseId) {
-        await supabase.from('horses').delete().eq('id', resolvedHorseId)
-      }
-      setError(`Submission error: ${dbError.message}`)
-      setSubmitting(false)
-      return
-    }
-
-    setSubmittedHorseId(resolvedHorseId)
-    setSubmittedFormId(newForm?.id ?? null)
     setSubmitted(true)
     setSubmitting(false)
   }
@@ -399,6 +401,8 @@ export default function IntakeFormPage() {
   }
 
   if (submitted) {
+    const firstAnimalName = animals[0]?.name.trim() || 'your animal'
+    const animalCount = animals.length
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[#edf2f7] p-8 text-center">
         <div className={`flex h-20 w-20 items-center justify-center rounded-full text-4xl ${offlineSaved ? 'bg-amber-100' : 'bg-emerald-100'}`}>
@@ -418,38 +422,20 @@ export default function IntakeFormPage() {
           ) : (
             <>
               <p className="mt-2 text-slate-500">Thank you, {ownerFirstName}. Your intake form has been received.</p>
-              <p className="mt-1 text-sm text-slate-400">We look forward to seeing you and {animalName}!</p>
+              <p className="mt-1 text-sm text-slate-400">
+                We look forward to seeing you and {animalCount === 1 ? firstAnimalName : `your ${animalCount} animals`}!
+              </p>
             </>
           )}
         </div>
-        {!offlineSaved && (
-          <div className="flex flex-col items-center gap-3 mt-2">
-            {submittedFormId && (
-              <a
-                href={`/api/intake/${submittedFormId}/pdf`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-2xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-700 transition"
-              >
-                📄 View / Download PDF
-              </a>
-            )}
-            {submittedHorseId && (
-              <a
-                href={`/horses/${submittedHorseId}`}
-                className="rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
-              >
-                View Patient Record →
-              </a>
-            )}
-          </div>
-        )}
       </div>
     )
   }
 
   const ownerFullName = `${ownerFirstName} ${ownerLastName}`.trim()
-  const consentAnimalName = animalName.trim() || "[Pet's Name]"
+  const consentAnimalName = animals.length === 1
+    ? (animals[0].name.trim() || "[Pet's Name]")
+    : animals.map(a => a.name.trim() || 'Unknown').join(', ')
 
   return (
     <div className="min-h-screen bg-[#edf2f7] py-10 px-4">
@@ -494,7 +480,7 @@ export default function IntakeFormPage() {
               <div className="grid grid-cols-2 gap-3">
                 <input value={city} onChange={e => setCity(e.target.value)}
                   className={inputCls} placeholder="City" />
-                <input value={state} onChange={e => setState(e.target.value)}
+                <input value={stateVal} onChange={e => setStateVal(e.target.value)}
                   className={inputCls} placeholder="State / Province" />
               </div>
               <input value={zip} onChange={e => setZip(e.target.value)}
@@ -526,158 +512,29 @@ export default function IntakeFormPage() {
             </Field>
           </Section>
 
-          {/* ── Animal Info ── */}
-          <Section title="Animal Information">
+          {/* ── Animal Entries ── */}
+          {animals.map((animal, index) => (
+            <AnimalSection
+              key={animal.localKey}
+              animal={animal}
+              index={index}
+              total={animals.length}
+              ownerHorses={ownerHorses}
+              onUpdate={(updates) => updateAnimal(animal.localKey, updates)}
+              onSelectHorse={(horseId) => handleAnimalSelect(animal.localKey, horseId)}
+              onSpeciesChange={(species) => handleSpeciesChange(animal.localKey, species)}
+              onRemove={() => removeAnimal(animal.localKey)}
+            />
+          ))}
 
-            {/* Patient selector */}
-            {ownerHorses.length > 0 && (
-              <Field label="Select Patient">
-                <select
-                  value={selectedHorseId}
-                  onChange={e => handleAnimalSelect(e.target.value)}
-                  className={`${inputCls} cursor-pointer`}
-                >
-                  <option value="new">➕ New / First-time patient</option>
-                  {ownerHorses.map(h => (
-                    <option key={h.id} value={h.id}>
-                      {h.species === 'canine' ? '🐕' : '🐴'} {h.name}{h.breed ? ` — ${h.breed}` : ''}
-                    </option>
-                  ))}
-                </select>
-                {selectedHorseId !== 'new' && (
-                  <p className="mt-1.5 text-xs text-emerald-600">
-                    ✓ Linked to existing patient record — fields pre-filled below
-                  </p>
-                )}
-              </Field>
-            )}
-
-            <Field label="Species">
-              <div className="flex gap-4 mt-2">
-                {[
-                  { value: 'equine', label: '🐴 Horse / Equine' },
-                  { value: 'canine', label: '🐕 Dog / Canine' },
-                ].map(opt => (
-                  <label key={opt.value} className="flex cursor-pointer items-center gap-2">
-                    <input
-                      type="radio"
-                      name="species"
-                      value={opt.value}
-                      checked={animalSpecies === opt.value}
-                      onChange={() => handleSpeciesChange(opt.value as 'equine' | 'canine')}
-                      className="h-4 w-4 accent-slate-800"
-                    />
-                    <span className="text-sm text-slate-700">{opt.label}</span>
-                  </label>
-                ))}
-              </div>
-            </Field>
-
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Animal Name">
-                <input value={animalName} onChange={e => setAnimalName(e.target.value)}
-                  className={inputCls} placeholder="Animal's name" />
-              </Field>
-              <Field label="Age">
-                <input value={animalAge} onChange={e => setAnimalAge(e.target.value)}
-                  className={inputCls} placeholder="e.g. 7" />
-              </Field>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Breed">
-                <input value={animalBreed} onChange={e => setAnimalBreed(e.target.value)}
-                  className={inputCls} placeholder="e.g. Quarter Horse" />
-              </Field>
-              <Field label="Date of Birth">
-                <input value={animalDob} onChange={e => setAnimalDob(e.target.value)}
-                  className={inputCls} type="date" />
-              </Field>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Sex">
-                <div className="mt-2 space-y-2">
-                  {GENDER_OPTIONS[animalSpecies].map(g => (
-                    <label key={g} className="flex cursor-pointer items-center gap-3">
-                      <input
-                        type="radio"
-                        name="gender"
-                        value={g}
-                        checked={animalGender === g}
-                        onChange={() => setAnimalGender(g)}
-                        className="h-4 w-4 accent-slate-800"
-                      />
-                      <span className="text-sm text-slate-700">{g}</span>
-                    </label>
-                  ))}
-                </div>
-              </Field>
-              <Field label="Height">
-                <input value={animalHeight} onChange={e => setAnimalHeight(e.target.value)}
-                  className={inputCls} placeholder="e.g. 15.2 hh" />
-              </Field>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Color">
-                <input value={animalColor} onChange={e => setAnimalColor(e.target.value)}
-                  className={inputCls} placeholder="e.g. Bay" />
-              </Field>
-              <Field label="Reason for Seeking Chiropractic Care">
-                <textarea value={reasonForCare} onChange={e => setReasonForCare(e.target.value)}
-                  className={`${inputCls} min-h-24 resize-none`}
-                  placeholder="Describe the reason…" />
-              </Field>
-            </div>
-          </Section>
-
-          {/* ── Medical History ── */}
-          <Section title="Medical History">
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Health Problems / Concerns">
-                <textarea value={healthProblems} onChange={e => setHealthProblems(e.target.value)}
-                  className={`${inputCls} min-h-28 resize-none`} placeholder="Describe any health problems…" />
-              </Field>
-              <Field label="Any Recent Changes in Behavior? (If so, explain)">
-                <textarea value={behaviorChanges} onChange={e => setBehaviorChanges(e.target.value)}
-                  className={`${inputCls} min-h-28 resize-none`} placeholder="Describe any behavioral changes…" />
-              </Field>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Condition / Illnesses (List doctors seen, date last seen, diagnosis)">
-                <textarea value={conditionsIllnesses} onChange={e => setConditionsIllnesses(e.target.value)}
-                  className={`${inputCls} min-h-28 resize-none`} placeholder="List conditions and treating vets…" />
-              </Field>
-              <Field label="Medications / Supplements">
-                <textarea value={medications} onChange={e => setMedications(e.target.value)}
-                  className={`${inputCls} min-h-28 resize-none`} placeholder="List all medications and supplements…" />
-              </Field>
-            </div>
-
-            <Field label="Use / Job of Animal">
-              <textarea value={useOfAnimal} onChange={e => setUseOfAnimal(e.target.value)}
-                className={`${inputCls} min-h-24 resize-none`} placeholder="e.g. Barrel racing, trail riding, companion…" />
-            </Field>
-
-            <Field label="Has your animal had previous chiropractic care?">
-              <div className="mt-2 flex gap-6">
-                {[true, false].map(val => (
-                  <label key={String(val)} className="flex cursor-pointer items-center gap-2">
-                    <input
-                      type="radio"
-                      name="prevChiro"
-                      checked={previousChiroCare === val}
-                      onChange={() => setPreviousChiroCare(val)}
-                      className="h-4 w-4 accent-slate-800"
-                    />
-                    <span className="text-sm text-slate-700">{val ? 'Yes' : 'No'}</span>
-                  </label>
-                ))}
-              </div>
-            </Field>
-          </Section>
+          {/* Add Another Animal button */}
+          <button
+            type="button"
+            onClick={addAnimal}
+            className="w-full rounded-2xl border-2 border-dashed border-slate-300 py-4 text-sm font-semibold text-slate-500 hover:border-slate-400 hover:text-slate-700 transition"
+          >
+            + Add Another Animal
+          </button>
 
           {/* ── Consent ── */}
           <Section title="Informed Consent">
@@ -695,28 +552,27 @@ export default function IntakeFormPage() {
                 injury or exacerbation of pre-existing conditions.
               </p>
               <p>
-                I agree to provide accurate and complete information about <strong>{consentAnimalName}</strong>&apos;s
-                medical history, current health status, and any relevant veterinary treatments or procedures. I
-                understand that this information will be used by the chiropractor to assess{' '}
-                <strong>{consentAnimalName}</strong>&apos;s condition and develop an appropriate treatment plan.
+                I agree to provide accurate and complete information about my animal(s)&apos; medical history, current
+                health status, and any relevant veterinary treatments or procedures. I understand that this information
+                will be used by the chiropractor to assess each animal&apos;s condition and develop an appropriate
+                treatment plan.
               </p>
               <p>
                 I understand that the chiropractor may need to perform a physical examination and/or diagnostic tests
-                to evaluate <strong>{consentAnimalName}</strong>&apos;s condition and determine the appropriate course of
-                chiropractic care. I agree to comply with any recommendations or instructions provided by the
-                chiropractor regarding <strong>{consentAnimalName}</strong>&apos;s care, including follow-up appointments
-                and home care exercises.
+                to evaluate each animal&apos;s condition and determine the appropriate course of chiropractic care. I
+                agree to comply with any recommendations or instructions provided by the chiropractor regarding care,
+                including follow-up appointments and home care exercises.
               </p>
               <p>
-                I understand that I have the right to ask questions and seek clarification about{' '}
-                <strong>{consentAnimalName}</strong>&apos;s chiropractic care at any time. I acknowledge that I have been
-                provided with information about the benefits, risks, and alternatives to chiropractic care for animals,
-                and I have had the opportunity to discuss any concerns or questions with the chiropractor.
+                I understand that I have the right to ask questions and seek clarification about my animal(s)&apos;
+                chiropractic care at any time. I acknowledge that I have been provided with information about the
+                benefits, risks, and alternatives to chiropractic care for animals, and I have had the opportunity to
+                discuss any concerns or questions with the chiropractor.
               </p>
               <p>
                 By signing below, I acknowledge that I have read and understood the information provided in this
-                consent form, and I voluntarily consent to <strong>{consentAnimalName}</strong> receiving chiropractic
-                care from Dr. Andrew Leo, DC c.AVCA, Animal Chiropractor.
+                consent form, and I voluntarily consent to my animal(s) receiving chiropractic care from Dr. Andrew
+                Leo, DC c.AVCA, Animal Chiropractor.
               </p>
             </div>
 
@@ -764,13 +620,214 @@ export default function IntakeFormPage() {
             disabled={submitting}
             className="w-full rounded-2xl bg-slate-900 py-4 text-sm font-semibold text-white shadow-md transition hover:bg-slate-700 disabled:opacity-60"
           >
-            {submitting ? 'Submitting…' : 'Submit Intake Form'}
+            {submitting
+              ? 'Submitting…'
+              : animals.length === 1
+              ? 'Submit Intake Form'
+              : `Submit Intake Form (${animals.length} Animals)`}
           </button>
 
           <p className="pb-8 text-center text-xs text-slate-400">
             Short-Go Equine Chiropractic · Dr. Andrew Leo, D.C. c.AVCA, Animal Chiropractor
           </p>
         </form>
+      </div>
+    </div>
+  )
+}
+
+// ── AnimalSection Component ───────────────────────────────────────────────────
+function AnimalSection({
+  animal,
+  index,
+  total,
+  ownerHorses,
+  onUpdate,
+  onSelectHorse,
+  onSpeciesChange,
+  onRemove,
+}: {
+  animal: AnimalEntry
+  index: number
+  total: number
+  ownerHorses: PatientAnimal[]
+  onUpdate: (updates: Partial<AnimalEntry>) => void
+  onSelectHorse: (horseId: string) => void
+  onSpeciesChange: (species: 'equine' | 'canine') => void
+  onRemove: () => void
+}) {
+  const title = total === 1 ? 'Animal Information' : `Animal ${index + 1}`
+
+  return (
+    <div className="rounded-3xl bg-white p-6 shadow-md">
+      <div className="flex items-center justify-between mb-5 border-b border-slate-100 pb-3">
+        <h2 className="text-lg font-bold text-slate-900">{title}</h2>
+        {total > 1 && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="text-xs text-red-400 hover:text-red-600 font-medium transition"
+          >
+            Remove
+          </button>
+        )}
+      </div>
+
+      <div className="space-y-5">
+
+        {/* Patient selector */}
+        {ownerHorses.length > 0 && (
+          <Field label="Select Patient">
+            <select
+              value={animal.selectedHorseId}
+              onChange={e => onSelectHorse(e.target.value)}
+              className={`${inputCls} cursor-pointer`}
+            >
+              <option value="new">➕ New / First-time patient</option>
+              {ownerHorses.map(h => (
+                <option key={h.id} value={h.id}>
+                  {h.species === 'canine' ? '🐕' : '🐴'} {h.name}{h.breed ? ` — ${h.breed}` : ''}
+                </option>
+              ))}
+            </select>
+            {animal.selectedHorseId !== 'new' && (
+              <p className="mt-1.5 text-xs text-emerald-600">
+                ✓ Linked to existing patient record — fields pre-filled below
+              </p>
+            )}
+          </Field>
+        )}
+
+        <Field label="Species">
+          <div className="flex gap-4 mt-2">
+            {[
+              { value: 'equine', label: '🐴 Horse / Equine' },
+              { value: 'canine', label: '🐕 Dog / Canine' },
+            ].map(opt => (
+              <label key={opt.value} className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="radio"
+                  name={`species-${animal.localKey}`}
+                  value={opt.value}
+                  checked={animal.species === opt.value}
+                  onChange={() => onSpeciesChange(opt.value as 'equine' | 'canine')}
+                  className="h-4 w-4 accent-slate-800"
+                />
+                <span className="text-sm text-slate-700">{opt.label}</span>
+              </label>
+            ))}
+          </div>
+        </Field>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Animal Name">
+            <input value={animal.name} onChange={e => onUpdate({ name: e.target.value })}
+              className={inputCls} placeholder="Animal's name" />
+          </Field>
+          <Field label="Age">
+            <input value={animal.age} onChange={e => onUpdate({ age: e.target.value })}
+              className={inputCls} placeholder="e.g. 7" />
+          </Field>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Breed">
+            <input value={animal.breed} onChange={e => onUpdate({ breed: e.target.value })}
+              className={inputCls} placeholder="e.g. Quarter Horse" />
+          </Field>
+          <Field label="Date of Birth">
+            <input value={animal.dob} onChange={e => onUpdate({ dob: e.target.value })}
+              className={inputCls} type="date" />
+          </Field>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Sex">
+            <div className="mt-2 space-y-2">
+              {GENDER_OPTIONS[animal.species].map(g => (
+                <label key={g} className="flex cursor-pointer items-center gap-3">
+                  <input
+                    type="radio"
+                    name={`gender-${animal.localKey}`}
+                    value={g}
+                    checked={animal.gender === g}
+                    onChange={() => onUpdate({ gender: g })}
+                    className="h-4 w-4 accent-slate-800"
+                  />
+                  <span className="text-sm text-slate-700">{g}</span>
+                </label>
+              ))}
+            </div>
+          </Field>
+          <Field label="Height">
+            <input value={animal.height} onChange={e => onUpdate({ height: e.target.value })}
+              className={inputCls} placeholder="e.g. 15.2 hh" />
+          </Field>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Color">
+            <input value={animal.color} onChange={e => onUpdate({ color: e.target.value })}
+              className={inputCls} placeholder="e.g. Bay" />
+          </Field>
+          <Field label="Reason for Seeking Chiropractic Care">
+            <textarea value={animal.reasonForCare} onChange={e => onUpdate({ reasonForCare: e.target.value })}
+              className={`${inputCls} min-h-24 resize-none`}
+              placeholder="Describe the reason…" />
+          </Field>
+        </div>
+
+        {/* Medical History */}
+        <div className="pt-3 border-t border-slate-100">
+          <h3 className="text-sm font-bold text-slate-700 mb-4">Medical History</h3>
+
+          <div className="space-y-5">
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Health Problems / Concerns">
+                <textarea value={animal.healthProblems} onChange={e => onUpdate({ healthProblems: e.target.value })}
+                  className={`${inputCls} min-h-28 resize-none`} placeholder="Describe any health problems…" />
+              </Field>
+              <Field label="Any Recent Changes in Behavior? (If so, explain)">
+                <textarea value={animal.behaviorChanges} onChange={e => onUpdate({ behaviorChanges: e.target.value })}
+                  className={`${inputCls} min-h-28 resize-none`} placeholder="Describe any behavioral changes…" />
+              </Field>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Condition / Illnesses (List doctors seen, date last seen, diagnosis)">
+                <textarea value={animal.conditionsIllnesses} onChange={e => onUpdate({ conditionsIllnesses: e.target.value })}
+                  className={`${inputCls} min-h-28 resize-none`} placeholder="List conditions and treating vets…" />
+              </Field>
+              <Field label="Medications / Supplements">
+                <textarea value={animal.medications} onChange={e => onUpdate({ medications: e.target.value })}
+                  className={`${inputCls} min-h-28 resize-none`} placeholder="List all medications and supplements…" />
+              </Field>
+            </div>
+
+            <Field label="Use / Job of Animal">
+              <textarea value={animal.useOfAnimal} onChange={e => onUpdate({ useOfAnimal: e.target.value })}
+                className={`${inputCls} min-h-24 resize-none`} placeholder="e.g. Barrel racing, trail riding, companion…" />
+            </Field>
+
+            <Field label="Has your animal had previous chiropractic care?">
+              <div className="mt-2 flex gap-6">
+                {[true, false].map(val => (
+                  <label key={String(val)} className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="radio"
+                      name={`prevChiro-${animal.localKey}`}
+                      checked={animal.previousChiroCare === val}
+                      onChange={() => onUpdate({ previousChiroCare: val })}
+                      className="h-4 w-4 accent-slate-800"
+                    />
+                    <span className="text-sm text-slate-700">{val ? 'Yes' : 'No'}</span>
+                  </label>
+                ))}
+              </div>
+            </Field>
+          </div>
+        </div>
+
       </div>
     </div>
   )
