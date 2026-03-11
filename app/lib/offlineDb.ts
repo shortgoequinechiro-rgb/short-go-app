@@ -26,7 +26,7 @@ export interface PendingIntakeForm {
   animalName: string
   animalAge: string | null
   animalBreed: string | null
-  animalDob: string | null
+  animalDob?: string | null
   animalGender: string | null
   animalHeight: string | null
   animalColor: string | null

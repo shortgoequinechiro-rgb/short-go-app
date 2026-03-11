@@ -23,6 +23,14 @@ type Appointment = {
   owners?: { full_name: string } | null
 }
 
+type BlockedTime = {
+  id: string
+  block_date: string
+  start_time: string
+  end_time: string
+  label: string | null
+}
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const GRID_START_HOUR = 7
@@ -185,12 +193,14 @@ function ApptPopup({
   style,
   isMobile,
   onNotesSaved,
+  patientCount,
 }: {
   appt: Appointment
   onClose: () => void
   style: React.CSSProperties
   isMobile: boolean
   onNotesSaved: (id: string, notes: string) => void
+  patientCount: number
 }) {
   const ownerName   = appt.owners?.full_name ?? appt.horses?.owners?.full_name ?? 'Unknown Owner'
   const patientName = appt.horses?.name ?? 'No patient'
@@ -255,9 +265,19 @@ function ApptPopup({
           </div>
         )}
         {appt.location && (
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             <span className="text-blue-400 shrink-0">Location:</span>
-            <span>{appt.location}</span>
+            <span className="flex-1">{appt.location}</span>
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(appt.location)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open in Google Maps"
+              className="text-base leading-none hover:scale-110 transition-transform"
+              onClick={e => e.stopPropagation()}
+            >
+              🗺️
+            </a>
           </div>
         )}
         {appt.provider_name && (
@@ -271,6 +291,10 @@ function ApptPopup({
           <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold text-white ${STATUS_BG[appt.status]}`}>
             {STATUS_LABEL[appt.status]}
           </span>
+        </div>
+        <div className="flex gap-2 items-center pt-0.5 border-t border-white/10 mt-1">
+          <span className="text-blue-400 shrink-0">Patients at this stop:</span>
+          <span className="font-semibold text-white">{patientCount}</span>
         </div>
       </div>
 
@@ -362,6 +386,11 @@ export default function CalendarPage() {
   const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({})
   const [miniCalDate, setMiniCalDate] = useState<Date>(today)
 
+  const [blockedTimes, setBlockedTimes] = useState<BlockedTime[]>([])
+  const [showBlockModal, setShowBlockModal] = useState(false)
+  const [blockForm, setBlockForm] = useState({ date: toISO(today), startTime: '08:00', endTime: '09:00', label: '' })
+  const [savingBlock, setSavingBlock] = useState(false)
+
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -398,22 +427,61 @@ export default function CalendarPage() {
   async function loadWeek() {
     setLoading(true)
     const weekEnd = addDays(weekStart, 6)
-    const { data, error } = await supabase
-      .from('appointments')
-      .select(`
-        id, horse_id, owner_id,
-        appointment_date, appointment_time,
-        duration_minutes, location, reason, status,
-        provider_name, notes,
-        horses ( name, species, owners ( full_name ) ),
-        owners ( full_name )
-      `)
-      .gte('appointment_date', toISO(weekStart))
-      .lte('appointment_date', toISO(weekEnd))
-      .order('appointment_time', { ascending: true })
 
-    if (!error && data) setAppointments(data as unknown as Appointment[])
+    const [apptResult, blockResult] = await Promise.all([
+      supabase
+        .from('appointments')
+        .select(`
+          id, horse_id, owner_id,
+          appointment_date, appointment_time,
+          duration_minutes, location, reason, status,
+          provider_name, notes,
+          horses ( name, species, owners ( full_name ) ),
+          owners ( full_name )
+        `)
+        .gte('appointment_date', toISO(weekStart))
+        .lte('appointment_date', toISO(weekEnd))
+        .order('appointment_time', { ascending: true }),
+      supabase
+        .from('blocked_times')
+        .select('id, block_date, start_time, end_time, label')
+        .gte('block_date', toISO(weekStart))
+        .lte('block_date', toISO(weekEnd))
+        .order('start_time', { ascending: true }),
+    ])
+
+    if (!apptResult.error && apptResult.data) setAppointments(apptResult.data as unknown as Appointment[])
+    if (!blockResult.error && blockResult.data) setBlockedTimes(blockResult.data as BlockedTime[])
     setLoading(false)
+  }
+
+  async function saveBlockedTime() {
+    if (!blockForm.date || !blockForm.startTime || !blockForm.endTime) return
+    if (blockForm.endTime <= blockForm.startTime) {
+      alert('End time must be after start time.')
+      return
+    }
+    setSavingBlock(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    const { error } = await supabase.from('blocked_times').insert({
+      block_date: blockForm.date,
+      start_time: blockForm.startTime,
+      end_time: blockForm.endTime,
+      label: blockForm.label || null,
+      practitioner_id: user?.id,
+    })
+    setSavingBlock(false)
+    if (!error) {
+      setShowBlockModal(false)
+      setBlockForm({ date: toISO(today), startTime: '08:00', endTime: '09:00', label: '' })
+      await loadWeek()
+    }
+  }
+
+  async function deleteBlockedTime(id: string) {
+    if (!confirm('Remove this blocked time?')) return
+    await supabase.from('blocked_times').delete().eq('id', id)
+    setBlockedTimes(prev => prev.filter(b => b.id !== id))
   }
 
   function goToToday() {
@@ -451,6 +519,12 @@ export default function CalendarPage() {
   for (const appt of appointments) {
     if (!apptsByDay[appt.appointment_date]) apptsByDay[appt.appointment_date] = []
     apptsByDay[appt.appointment_date].push(appt)
+  }
+
+  const blockedByDay: Record<string, BlockedTime[]> = {}
+  for (const b of blockedTimes) {
+    if (!blockedByDay[b.block_date]) blockedByDay[b.block_date] = []
+    blockedByDay[b.block_date].push(b)
   }
 
   // For mobile, also look up appointments in loaded range that match mobileDay
@@ -516,21 +590,37 @@ export default function CalendarPage() {
         <div className="flex flex-shrink-0 items-center justify-between gap-2 border-b border-[#1a3358] bg-[#0d1b30] px-3 py-2">
           <button
             onClick={goToToday}
-            className={`rounded-xl border px-4 py-1.5 text-sm font-medium transition
+            className={`rounded-xl border px-3 py-1.5 text-sm font-medium transition
               ${isTodayMobile ? 'border-[#c9a227] bg-[#c9a227] text-[#0f2040]' : 'border-white/20 text-white hover:bg-white/10'}`}
           >
             Today
           </button>
+          <button
+            onClick={() => { setBlockForm(f => ({ ...f, date: toISO(mobileDay) })); setShowBlockModal(true) }}
+            className="rounded-xl border border-white/20 px-3 py-1.5 text-sm text-white hover:bg-white/10 transition"
+          >
+            🚫 Block
+          </button>
           <Link
             href="/appointments"
-            className="rounded-xl bg-[#c9a227] px-4 py-1.5 text-sm font-semibold text-[#0f2040] hover:bg-[#b89020] transition"
+            className="rounded-xl bg-[#c9a227] px-3 py-1.5 text-sm font-semibold text-[#0f2040] hover:bg-[#b89020] transition"
           >
-            + New Appointment
+            + New
           </Link>
         </div>
 
         {/* Day appointments: card list on mobile (easier than pixel grid) */}
         <div className="flex-1 overflow-y-auto px-3 py-3">
+          {/* Blocked time banners on mobile */}
+          {(blockedByDay[toISO(mobileDay)] ?? []).map(block => (
+            <div key={block.id} className="mb-2 flex items-center justify-between rounded-xl border border-red-800 bg-red-900/30 px-3 py-2">
+              <div>
+                <span className="text-xs font-semibold text-red-300">🚫 {block.label || 'Blocked'}</span>
+                <div className="text-[10px] text-red-400">{formatTime12(block.start_time)} – {formatTime12(block.end_time)}</div>
+              </div>
+              <button onClick={() => deleteBlockedTime(block.id)} className="text-red-400 hover:text-red-200 text-lg leading-none">×</button>
+            </div>
+          ))}
           {loading ? (
             <div className="flex h-32 items-center justify-center text-blue-300 text-sm">Loading…</div>
           ) : mobileDayAppts.length === 0 ? (
@@ -596,11 +686,50 @@ export default function CalendarPage() {
             onClose={() => setSelectedAppt(null)}
             style={popupStyle}
             isMobile={true}
+            patientCount={appointments.filter(a =>
+              a.appointment_date === selectedAppt.appointment_date &&
+              (selectedAppt.location ? a.location === selectedAppt.location : true)
+            ).length}
             onNotesSaved={(id, newNotes) => {
               setAppointments(prev => prev.map(a => a.id === id ? { ...a, notes: newNotes } : a))
               setSelectedAppt(prev => prev?.id === id ? { ...prev, notes: newNotes } : prev)
             }}
           />
+        )}
+
+        {/* Block Time Modal (mobile) */}
+        {showBlockModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowBlockModal(false)}>
+            <div className="w-full max-w-sm rounded-2xl border border-[#1a3358] bg-[#0d1b30] p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="font-bold text-white">🚫 Block Out Time</h3>
+                <button onClick={() => setShowBlockModal(false)} className="text-white/50 hover:text-white text-xl leading-none">×</button>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Date</label>
+                  <input type="date" value={blockForm.date} onChange={e => setBlockForm(f => ({ ...f, date: e.target.value }))} className="w-full rounded-lg border border-[#1a3358] bg-[#081120] px-3 py-2 text-sm text-white outline-none focus:border-[#c9a227]" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Start</label>
+                    <input type="time" value={blockForm.startTime} onChange={e => setBlockForm(f => ({ ...f, startTime: e.target.value }))} className="w-full rounded-lg border border-[#1a3358] bg-[#081120] px-3 py-2 text-sm text-white outline-none focus:border-[#c9a227]" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">End</label>
+                    <input type="time" value={blockForm.endTime} onChange={e => setBlockForm(f => ({ ...f, endTime: e.target.value }))} className="w-full rounded-lg border border-[#1a3358] bg-[#081120] px-3 py-2 text-sm text-white outline-none focus:border-[#c9a227]" />
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Label (optional)</label>
+                  <input type="text" value={blockForm.label} onChange={e => setBlockForm(f => ({ ...f, label: e.target.value }))} placeholder="e.g. Lunch, Travel, Personal" className="w-full rounded-lg border border-[#1a3358] bg-[#081120] px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-[#c9a227]" />
+                </div>
+                <button onClick={saveBlockedTime} disabled={savingBlock} className="mt-2 w-full rounded-lg bg-red-700 py-2.5 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-50">
+                  {savingBlock ? 'Saving…' : '🚫 Block This Time'}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     )
@@ -685,12 +814,21 @@ export default function CalendarPage() {
             </div>
           </div>
 
-          <Link
-            href="/appointments"
-            className="rounded-lg bg-[#c9a227] px-4 py-1.5 text-sm font-semibold text-[#0f2040] hover:bg-[#b89020] transition"
-          >
-            + New Appointment
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setBlockForm(f => ({ ...f, date: toISO(weekStart) })); setShowBlockModal(true) }}
+              className="rounded-lg border border-white/20 px-3 py-1.5 text-sm text-white hover:bg-white/10 transition"
+              title="Block out unavailable time"
+            >
+              🚫 Block Time
+            </button>
+            <Link
+              href="/appointments"
+              className="rounded-lg bg-[#c9a227] px-4 py-1.5 text-sm font-semibold text-[#0f2040] hover:bg-[#b89020] transition"
+            >
+              + New Appointment
+            </Link>
+          </div>
         </div>
 
         {/* Day headers */}
@@ -750,10 +888,11 @@ export default function CalendarPage() {
 
           {/* Day columns */}
           {displayDays.map((day, colIdx) => {
-            const iso      = toISO(day)
-            const isToday  = iso === toISO(today)
-            const dayAppts = apptsByDay[iso] ?? []
-            const nowMins  = today.getHours() * 60 + today.getMinutes()
+            const iso       = toISO(day)
+            const isToday   = iso === toISO(today)
+            const dayAppts  = apptsByDay[iso] ?? []
+            const dayBlocks = blockedByDay[iso] ?? []
+            const nowMins   = today.getHours() * 60 + today.getMinutes()
 
             return (
               <div
@@ -777,6 +916,40 @@ export default function CalendarPage() {
                     <div className="flex-1 h-px bg-red-400/70" />
                   </div>
                 )}
+
+                {dayBlocks.map(block => {
+                  const startMins = timeToMins(block.start_time)
+                  const endMins   = timeToMins(block.end_time)
+                  if (endMins <= GRID_START_HOUR * 60 || startMins >= GRID_END_HOUR * 60) return null
+                  const relStart = Math.max(startMins, GRID_START_HOUR * 60) - GRID_START_HOUR * 60
+                  const relEnd   = Math.min(endMins, GRID_END_HOUR * 60) - GRID_START_HOUR * 60
+                  const top      = relStart * PX_PER_MIN
+                  const height   = Math.max((relEnd - relStart) * PX_PER_MIN, 16)
+                  return (
+                    <button
+                      key={block.id}
+                      title={`Blocked: ${block.label || 'Unavailable'} — click to remove`}
+                      onClick={e => { e.stopPropagation(); deleteBlockedTime(block.id) }}
+                      className="absolute left-0 right-0 z-10 cursor-pointer overflow-hidden border-l-2 border-red-700 bg-red-900/30 text-left transition hover:bg-red-900/50"
+                      style={{
+                        top,
+                        height,
+                        backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(255,0,0,0.07) 4px, rgba(255,0,0,0.07) 8px)',
+                      }}
+                    >
+                      <div className="px-1 py-0.5">
+                        <div className="text-[9px] font-semibold text-red-300 truncate">
+                          🚫 {block.label || 'Blocked'}
+                        </div>
+                        {height > 24 && (
+                          <div className="text-[8px] text-red-400/80">
+                            {formatTime12(block.start_time)} – {formatTime12(block.end_time)}
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  )
+                })}
 
                 {dayAppts.map(appt => {
                   const startMins = timeToMins(appt.appointment_time)
@@ -839,11 +1012,75 @@ export default function CalendarPage() {
           onClose={() => setSelectedAppt(null)}
           style={popupStyle}
           isMobile={false}
+          patientCount={appointments.filter(a =>
+            a.appointment_date === selectedAppt.appointment_date &&
+            (selectedAppt.location ? a.location === selectedAppt.location : true)
+          ).length}
           onNotesSaved={(id, newNotes) => {
             setAppointments(prev => prev.map(a => a.id === id ? { ...a, notes: newNotes } : a))
             setSelectedAppt(prev => prev?.id === id ? { ...prev, notes: newNotes } : prev)
           }}
         />
+      )}
+
+      {/* Block Time Modal */}
+      {showBlockModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowBlockModal(false)}>
+          <div className="w-full max-w-sm rounded-2xl border border-[#1a3358] bg-[#0d1b30] p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="font-bold text-white">🚫 Block Out Time</h3>
+              <button onClick={() => setShowBlockModal(false)} className="text-white/50 hover:text-white text-xl leading-none">×</button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Date</label>
+                <input
+                  type="date"
+                  value={blockForm.date}
+                  onChange={e => setBlockForm(f => ({ ...f, date: e.target.value }))}
+                  className="w-full rounded-lg border border-[#1a3358] bg-[#081120] px-3 py-2 text-sm text-white outline-none focus:border-[#c9a227]"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Start Time</label>
+                  <input
+                    type="time"
+                    value={blockForm.startTime}
+                    onChange={e => setBlockForm(f => ({ ...f, startTime: e.target.value }))}
+                    className="w-full rounded-lg border border-[#1a3358] bg-[#081120] px-3 py-2 text-sm text-white outline-none focus:border-[#c9a227]"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">End Time</label>
+                  <input
+                    type="time"
+                    value={blockForm.endTime}
+                    onChange={e => setBlockForm(f => ({ ...f, endTime: e.target.value }))}
+                    className="w-full rounded-lg border border-[#1a3358] bg-[#081120] px-3 py-2 text-sm text-white outline-none focus:border-[#c9a227]"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Label (optional)</label>
+                <input
+                  type="text"
+                  value={blockForm.label}
+                  onChange={e => setBlockForm(f => ({ ...f, label: e.target.value }))}
+                  placeholder="e.g. Lunch, Travel, Personal"
+                  className="w-full rounded-lg border border-[#1a3358] bg-[#081120] px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-[#c9a227]"
+                />
+              </div>
+              <button
+                onClick={saveBlockedTime}
+                disabled={savingBlock}
+                className="mt-2 w-full rounded-lg bg-red-700 py-2.5 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-50"
+              >
+                {savingBlock ? 'Saving…' : '🚫 Block This Time'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

@@ -28,6 +28,7 @@ type Horse = {
   medical_alerts?: string | null
   history_notes?: string | null
   behavioral_notes?: string | null
+  profile_photo_path?: string | null
   owners?: {
     full_name: string
     phone: string | null
@@ -204,6 +205,16 @@ export default function HorseDetailPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
 
+  // Profile photo state
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null)
+  const [uploadingProfilePhoto, setUploadingProfilePhoto] = useState(false)
+  const [showProfileCameraModal, setShowProfileCameraModal] = useState(false)
+  const [profileCameraError, setProfileCameraError] = useState<string | null>(null)
+  const profileVideoRef = useRef<HTMLVideoElement>(null)
+  const profileCanvasRef = useRef<HTMLCanvasElement>(null)
+  const profileStreamRef = useRef<MediaStream | null>(null)
+  const profileFileInputRef = useRef<HTMLInputElement>(null)
+
   async function checkUser() {
     const {
       data: { user },
@@ -291,6 +302,13 @@ export default function HorseDetailPage() {
 
     if (data.owner_id) saveRecentOwner(data.owner_id)
     saveRecentHorse(data.id)
+
+    if (data.profile_photo_path) {
+      const { data: signedData } = await supabase.storage
+        .from('horse-photos')
+        .createSignedUrl(data.profile_photo_path, 3600)
+      if (signedData?.signedUrl) setProfilePhotoUrl(signedData.signedUrl)
+    }
   }
 
   async function loadOwnerOtherHorses(currentOwnerId: string | null) {
@@ -904,6 +922,95 @@ export default function HorseDetailPage() {
     setCameraError(null)
   }
 
+  // ── Profile Photo ──────────────────────────────────────────────────────────
+
+  async function openProfileCamera() {
+    setProfileCameraError(null)
+    setShowProfileCameraModal(true)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' },
+      })
+      profileStreamRef.current = stream
+      setTimeout(() => {
+        if (profileVideoRef.current) {
+          profileVideoRef.current.srcObject = stream
+        }
+      }, 50)
+    } catch {
+      setProfileCameraError('Could not access camera. Please allow camera permission and try again.')
+    }
+  }
+
+  function captureProfilePhoto() {
+    if (!profileVideoRef.current || !profileCanvasRef.current) return
+    const video = profileVideoRef.current
+    const canvas = profileCanvasRef.current
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    canvas.getContext('2d')?.drawImage(video, 0, 0)
+    canvas.toBlob(async (blob) => {
+      if (!blob) return
+      closeProfileCamera()
+      await uploadProfilePhoto(blob)
+    }, 'image/jpeg', 0.92)
+  }
+
+  function closeProfileCamera() {
+    profileStreamRef.current?.getTracks().forEach((t) => t.stop())
+    profileStreamRef.current = null
+    setShowProfileCameraModal(false)
+    setProfileCameraError(null)
+  }
+
+  async function uploadProfilePhoto(file: Blob | File) {
+    setUploadingProfilePhoto(true)
+    try {
+      const filePath = `${horseId}/profile/profile-${Date.now()}.jpg`
+
+      // Remove old profile photo from storage if one exists
+      if (horse?.profile_photo_path) {
+        await supabase.storage.from('horse-photos').remove([horse.profile_photo_path])
+      }
+
+      const { error: uploadError } = await supabase.storage
+        .from('horse-photos')
+        .upload(filePath, file, { contentType: 'image/jpeg', upsert: true })
+
+      if (uploadError) {
+        setMessage(`Error uploading profile photo: ${uploadError.message}`)
+        return
+      }
+
+      const { error: updateError } = await supabase
+        .from('horses')
+        .update({ profile_photo_path: filePath })
+        .eq('id', horseId)
+
+      if (updateError) {
+        setMessage(`Error saving profile photo: ${updateError.message}`)
+        return
+      }
+
+      const { data: signedData } = await supabase.storage
+        .from('horse-photos')
+        .createSignedUrl(filePath, 3600)
+
+      if (signedData?.signedUrl) setProfilePhotoUrl(signedData.signedUrl)
+      setHorse(prev => prev ? { ...prev, profile_photo_path: filePath } : prev)
+      setMessage('Profile photo updated.')
+    } finally {
+      setUploadingProfilePhoto(false)
+    }
+  }
+
+  async function handleProfileFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    await uploadProfilePhoto(file)
+    event.target.value = ''
+  }
+
   async function emailVisitPdf(visitId: string) {
     try {
       setEmailingVisitId(visitId)
@@ -1256,47 +1363,101 @@ export default function HorseDetailPage() {
   return (
     <main className="min-h-screen bg-[#edf2f7] p-3 md:p-6 lg:p-8">
       <div className="mx-auto max-w-7xl">
+        {/* Back button */}
+        <button
+          onClick={() => router.back()}
+          className="mb-3 flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
+        >
+          ← Back
+        </button>
+
         <div className="rounded-3xl bg-white p-4 shadow-md md:p-6">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-xl font-bold text-slate-900 md:text-3xl">
-              {horse?.name || 'Patient Record'}
-            </h1>
-            {horse?.species === 'canine' ? (
-              <span className="rounded-xl bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">🐕 Canine</span>
-            ) : (
-              <span className="rounded-xl bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800">🐴 Equine</span>
-            )}
-            {horse?.behavioral_notes && (
-              <span className="rounded-xl bg-red-600 px-3 py-1 text-xs font-bold text-white shadow-sm">
-                ⚠️ Behavioral Alert
-              </span>
-            )}
-            {consentOnFile ? (
-              <span className="rounded-xl bg-emerald-500 px-3 py-1 text-xs font-bold text-white shadow-sm">
-                ✓ Consent
-              </span>
-            ) : (
-              <span className="rounded-xl bg-red-600 px-3 py-1 text-xs font-bold text-white shadow-sm">
-                <strong>✗</strong> Consent
-              </span>
-            )}
-            {intakeForms.length > 0 && (
-              <span className="rounded-xl bg-blue-500 px-3 py-1 text-xs font-bold text-white shadow-sm">
-                📋 Intake on File
-              </span>
-            )}
+          <div className="flex items-start gap-4">
+
+            {/* ── Profile Photo ── */}
+            <div className="relative flex-shrink-0">
+              <button
+                onClick={openProfileCamera}
+                title={profilePhotoUrl ? 'Click to update photo' : 'Click to add a profile photo'}
+                className="group relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 border-[#0f2040] bg-slate-100 shadow-md transition md:h-24 md:w-24"
+              >
+                {uploadingProfilePhoto ? (
+                  <div className="flex flex-col items-center gap-1 text-slate-500">
+                    <div className="text-lg animate-spin">⏳</div>
+                    <span className="text-[9px]">Saving…</span>
+                  </div>
+                ) : profilePhotoUrl ? (
+                  <img
+                    src={profilePhotoUrl}
+                    alt={horse?.name || 'Patient'}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center gap-1 text-slate-400">
+                    <span className="text-3xl">{horse?.species === 'canine' ? '🐕' : '🐴'}</span>
+                    <span className="text-[9px] font-medium">+ Photo</span>
+                  </div>
+                )}
+                {/* Hover overlay */}
+                <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                  <span className="text-2xl">📷</span>
+                </div>
+              </button>
+              {/* Hidden file input fallback */}
+              <input
+                ref={profileFileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleProfileFileChange}
+              />
+            </div>
+
+            {/* ── Name, badges, info ── */}
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl font-bold text-slate-900 md:text-3xl">
+                  {horse?.name || 'Patient Record'}
+                </h1>
+                {horse?.species === 'canine' ? (
+                  <span className="rounded-xl bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">🐕 Canine</span>
+                ) : (
+                  <span className="rounded-xl bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800">🐴 Equine</span>
+                )}
+                {horse?.behavioral_notes && (
+                  <span className="rounded-xl bg-red-600 px-3 py-1 text-xs font-bold text-white shadow-sm">
+                    ⚠️ Behavioral Alert
+                  </span>
+                )}
+                {consentOnFile ? (
+                  <span className="rounded-xl bg-emerald-500 px-3 py-1 text-xs font-bold text-white shadow-sm">
+                    ✓ Consent
+                  </span>
+                ) : (
+                  <span className="rounded-xl bg-red-600 px-3 py-1 text-xs font-bold text-white shadow-sm">
+                    <strong>✗</strong> Consent
+                  </span>
+                )}
+                {intakeForms.length > 0 && (
+                  <span className="rounded-xl bg-blue-500 px-3 py-1 text-xs font-bold text-white shadow-sm">
+                    📋 Intake on File
+                  </span>
+                )}
+              </div>
+              <p className="mt-2 flex flex-wrap gap-x-2 text-sm text-slate-600 md:text-base">
+                <span>{horse?.breed || '—'}</span>
+                <span className="text-slate-300">•</span>
+                <span>{horse?.sex || '—'}</span>
+                <span className="text-slate-300">•</span>
+                <span>{horse?.age || '—'}</span>
+                <span className="text-slate-300">•</span>
+                <span>{horse?.discipline || '—'}</span>
+                <span className="text-slate-300">•</span>
+                <span>{horse?.barn_location || '—'}</span>
+              </p>
+            </div>
           </div>
-          <p className="mt-2 flex flex-wrap gap-x-2 text-sm text-slate-600 md:text-base">
-            <span>{horse?.breed || '—'}</span>
-            <span className="text-slate-300">•</span>
-            <span>{horse?.sex || '—'}</span>
-            <span className="text-slate-300">•</span>
-            <span>{horse?.age || '—'}</span>
-            <span className="text-slate-300">•</span>
-            <span>{horse?.discipline || '—'}</span>
-            <span className="text-slate-300">•</span>
-            <span>{horse?.barn_location || '—'}</span>
-          </p>
+
           {horse?.medical_alerts && (
             <div className="mt-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
               <span className="mt-0.5 text-lg leading-none">⚠️</span>
@@ -2562,6 +2723,73 @@ export default function HorseDetailPage() {
                 {sendingOwnerSummaryId === ownerSummaryPreview.visitId ? 'Sending…' : 'Send to Owner'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Profile Camera Modal ── */}
+      {showProfileCameraModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+              <h3 className="text-lg font-semibold text-slate-900">📷 Profile Photo</h3>
+              <button
+                type="button"
+                onClick={closeProfileCamera}
+                className="text-2xl leading-none text-slate-400 hover:text-slate-600"
+              >
+                ×
+              </button>
+            </div>
+            <div className="relative bg-black">
+              {profileCameraError ? (
+                <div className="flex flex-col items-center justify-center gap-3 p-8 text-center">
+                  <span className="text-4xl">📷</span>
+                  <p className="text-sm text-slate-600">{profileCameraError}</p>
+                  <button
+                    type="button"
+                    onClick={() => { closeProfileCamera(); profileFileInputRef.current?.click() }}
+                    className="rounded-xl bg-[#0f2040] px-5 py-2.5 text-sm text-white hover:bg-[#162d55]"
+                  >
+                    Choose from Library Instead
+                  </button>
+                </div>
+              ) : (
+                <video
+                  ref={profileVideoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="aspect-square w-full object-cover"
+                />
+              )}
+              <canvas ref={profileCanvasRef} className="hidden" />
+            </div>
+            {!profileCameraError && (
+              <div className="flex gap-3 p-4">
+                <button
+                  type="button"
+                  onClick={closeProfileCamera}
+                  className="flex-1 rounded-xl border border-slate-200 px-5 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { closeProfileCamera(); profileFileInputRef.current?.click() }}
+                  className="flex-1 rounded-xl border border-slate-200 px-5 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  📁 Library
+                </button>
+                <button
+                  type="button"
+                  onClick={captureProfilePhoto}
+                  className="flex-1 rounded-xl bg-[#0f2040] px-5 py-3 text-sm font-semibold text-white shadow hover:bg-[#162d55]"
+                >
+                  📸 Capture
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
