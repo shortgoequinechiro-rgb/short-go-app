@@ -617,6 +617,7 @@ export default function CalendarPage() {
   const [quickBook, setQuickBook] = useState<{ date: string; time: string } | null>(null)
 
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [hoveredSlot, setHoveredSlot] = useState<{ colIdx: number; mins: number } | null>(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -1183,6 +1184,16 @@ export default function CalendarPage() {
                 key={colIdx}
                 className={`relative flex-1 border-r border-[#1a3358] last:border-r-0 ${isToday ? 'bg-[#c9a227]/5' : ''}`}
                 style={{ height: GRID_HEIGHT, minWidth: 90 }}
+                onMouseMove={e => {
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                  const scrollTop = scrollRef.current?.scrollTop ?? 0
+                  const relY = e.clientY - rect.top + scrollTop
+                  const mins = Math.floor((relY / PX_PER_MIN + GRID_START_HOUR * 60) / 15) * 15
+                  if (mins >= GRID_START_HOUR * 60 && mins < GRID_END_HOUR * 60) {
+                    setHoveredSlot({ colIdx, mins })
+                  }
+                }}
+                onMouseLeave={() => setHoveredSlot(null)}
                 onClick={e => {
                   // Only open quick-book when clicking empty grid space (not on an appt/block)
                   if ((e.target as HTMLElement).closest('button, a')) return
@@ -1204,6 +1215,21 @@ export default function CalendarPage() {
                 {HOUR_LABELS.map((_, i) => (
                   <div key={`half-${i}`} className="absolute left-0 right-0 border-t border-[#1a3358]/25" style={{ top: i * 60 * PX_PER_MIN + 30 * PX_PER_MIN }} />
                 ))}
+
+                {/* 15-min hover highlight */}
+                {hoveredSlot?.colIdx === colIdx && (
+                  <div
+                    className="absolute left-0 right-0 pointer-events-none z-[5] bg-white/[0.06] border-t border-b border-white/20"
+                    style={{
+                      top: (hoveredSlot.mins - GRID_START_HOUR * 60) * PX_PER_MIN,
+                      height: 15 * PX_PER_MIN,
+                    }}
+                  >
+                    <span className="absolute right-1 top-0 text-[9px] text-white/40 leading-none pt-0.5 select-none">
+                      {formatTime12(`${String(Math.floor(hoveredSlot.mins / 60)).padStart(2,'0')}:${String(hoveredSlot.mins % 60).padStart(2,'0')}`)}
+                    </span>
+                  </div>
+                )}
 
                 {isToday && nowMins >= GRID_START_HOUR * 60 && nowMins <= GRID_END_HOUR * 60 && (
                   <div
