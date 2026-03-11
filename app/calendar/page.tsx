@@ -576,6 +576,7 @@ export default function CalendarPage() {
   const [showBlockModal, setShowBlockModal] = useState(false)
   const [blockForm, setBlockForm] = useState({ date: toISO(today), startTime: '08:00', endTime: '09:00', label: '' })
   const [savingBlock, setSavingBlock] = useState(false)
+  const [blockSaveErr, setBlockSaveErr] = useState<string | null>(null)
 
   const [horses, setHorses] = useState<HorseOption[]>([])
   const [quickBook, setQuickBook] = useState<{ date: string; time: string } | null>(null)
@@ -657,10 +658,11 @@ export default function CalendarPage() {
   async function saveBlockedTime() {
     if (!blockForm.date || !blockForm.startTime || !blockForm.endTime) return
     if (blockForm.endTime <= blockForm.startTime) {
-      alert('End time must be after start time.')
+      setBlockSaveErr('End time must be after start time.')
       return
     }
     setSavingBlock(true)
+    setBlockSaveErr(null)
     const { data: { user } } = await supabase.auth.getUser()
     const { error } = await supabase.from('blocked_times').insert({
       block_date: blockForm.date,
@@ -670,8 +672,15 @@ export default function CalendarPage() {
       practitioner_id: user?.id,
     })
     setSavingBlock(false)
-    if (!error) {
+    if (error) {
+      if (error.message?.includes('relation') || error.message?.includes('does not exist') || error.code === '42P01') {
+        setBlockSaveErr('The blocked_times table is missing. Run migration 007_add_blocked_times.sql in your Supabase SQL editor first.')
+      } else {
+        setBlockSaveErr(error.message ?? 'Failed to save. Please try again.')
+      }
+    } else {
       setShowBlockModal(false)
+      setBlockSaveErr(null)
       setBlockForm({ date: toISO(today), startTime: '08:00', endTime: '09:00', label: '' })
       await loadWeek()
     }
@@ -806,7 +815,7 @@ export default function CalendarPage() {
             Today
           </button>
           <button
-            onClick={() => { setBlockForm(f => ({ ...f, date: toISO(mobileDay) })); setShowBlockModal(true) }}
+            onClick={() => { setBlockSaveErr(null); setBlockForm(f => ({ ...f, date: toISO(mobileDay) })); setShowBlockModal(true) }}
             className="rounded-xl border border-white/20 px-3 py-1.5 text-sm text-white hover:bg-white/10 transition"
           >
             🚫 Block
@@ -946,6 +955,9 @@ export default function CalendarPage() {
                   <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Label (optional)</label>
                   <input type="text" value={blockForm.label} onChange={e => setBlockForm(f => ({ ...f, label: e.target.value }))} placeholder="e.g. Lunch, Travel, Personal" className="w-full rounded-lg border border-[#1a3358] bg-[#081120] px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-[#c9a227]" />
                 </div>
+                {blockSaveErr && (
+                  <p className="rounded-lg border border-red-700 bg-red-900/30 px-3 py-2 text-xs text-red-300">{blockSaveErr}</p>
+                )}
                 <button onClick={saveBlockedTime} disabled={savingBlock} className="mt-2 w-full rounded-lg bg-red-700 py-2.5 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-50">
                   {savingBlock ? 'Saving…' : '🚫 Block This Time'}
                 </button>
@@ -1038,7 +1050,7 @@ export default function CalendarPage() {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => { setBlockForm(f => ({ ...f, date: toISO(weekStart) })); setShowBlockModal(true) }}
+              onClick={() => { setBlockSaveErr(null); setBlockForm(f => ({ ...f, date: toISO(weekStart) })); setShowBlockModal(true) }}
               className="rounded-lg border border-white/20 px-3 py-1.5 text-sm text-white hover:bg-white/10 transition"
               title="Block out unavailable time"
             >
@@ -1319,6 +1331,9 @@ export default function CalendarPage() {
                   className="w-full rounded-lg border border-[#1a3358] bg-[#081120] px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-[#c9a227]"
                 />
               </div>
+              {blockSaveErr && (
+                <p className="rounded-lg border border-red-700 bg-red-900/30 px-3 py-2 text-xs text-red-300">{blockSaveErr}</p>
+              )}
               <button
                 onClick={saveBlockedTime}
                 disabled={savingBlock}
