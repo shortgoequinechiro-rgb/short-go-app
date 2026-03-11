@@ -52,18 +52,23 @@ export async function POST(
 
   const client = twilio(accountSid, authToken)
 
-  const message = await client.messages.create({
-    from: fromNumber,
-    to: toNumber,
-    body: `Hi ${firstName}! Dr. Leo sent you an intake form to complete before your appointment. Fill it out here: ${intakeUrl}`,
-  })
+  try {
+    const message = await client.messages.create({
+      from: fromNumber,
+      to: toNumber,
+      body: `Hi ${firstName}! Dr. Leo sent you an intake form to complete before your appointment. Fill it out here: ${intakeUrl}`,
+    })
 
-  if (message.errorCode) {
-    return NextResponse.json(
-      { error: `Twilio error: ${message.errorMessage}` },
-      { status: 500 }
-    )
+    if (message.errorCode) {
+      return NextResponse.json(
+        { error: `Twilio error ${message.errorCode}: ${message.errorMessage}` },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({ success: true, sid: message.sid })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ error: `Twilio error: ${msg}` }, { status: 500 })
   }
-
-  return NextResponse.json({ success: true, sid: message.sid })
 }

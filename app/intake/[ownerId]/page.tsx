@@ -317,67 +317,47 @@ export default function IntakeFormPage() {
     // ── ONLINE PATH ───────────────────────────────────────────────────────────
     await syncPendingData(supabase)
 
-    for (const animal of animals) {
-      const resolvedAnimalName = animal.name.trim() || 'Unknown Patient'
-      let resolvedHorseId: string | null = animal.selectedHorseId !== 'new' ? animal.selectedHorseId : null
+    try {
+      const res = await fetch('/api/intake/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ownerId,
+          referralSources,
+          animals: animals.map(a => ({
+            selectedHorseId: a.selectedHorseId,
+            species: a.species,
+            name: a.name,
+            age: a.age,
+            breed: a.breed,
+            dob: a.dob,
+            gender: a.gender,
+            height: a.height,
+            color: a.color,
+            reasonForCare: a.reasonForCare,
+            healthProblems: a.healthProblems,
+            behaviorChanges: a.behaviorChanges,
+            conditionsIllnesses: a.conditionsIllnesses,
+            medications: a.medications,
+            useOfAnimal: a.useOfAnimal,
+            previousChiroCare: a.previousChiroCare,
+          })),
+          signatureData,
+          signedName: resolvedSignedName,
+        }),
+      })
 
-      if (animal.selectedHorseId === 'new') {
-        const { data: newHorse, error: horseError } = await supabase
-          .from('horses')
-          .insert({
-            owner_id: ownerId,
-            name: resolvedAnimalName,
-            breed: animal.breed || null,
-            age: animal.age || null,
-            sex: animal.gender || null,
-            species: animal.species,
-            archived: false,
-            practitioner_id: owner?.practitioner_id,
-          })
-          .select('id')
-          .single()
+      const data = await res.json()
 
-        if (horseError || !newHorse) {
-          setError(`Could not create patient record for "${resolvedAnimalName}": ${horseError?.message || 'unknown error'}`)
-          setSubmitting(false)
-          return
-        }
-        resolvedHorseId = newHorse.id
-      }
-
-      const { error: dbError } = await supabase
-        .from('intake_forms')
-        .insert({
-          owner_id: ownerId,
-          horse_id: resolvedHorseId,
-          submitted_at: now,
-          practitioner_id: owner?.practitioner_id,
-          form_date: now.split('T')[0],
-          referral_source: referralSources,
-          animal_name: resolvedAnimalName,
-          animal_age: animal.age || null,
-          animal_breed: animal.breed || null,
-          animal_dob: animal.dob || null,
-          animal_gender: animal.gender || null,
-          animal_height: animal.height || null,
-          animal_color: animal.color || null,
-          reason_for_care: animal.reasonForCare || null,
-          health_problems: animal.healthProblems || null,
-          behavior_changes: animal.behaviorChanges || null,
-          conditions_illnesses: animal.conditionsIllnesses || null,
-          medications_supplements: animal.medications || null,
-          use_of_animal: animal.useOfAnimal || null,
-          previous_chiro_care: animal.previousChiroCare,
-          consent_signed: true,
-          signature_data: signatureData,
-          signed_name: resolvedSignedName,
-        })
-
-      if (dbError) {
-        setError(`Submission error for "${resolvedAnimalName}": ${dbError.message}`)
+      if (!res.ok) {
+        setError(data.error || 'Submission failed. Please try again.')
         setSubmitting(false)
         return
       }
+    } catch {
+      setError('Network error. Please check your connection and try again.')
+      setSubmitting(false)
+      return
     }
 
     setSubmitted(true)
