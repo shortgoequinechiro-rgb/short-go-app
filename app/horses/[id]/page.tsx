@@ -304,10 +304,14 @@ export default function HorseDetailPage() {
     saveRecentHorse(data.id)
 
     if (data.profile_photo_path) {
-      const { data: signedData } = await supabase.storage
+      const { data: signedData, error: signedError } = await supabase.storage
         .from('horse-photos')
-        .createSignedUrl(data.profile_photo_path, 3600)
-      if (signedData?.signedUrl) setProfilePhotoUrl(signedData.signedUrl)
+        .createSignedUrl(data.profile_photo_path, 604800)
+      if (signedData?.signedUrl) {
+        setProfilePhotoUrl(signedData.signedUrl)
+      } else if (signedError) {
+        console.warn('Could not generate profile photo URL:', signedError.message)
+      }
     }
   }
 
@@ -972,12 +976,9 @@ export default function HorseDetailPage() {
 
     try {
       const filePath = `${horseId}/profile/profile-${Date.now()}.jpg`
+      const oldPath = horse?.profile_photo_path ?? null
 
-      // Remove old profile photo from storage if one exists
-      if (horse?.profile_photo_path) {
-        await supabase.storage.from('horse-photos').remove([horse.profile_photo_path])
-      }
-
+      // 1. Upload the new file first
       const { error: uploadError } = await supabase.storage
         .from('horse-photos')
         .upload(filePath, file, { contentType: 'image/jpeg', upsert: true })
@@ -988,20 +989,29 @@ export default function HorseDetailPage() {
         return
       }
 
+      // 2. Update the DB to point at the new file
       const { error: updateError } = await supabase
         .from('horses')
         .update({ profile_photo_path: filePath })
         .eq('id', horseId)
 
       if (updateError) {
+        // DB update failed — remove the orphaned upload so storage stays clean
+        await supabase.storage.from('horse-photos').remove([filePath])
         setMessage(`Error saving profile photo: ${updateError.message}`)
+        setProfilePhotoUrl(null)
         return
       }
 
-      // Replace the local preview with a proper signed URL
+      // 3. Only now that the DB is updated, remove the old file (best-effort)
+      if (oldPath) {
+        await supabase.storage.from('horse-photos').remove([oldPath])
+      }
+
+      // 4. Replace the local preview with a long-lived signed URL (7 days)
       const { data: signedData } = await supabase.storage
         .from('horse-photos')
-        .createSignedUrl(filePath, 3600)
+        .createSignedUrl(filePath, 604800)
 
       if (signedData?.signedUrl) setProfilePhotoUrl(signedData.signedUrl)
       setHorse(prev => prev ? { ...prev, profile_photo_path: filePath } : prev)

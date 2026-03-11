@@ -248,7 +248,7 @@ export default function Home() {
     const horseList = (data || []) as Horse[]
     setHorses(horseList)
 
-    // Generate signed URLs for horses that have a profile photo
+    // Generate signed URLs for horses that have a profile photo (7-day expiry)
     const urlMap: Record<string, string> = {}
     await Promise.all(
       horseList
@@ -256,7 +256,7 @@ export default function Home() {
         .map(async (h) => {
           const { data: signedData } = await supabase.storage
             .from('horse-photos')
-            .createSignedUrl(h.profile_photo_path!, 3600)
+            .createSignedUrl(h.profile_photo_path!, 604800)
           if (signedData?.signedUrl) urlMap[h.id] = signedData.signedUrl
         })
     )

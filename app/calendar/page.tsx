@@ -194,6 +194,7 @@ function ApptPopup({
   isMobile,
   onNotesSaved,
   patientCount,
+  onEditAppt,
 }: {
   appt: Appointment
   onClose: () => void
@@ -201,6 +202,7 @@ function ApptPopup({
   isMobile: boolean
   onNotesSaved: (id: string, notes: string) => void
   patientCount: number
+  onEditAppt: (appt: Appointment) => void
 }) {
   const ownerName   = appt.owners?.full_name ?? appt.horses?.owners?.full_name ?? 'Unknown Owner'
   const patientName = appt.horses?.name ?? 'No patient'
@@ -332,12 +334,12 @@ function ApptPopup({
             View Owner
           </Link>
         )}
-        <Link
-          href={`/appointments?highlight=${appt.id}`}
+        <button
+          onClick={() => { onClose(); onEditAppt(appt) }}
           className="flex-1 rounded-lg border border-white/20 px-3 py-2 text-center text-xs font-medium text-white transition hover:bg-white/10"
         >
           Edit Appt
-        </Link>
+        </button>
       </div>
     </div>
   )
@@ -601,6 +603,252 @@ function QuickBookModal({
   )
 }
 
+// ── Edit Appointment Modal ────────────────────────────────────────────────────
+
+function EditApptModal({
+  appt,
+  horses,
+  locationSuggestions,
+  onClose,
+  onSaved,
+}: {
+  appt: Appointment
+  horses: HorseOption[]
+  locationSuggestions: string[]
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [form, setForm] = useState({
+    date: appt.appointment_date,
+    time: appt.appointment_time ?? '',
+    duration: String(appt.duration_minutes ?? 60),
+    horseId: appt.horse_id ?? '',
+    reason: appt.reason ?? '',
+    location: appt.location ?? '',
+    status: appt.status,
+    notes: appt.notes ?? '',
+  })
+  const [search, setSearch] = useState('')
+  const [showPatientDropdown, setShowPatientDropdown] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const [showLocSuggestions, setShowLocSuggestions] = useState(false)
+
+  const filteredLocations = form.location.length > 0
+    ? locationSuggestions.filter(l =>
+        l.toLowerCase().includes(form.location.toLowerCase()) &&
+        l.toLowerCase() !== form.location.toLowerCase()
+      )
+    : []
+
+  const filtered = search.length > 0
+    ? horses.filter(h =>
+        h.name.toLowerCase().includes(search.toLowerCase()) ||
+        (h.owners?.full_name ?? '').toLowerCase().includes(search.toLowerCase())
+      )
+    : horses
+
+  const selectedHorse = horses.find(h => h.id === form.horseId) ?? null
+
+  async function handleSave() {
+    if (!form.date || !form.time) { setErr('Date and time are required.'); return }
+    setSaving(true)
+    setErr(null)
+    const { error } = await supabase
+      .from('appointments')
+      .update({
+        appointment_date: form.date,
+        appointment_time: form.time,
+        duration_minutes: parseInt(form.duration) || 60,
+        horse_id:         form.horseId || null,
+        owner_id:         selectedHorse?.owner_id ?? appt.owner_id,
+        reason:           form.reason || null,
+        location:         form.location || null,
+        status:           form.status,
+        notes:            form.notes || null,
+      })
+      .eq('id', appt.id)
+    setSaving(false)
+    if (error) { setErr(error.message); return }
+    onSaved()
+    onClose()
+  }
+
+  const inputCls = 'w-full rounded-lg border border-[#1a3358] bg-[#081120] px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/30 transition'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60 p-0 md:p-4" onClick={onClose}>
+      <div
+        className="w-full md:max-w-md rounded-t-2xl md:rounded-2xl border border-[#1a3358] bg-[#0d1b30] shadow-2xl max-h-[90vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Handle bar (mobile) */}
+        <div className="flex justify-center pt-3 pb-1 md:hidden">
+          <div className="h-1 w-10 rounded-full bg-white/20" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#1a3358]">
+          <div>
+            <h3 className="font-bold text-white text-base">✏️ Edit Appointment</h3>
+            <p className="text-xs text-blue-300 mt-0.5">
+              {appt.horses?.name ?? 'Unknown patient'}
+              {(appt.owners?.full_name ?? appt.horses?.owners?.full_name) && (
+                <> · {appt.owners?.full_name ?? appt.horses?.owners?.full_name}</>
+              )}
+            </p>
+          </div>
+          <button onClick={onClose} className="text-white/50 hover:text-white text-2xl leading-none">×</button>
+        </div>
+
+        <div className="p-5 space-y-4">
+
+          {/* Date + Time row */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Date</label>
+              <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className={inputCls} />
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Time</label>
+              <input type="time" value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))} className={inputCls} />
+            </div>
+          </div>
+
+          {/* Duration */}
+          <div>
+            <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Duration</label>
+            <select value={form.duration} onChange={e => setForm(f => ({ ...f, duration: e.target.value }))} className={inputCls}>
+              {['15','30','45','60','75','90','120'].map(d => (
+                <option key={d} value={d}>{d} min</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Patient */}
+          <div>
+            <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Patient</label>
+            {form.horseId ? (
+              <div className="flex items-center justify-between rounded-lg border border-[#c9a227] bg-[#081120] px-3 py-2">
+                <span className="text-sm text-white">
+                  {selectedHorse?.species === 'canine' ? '🐕 ' : '🐴 '}
+                  {selectedHorse?.name}
+                  <span className="ml-1 text-xs text-blue-300">— {selectedHorse?.owners?.full_name ?? ''}</span>
+                </span>
+                <button
+                  onClick={() => { setForm(f => ({ ...f, horseId: '' })); setSearch(''); setShowPatientDropdown(false) }}
+                  className="text-white/40 hover:text-white text-sm"
+                >✕</button>
+              </div>
+            ) : (
+              <div className="relative">
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => { setSearch(e.target.value); setShowPatientDropdown(true) }}
+                  onFocus={() => setShowPatientDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowPatientDropdown(false), 150)}
+                  placeholder="Search or choose a patient…"
+                  className={inputCls}
+                  autoComplete="off"
+                />
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 text-xs">▾</span>
+                {showPatientDropdown && (
+                  <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-52 overflow-y-auto rounded-lg border border-[#1a3358] bg-[#081120] shadow-xl">
+                    {filtered.length === 0 ? (
+                      <div className="px-3 py-2 text-xs text-blue-300">No patients found</div>
+                    ) : filtered.slice(0, 20).map(h => (
+                      <button
+                        key={h.id}
+                        type="button"
+                        onMouseDown={() => { setForm(f => ({ ...f, horseId: h.id })); setSearch(''); setShowPatientDropdown(false) }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white hover:bg-white/10 transition"
+                      >
+                        <span>{h.species === 'canine' ? '🐕' : '🐴'}</span>
+                        <span className="font-medium">{h.name}</span>
+                        {h.owners?.full_name && <span className="text-xs text-blue-300 ml-auto">{h.owners.full_name}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Status */}
+          <div>
+            <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Status</label>
+            <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as Appointment['status'] }))} className={inputCls}>
+              <option value="scheduled">Scheduled</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+
+          {/* Reason */}
+          <div>
+            <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Reason</label>
+            <input type="text" value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))} placeholder="e.g. Routine adjustment" className={inputCls} />
+          </div>
+
+          {/* Location */}
+          <div className="relative">
+            <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Location</label>
+            <input
+              type="text"
+              value={form.location}
+              onChange={e => { setForm(f => ({ ...f, location: e.target.value })); setShowLocSuggestions(true) }}
+              onFocus={() => setShowLocSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowLocSuggestions(false), 150)}
+              placeholder="Barn / address"
+              className={inputCls}
+              autoComplete="off"
+            />
+            {showLocSuggestions && filteredLocations.length > 0 && (
+              <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-40 overflow-y-auto rounded-lg border border-[#1a3358] bg-[#081120] shadow-lg">
+                {filteredLocations.map((loc, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onMouseDown={() => { setForm(f => ({ ...f, location: loc })); setShowLocSuggestions(false) }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white hover:bg-white/10 transition"
+                  >
+                    <span className="text-blue-400">📍</span>
+                    <span>{loc}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Notes</label>
+            <textarea
+              value={form.notes}
+              onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+              rows={3}
+              placeholder="Add appointment notes…"
+              className={inputCls + ' resize-none'}
+            />
+          </div>
+
+          {err && <p className="text-xs text-red-400">{err}</p>}
+
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="w-full rounded-xl bg-[#c9a227] py-3 text-sm font-bold text-[#0f2040] transition hover:bg-[#b89020] disabled:opacity-50"
+          >
+            {saving ? 'Saving…' : '✓ Save Changes'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main Calendar Page ────────────────────────────────────────────────────────
 
 export default function CalendarPage() {
@@ -616,6 +864,7 @@ export default function CalendarPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading]       = useState(true)
   const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null)
+  const [editingAppt, setEditingAppt] = useState<Appointment | null>(null)
   const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({})
   const [miniCalDate, setMiniCalDate] = useState<Date>(today)
 
@@ -977,6 +1226,7 @@ export default function CalendarPage() {
               setAppointments(prev => prev.map(a => a.id === id ? { ...a, notes: newNotes } : a))
               setSelectedAppt(prev => prev?.id === id ? { ...prev, notes: newNotes } : prev)
             }}
+            onEditAppt={appt => { setSelectedAppt(null); setEditingAppt(appt) }}
           />
         )}
 
@@ -989,6 +1239,17 @@ export default function CalendarPage() {
             locationSuggestions={locations}
             onClose={() => setQuickBook(null)}
             onSaved={() => { loadWeek(); loadHorses(); loadLocations() }}
+          />
+        )}
+
+        {/* Edit Appointment Modal (mobile) */}
+        {editingAppt && (
+          <EditApptModal
+            appt={editingAppt}
+            horses={horses}
+            locationSuggestions={locations}
+            onClose={() => setEditingAppt(null)}
+            onSaved={() => { loadWeek(); loadLocations() }}
           />
         )}
 
@@ -1358,6 +1619,18 @@ export default function CalendarPage() {
             setAppointments(prev => prev.map(a => a.id === id ? { ...a, notes: newNotes } : a))
             setSelectedAppt(prev => prev?.id === id ? { ...prev, notes: newNotes } : prev)
           }}
+          onEditAppt={appt => { setSelectedAppt(null); setEditingAppt(appt) }}
+        />
+      )}
+
+      {/* Edit Appointment Modal (desktop) */}
+      {editingAppt && (
+        <EditApptModal
+          appt={editingAppt}
+          horses={horses}
+          locationSuggestions={locations}
+          onClose={() => setEditingAppt(null)}
+          onSaved={() => { loadWeek(); loadLocations() }}
         />
       )}
 
