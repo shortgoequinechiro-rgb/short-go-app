@@ -28,6 +28,7 @@ type Horse = {
   species: 'equine' | 'canine' | null
   archived: boolean
   created_at: string
+  profile_photo_path?: string | null
   owners?: {
     full_name: string
   } | null
@@ -89,6 +90,7 @@ export default function Home() {
   const [visitCount, setVisitCount] = useState(0)
   const [photoCount, setPhotoCount] = useState(0)
   const [visitCountsByHorse, setVisitCountsByHorse] = useState<Record<string, number>>({})
+  const [horsePhotoUrls, setHorsePhotoUrls] = useState<Record<string, string>>({})
   const [recentVisits, setRecentVisits] = useState<Visit[]>([])
   const [todayAppointments, setTodayAppointments] = useState<TodayAppointment[]>([])
 
@@ -243,7 +245,22 @@ export default function Home() {
       return
     }
 
-    setHorses((data || []) as Horse[])
+    const horseList = (data || []) as Horse[]
+    setHorses(horseList)
+
+    // Generate signed URLs for horses that have a profile photo
+    const urlMap: Record<string, string> = {}
+    await Promise.all(
+      horseList
+        .filter(h => h.profile_photo_path)
+        .map(async (h) => {
+          const { data: signedData } = await supabase.storage
+            .from('horse-photos')
+            .createSignedUrl(h.profile_photo_path!, 3600)
+          if (signedData?.signedUrl) urlMap[h.id] = signedData.signedUrl
+        })
+    )
+    setHorsePhotoUrls(urlMap)
   }
 
   async function loadVisitCount() {
@@ -1478,25 +1495,42 @@ export default function Home() {
                               href={`/horses/${horse.id}`}
                               className="rounded-3xl border border-slate-200 p-5 transition hover:border-slate-400 hover:bg-slate-50"
                             >
-                              <div className="flex items-start justify-between gap-3">
-                                <div>
-                                  <p className="text-xl font-semibold text-slate-900">
-                                    {horse.name}
-                                  </p>
-                                  <p className="mt-1 text-sm text-slate-600">
-                                    Breed: {horse.breed || '—'}
-                                  </p>
+                              <div className="flex items-start gap-3">
+                                {/* Squared profile photo */}
+                                <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                                  {horsePhotoUrls[horse.id] ? (
+                                    <img
+                                      src={horsePhotoUrls[horse.id]}
+                                      alt={horse.name}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="flex h-full w-full items-center justify-center text-2xl">
+                                      {horse.species === 'canine' ? '🐕' : '🐴'}
+                                    </div>
+                                  )}
                                 </div>
 
-                                <div className="flex flex-col items-end gap-1">
-                                  {horse.discipline ? (
-                                    <span className="rounded-2xl bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                                      {horse.discipline}
+                                <div className="flex flex-1 items-start justify-between gap-3">
+                                  <div>
+                                    <p className="text-xl font-semibold text-slate-900">
+                                      {horse.name}
+                                    </p>
+                                    <p className="mt-1 text-sm text-slate-600">
+                                      Breed: {horse.breed || '—'}
+                                    </p>
+                                  </div>
+
+                                  <div className="flex flex-col items-end gap-1">
+                                    {horse.discipline ? (
+                                      <span className="rounded-2xl bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                                        {horse.discipline}
+                                      </span>
+                                    ) : null}
+                                    <span className="rounded-2xl bg-slate-900 px-3 py-1 text-xs font-medium text-white">
+                                      {visitCountsByHorse[horse.id] || 0} visit{(visitCountsByHorse[horse.id] || 0) === 1 ? '' : 's'}
                                     </span>
-                                  ) : null}
-                                  <span className="rounded-2xl bg-slate-900 px-3 py-1 text-xs font-medium text-white">
-                                    {visitCountsByHorse[horse.id] || 0} visit{(visitCountsByHorse[horse.id] || 0) === 1 ? '' : 's'}
-                                  </span>
+                                  </div>
                                 </div>
                               </div>
 

@@ -965,6 +965,11 @@ export default function HorseDetailPage() {
 
   async function uploadProfilePhoto(file: Blob | File) {
     setUploadingProfilePhoto(true)
+
+    // Show an immediate local preview so the photo appears right away
+    const localPreviewUrl = URL.createObjectURL(file)
+    setProfilePhotoUrl(localPreviewUrl)
+
     try {
       const filePath = `${horseId}/profile/profile-${Date.now()}.jpg`
 
@@ -979,6 +984,7 @@ export default function HorseDetailPage() {
 
       if (uploadError) {
         setMessage(`Error uploading profile photo: ${uploadError.message}`)
+        setProfilePhotoUrl(null)
         return
       }
 
@@ -992,6 +998,7 @@ export default function HorseDetailPage() {
         return
       }
 
+      // Replace the local preview with a proper signed URL
       const { data: signedData } = await supabase.storage
         .from('horse-photos')
         .createSignedUrl(filePath, 3600)
@@ -1381,17 +1388,24 @@ export default function HorseDetailPage() {
                 title={profilePhotoUrl ? 'Click to update photo' : 'Click to add a profile photo'}
                 className="group relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 border-[#0f2040] bg-slate-100 shadow-md transition md:h-24 md:w-24"
               >
-                {uploadingProfilePhoto ? (
+                {profilePhotoUrl ? (
+                  <>
+                    <img
+                      src={profilePhotoUrl}
+                      alt={horse?.name || 'Patient'}
+                      className="h-full w-full object-cover"
+                    />
+                    {uploadingProfilePhoto && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                        <div className="text-lg animate-spin">⏳</div>
+                      </div>
+                    )}
+                  </>
+                ) : uploadingProfilePhoto ? (
                   <div className="flex flex-col items-center gap-1 text-slate-500">
                     <div className="text-lg animate-spin">⏳</div>
                     <span className="text-[9px]">Saving…</span>
                   </div>
-                ) : profilePhotoUrl ? (
-                  <img
-                    src={profilePhotoUrl}
-                    alt={horse?.name || 'Patient'}
-                    className="h-full w-full object-cover"
-                  />
                 ) : (
                   <div className="flex flex-col items-center gap-1 text-slate-400">
                     <span className="text-3xl">{horse?.species === 'canine' ? '🐕' : '🐴'}</span>
