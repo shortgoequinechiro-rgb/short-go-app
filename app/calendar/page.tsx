@@ -269,7 +269,7 @@ function ApptPopup({
             <span className="text-blue-400 shrink-0">Location:</span>
             <span className="flex-1">{appt.location}</span>
             <a
-              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(appt.location)}`}
+              href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(appt.location)}`}
               target="_blank"
               rel="noopener noreferrer"
               title="Open in Google Maps"
@@ -382,12 +382,14 @@ function QuickBookModal({
   date,
   time,
   horses,
+  locationSuggestions,
   onClose,
   onSaved,
 }: {
   date: string
   time: string
   horses: HorseOption[]
+  locationSuggestions: string[]
   onClose: () => void
   onSaved: () => void
 }) {
@@ -403,6 +405,14 @@ function QuickBookModal({
   const [search, setSearch] = useState('')
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const [showLocSuggestions, setShowLocSuggestions] = useState(false)
+
+  const filteredLocations = form.location.length > 0
+    ? locationSuggestions.filter(l =>
+        l.toLowerCase().includes(form.location.toLowerCase()) &&
+        l.toLowerCase() !== form.location.toLowerCase()
+      )
+    : []
 
   const filtered = horses.filter(h =>
     h.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -534,9 +544,33 @@ function QuickBookModal({
           </div>
 
           {/* Location */}
-          <div>
+          <div className="relative">
             <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Location</label>
-            <input type="text" value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} placeholder="Barn / address" className={inputCls} />
+            <input
+              type="text"
+              value={form.location}
+              onChange={e => { setForm(f => ({ ...f, location: e.target.value })); setShowLocSuggestions(true) }}
+              onFocus={() => setShowLocSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowLocSuggestions(false), 150)}
+              placeholder="Barn / address"
+              className={inputCls}
+              autoComplete="off"
+            />
+            {showLocSuggestions && filteredLocations.length > 0 && (
+              <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-40 overflow-y-auto rounded-lg border border-[#1a3358] bg-[#081120] shadow-lg">
+                {filteredLocations.map((loc, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onMouseDown={() => { setForm(f => ({ ...f, location: loc })); setShowLocSuggestions(false) }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white hover:bg-white/10 transition"
+                  >
+                    <span className="text-blue-400">📍</span>
+                    <span>{loc}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {err && <p className="text-xs text-red-400">{err}</p>}
@@ -579,6 +613,7 @@ export default function CalendarPage() {
   const [blockSaveErr, setBlockSaveErr] = useState<string | null>(null)
 
   const [horses, setHorses] = useState<HorseOption[]>([])
+  const [locations, setLocations] = useState<string[]>([])
   const [quickBook, setQuickBook] = useState<{ date: string; time: string } | null>(null)
 
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -612,6 +647,7 @@ export default function CalendarPage() {
     if (checkingAuth) return
     loadWeek()
     loadHorses()
+    loadLocations()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekStart, checkingAuth])
 
@@ -622,6 +658,19 @@ export default function CalendarPage() {
       .eq('archived', false)
       .order('name', { ascending: true })
     if (data) setHorses(data as unknown as HorseOption[])
+  }
+
+  async function loadLocations() {
+    const { data } = await supabase
+      .from('appointments')
+      .select('location')
+      .not('location', 'is', null)
+    if (data) {
+      const unique = Array.from(new Set(
+        data.map((r: { location: string | null }) => r.location).filter(Boolean) as string[]
+      )).sort()
+      setLocations(unique)
+    }
   }
 
   async function loadWeek() {
@@ -923,8 +972,9 @@ export default function CalendarPage() {
             date={quickBook.date}
             time={quickBook.time}
             horses={horses}
+            locationSuggestions={locations}
             onClose={() => setQuickBook(null)}
-            onSaved={() => { loadWeek(); loadHorses() }}
+            onSaved={() => { loadWeek(); loadHorses(); loadLocations() }}
           />
         )}
 
@@ -1278,8 +1328,9 @@ export default function CalendarPage() {
           date={quickBook.date}
           time={quickBook.time}
           horses={horses}
+          locationSuggestions={locations}
           onClose={() => setQuickBook(null)}
-          onSaved={() => { loadWeek(); loadHorses() }}
+          onSaved={() => { loadWeek(); loadHorses(); loadLocations() }}
         />
       )}
 
