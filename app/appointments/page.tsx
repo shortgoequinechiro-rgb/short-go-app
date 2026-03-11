@@ -418,6 +418,49 @@ function AppointmentsContent() {
     return appointments.filter(a => a.appointment_date >= today && a.appointment_date <= weekISO)
   }, [view, selectedDate, appointments, apptsByDate, today])
 
+  // ── Conflict detection ───────────────────────────────────────────────────────
+
+  const conflictWarning = useMemo(() => {
+    if (!form.appointment_date || !showForm) return ''
+
+    // Helper: "HH:MM" → minutes since midnight
+    function toMin(t: string) {
+      const [h, m] = t.split(':').map(Number)
+      return h * 60 + m
+    }
+
+    const sameDay = appointments.filter(a =>
+      a.appointment_date === form.appointment_date &&
+      a.id !== editingId &&
+      a.status !== 'cancelled'
+    )
+
+    if (sameDay.length === 0) return ''
+
+    // If no time on the new appointment, just flag the count
+    if (!form.appointment_time) {
+      const n = sameDay.length
+      return `There ${n === 1 ? 'is' : 'are'} already ${n} appointment${n > 1 ? 's' : ''} on this day.`
+    }
+
+    const newStart = toMin(form.appointment_time)
+    const newEnd   = newStart + (form.duration_minutes || 15)
+
+    const overlaps = sameDay.filter(a => {
+      if (!a.appointment_time) return true // no time = unknown overlap, flag it
+      const exStart = toMin(a.appointment_time)
+      const exEnd   = exStart + (a.duration_minutes || 15)
+      return newStart < exEnd && newEnd > exStart
+    })
+
+    if (overlaps.length === 0) return ''
+
+    const names = overlaps
+      .map(a => a.owners?.full_name || a.horses?.owners?.full_name || 'Unknown owner')
+      .join(', ')
+    return `Scheduling conflict: overlaps with ${overlaps.length} existing appointment${overlaps.length > 1 ? 's' : ''} — ${names}.`
+  }, [form.appointment_date, form.appointment_time, form.duration_minutes, appointments, editingId, showForm])
+
   // ── Form handlers ───────────────────────────────────────────────────────────
 
   function openNewForm(date?: string) {
@@ -840,6 +883,14 @@ function AppointmentsContent() {
                   />
                 </div>
               </div>
+
+              {/* Conflict warning */}
+              {conflictWarning && (
+                <div className="flex items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  <span className="mt-0.5 shrink-0">⚠️</span>
+                  <span>{conflictWarning} You can still book, but check the schedule first.</span>
+                </div>
+              )}
 
               {/* Status */}
               <div>

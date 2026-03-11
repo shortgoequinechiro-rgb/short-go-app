@@ -48,12 +48,14 @@ type Visit = {
 
 type TodayAppointment = {
   id: string
+  owner_id: string | null
   appointment_time: string | null
   duration_minutes: number | null
   reason: string | null
   status: string
   location: string | null
   notes: string | null
+  owners?: { full_name: string; phone: string | null } | null
   horses?: {
     id: string
     name: string
@@ -304,12 +306,14 @@ export default function Home() {
       .from('appointments')
       .select(`
         id,
+        owner_id,
         appointment_time,
         duration_minutes,
         reason,
         status,
         location,
         notes,
+        owners ( full_name, phone ),
         horses (
           id,
           name,
@@ -930,13 +934,27 @@ export default function Home() {
                     const ampm = h >= 12 ? 'PM' : 'AM'
                     return `${h % 12 || 12}:${String(min).padStart(2, '0')} ${ampm}`
                   }
-                  const species = appt.horses?.species
-                  const emoji = species === 'canine' ? '🐕' : '🐴'
+
+                  // Owner name — direct join takes priority over horse→owner
+                  const ownerName =
+                    appt.owners?.full_name ||
+                    appt.horses?.owners?.full_name ||
+                    '—'
+                  const ownerPhone =
+                    appt.owners?.phone ||
+                    appt.horses?.owners?.phone ||
+                    null
+
+                  // Animal count from duration (15 min each)
+                  const numAnimals = appt.duration_minutes
+                    ? Math.max(1, Math.round(appt.duration_minutes / 15))
+                    : 1
 
                   return (
-                    <div
+                    <Link
                       key={appt.id}
-                      className={`relative rounded-2xl border-l-4 bg-slate-50 p-4 ${
+                      href="/appointments"
+                      className={`group relative flex flex-col rounded-2xl border-l-4 bg-slate-50 p-4 transition hover:bg-white hover:shadow-md ${
                         appt.status === 'confirmed' ? 'border-emerald-400' :
                         appt.status === 'completed' ? 'border-slate-300' :
                         'border-blue-400'
@@ -950,46 +968,37 @@ export default function Home() {
                         </span>
                       </div>
 
-                      {/* Patient */}
-                      <div className="mt-2 flex items-center gap-1.5">
-                        <span className="text-base">{emoji}</span>
-                        {appt.horses?.id ? (
-                          <Link
-                            href={`/horses/${appt.horses.id}`}
-                            className="font-semibold text-slate-900 hover:underline"
-                          >
-                            {appt.horses.name}
-                          </Link>
-                        ) : (
-                          <span className="font-semibold text-slate-900">—</span>
-                        )}
-                      </div>
+                      {/* Owner name — primary identity */}
+                      <p className="mt-2 font-semibold text-slate-900 leading-tight">{ownerName}</p>
 
-                      {/* Owner */}
-                      {appt.horses?.owners?.full_name && (
-                        <p className="mt-0.5 text-sm text-slate-500">{appt.horses.owners.full_name}</p>
-                      )}
-                      {appt.horses?.owners?.phone && (
-                        <p className="text-xs text-slate-400">{appt.horses.owners.phone}</p>
+                      {/* Animal count */}
+                      <p className="mt-0.5 text-sm text-slate-500">
+                        {numAnimals} animal{numAnimals > 1 ? 's' : ''}
+                        {appt.duration_minutes ? ` · ${appt.duration_minutes} min` : ''}
+                      </p>
+
+                      {/* Phone */}
+                      {ownerPhone && (
+                        <p className="text-xs text-slate-400">{ownerPhone}</p>
                       )}
 
-                      {/* Reason + location */}
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {appt.reason && (
-                          <span className="rounded-full bg-white border border-slate-200 px-2.5 py-0.5 text-xs text-slate-600">{appt.reason}</span>
-                        )}
-                        {appt.location && (
-                          <span className="rounded-full bg-white border border-slate-200 px-2.5 py-0.5 text-xs text-slate-600">📍 {appt.location}</span>
-                        )}
-                        {appt.duration_minutes && (
-                          <span className="rounded-full bg-white border border-slate-200 px-2.5 py-0.5 text-xs text-slate-400">{appt.duration_minutes} min</span>
-                        )}
-                      </div>
-
-                      {appt.notes && (
-                        <p className="mt-2 text-xs italic text-slate-400">{appt.notes}</p>
+                      {/* Reason + location tags */}
+                      {(appt.reason || appt.location) && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {appt.reason && (
+                            <span className="rounded-full bg-white border border-slate-200 px-2.5 py-0.5 text-xs text-slate-600">{appt.reason}</span>
+                          )}
+                          {appt.location && (
+                            <span className="rounded-full bg-white border border-slate-200 px-2.5 py-0.5 text-xs text-slate-600">📍 {appt.location}</span>
+                          )}
+                        </div>
                       )}
-                    </div>
+
+                      {/* "View" hint on hover */}
+                      <span className="mt-2 text-xs font-medium text-slate-400 opacity-0 transition-opacity group-hover:opacity-100">
+                        View appointment →
+                      </span>
+                    </Link>
                   )
                 })}
               </div>
