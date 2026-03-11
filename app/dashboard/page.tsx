@@ -114,6 +114,7 @@ export default function Home() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedOwnerId, setSelectedOwnerId] = useState<string | null>(null)
 
+  const [sendingIntake, setSendingIntake] = useState(false)
   const [editingOwner, setEditingOwner] = useState(false)
   const [ownerNameEdit, setOwnerNameEdit] = useState('')
   const [ownerPhoneEdit, setOwnerPhoneEdit] = useState('')
@@ -615,6 +616,28 @@ export default function Home() {
     setOwnerAddressEdit(selectedOwner?.address || '')
   }
 
+  async function sendIntakeEmail(ownerId: string, ownerEmail: string | null) {
+    if (!ownerEmail) {
+      setMessage('This owner does not have an email address on file.')
+      return
+    }
+    setSendingIntake(true)
+    setMessage('')
+    try {
+      const res = await fetch(`/api/owners/${ownerId}/send-intake`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) {
+        setMessage(data.error || 'Failed to send intake email.')
+      } else {
+        setMessage(`Intake form link sent to ${ownerEmail}.`)
+      }
+    } catch {
+      setMessage('Failed to send intake email.')
+    } finally {
+      setSendingIntake(false)
+    }
+  }
+
   const filteredOwners = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
     if (!query) return owners
@@ -969,6 +992,13 @@ export default function Home() {
                             >
                               📋 Intake Form
                             </a>
+                            <button
+                              onClick={() => sendIntakeEmail(selectedOwner.id, selectedOwner.email)}
+                              disabled={sendingIntake}
+                              className="rounded-xl border border-blue-300 bg-blue-50 px-3 py-2 text-sm text-blue-800 hover:bg-blue-100 transition disabled:opacity-50"
+                            >
+                              {sendingIntake ? 'Sending…' : '📧 Send Intake Link'}
+                            </button>
                             <a
                               href={`/consent/${selectedOwner.id}`}
                               target="_blank"
