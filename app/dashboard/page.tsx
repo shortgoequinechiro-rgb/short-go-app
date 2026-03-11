@@ -1020,7 +1020,7 @@ export default function Home() {
                               disabled={sendingIntake}
                               className="rounded-xl border border-blue-300 bg-blue-50 px-3 py-2 text-sm text-blue-800 hover:bg-blue-100 transition disabled:opacity-50"
                             >
-                              {sendingIntake ? 'Sending…' : '📧 Send Intake Link'}
+                              {sendingIntake ? 'Sending…' : '📧 Email Intake Link'}
                             </button>
                             <button
                               onClick={() => sendIntakeSms(selectedOwner.id, selectedOwner.phone)}
