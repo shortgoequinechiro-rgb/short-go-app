@@ -1081,12 +1081,7 @@ function AppointmentCard({
           </>
         )}
 
-        {/* Email buttons */}
-        {canEmail && appt.status === 'scheduled' && (
-          <button onClick={() => onEmail('confirmation')} disabled={emailing} className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition disabled:opacity-40">
-            {emailing ? '…' : appt.confirmation_sent ? '✓ Resend Confirmation' : 'Send Confirmation'}
-          </button>
-        )}
+        {/* Email button — reminder includes confirm link */}
         {canEmail && (appt.status === 'scheduled' || appt.status === 'confirmed') && (
           <button onClick={() => onEmail('reminder')} disabled={emailing} className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition disabled:opacity-40">
             {emailing ? '…' : appt.reminder_sent ? '✓ Resend Reminder' : 'Send Reminder'}
