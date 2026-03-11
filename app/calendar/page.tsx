@@ -67,12 +67,9 @@ const DAY_FULL  = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Returns the Monday of the week containing `date` */
-function getWeekStart(date: Date): Date {
+/** Returns a copy of `date` with the time zeroed out */
+function startOfDay(date: Date): Date {
   const d = new Date(date)
-  const day = d.getDay() // 0=Sun
-  const diff = day === 0 ? -6 : 1 - day // shift to Monday
-  d.setDate(d.getDate() + diff)
   d.setHours(0, 0, 0, 0)
   return d
 }
@@ -333,7 +330,7 @@ export default function CalendarPage() {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  const [weekStart, setWeekStart] = useState<Date>(() => getWeekStart(today))
+  const [weekStart, setWeekStart] = useState<Date>(() => startOfDay(today))
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null)
@@ -388,8 +385,7 @@ export default function CalendarPage() {
   }
 
   function goToToday() {
-    const newWeek = getWeekStart(today)
-    setWeekStart(newWeek)
+    setWeekStart(startOfDay(today))
     setMiniCalDate(today)
   }
 
@@ -403,10 +399,10 @@ export default function CalendarPage() {
 
   function handleMiniCalSelect(d: Date) {
     setMiniCalDate(d)
-    setWeekStart(getWeekStart(d))
+    setWeekStart(startOfDay(d))
   }
 
-  // Build 7-day columns: Mon → Sun
+  // Build 7-day columns: today + next 6 days
   const days: Date[] = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
 
   // Group appointments by ISO date string
@@ -444,7 +440,7 @@ export default function CalendarPage() {
 
   if (checkingAuth) return null
 
-  const isCurrentWeek = toISO(weekStart) === toISO(getWeekStart(today))
+  const isCurrentWeek = toISO(weekStart) === toISO(startOfDay(today))
 
   return (
     <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-[#081120] text-white">
