@@ -80,15 +80,7 @@ export default function NavBar() {
               href="/calendar"
               className="whitespace-nowrap rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/20"
             >
-              📅 Calendar
-            </Link>
-          )}
-          {!isAppointments && (
-            <Link
-              href="/appointments"
-              className="whitespace-nowrap rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/20"
-            >
-              Appointments
+              📅 Scheduler
             </Link>
           )}
           {!isAnatomy && (
