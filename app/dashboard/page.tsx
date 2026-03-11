@@ -128,6 +128,11 @@ export default function Home() {
   const [inlineHorseAge, setInlineHorseAge] = useState('')
   const [inlineHorseGender, setInlineHorseGender] = useState('')
   const [inlineSpecies, setInlineSpecies] = useState<'equine' | 'canine'>('equine')
+
+  // Modal visibility
+  const [showAddOwnerModal, setShowAddOwnerModal] = useState(false)
+  const [showAddPatientModal, setShowAddPatientModal] = useState(false)
+
   const [ownerNameEdit, setOwnerNameEdit] = useState('')
   const [ownerPhoneEdit, setOwnerPhoneEdit] = useState('')
   const [ownerEmailEdit, setOwnerEmailEdit] = useState('')
@@ -378,6 +383,7 @@ export default function Home() {
     setPhone('')
     setEmail('')
     setAddress('')
+    setShowAddOwnerModal(false)
     await loadOwners()
   }
 
@@ -420,6 +426,7 @@ export default function Home() {
     setHorseAge('')
     setHorseGender('')
     setAddSpecies('equine')
+    setShowAddPatientModal(false)
     await loadHorses()
   }
 
@@ -844,22 +851,38 @@ export default function Home() {
     <main className="min-h-screen bg-[#edf2f7] p-4 md:p-6 xl:p-8">
       <div className="mx-auto max-w-7xl">
         <div className="rounded-3xl bg-white p-5 shadow-md md:p-6">
-          <div className="flex items-center gap-5">
-            <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-2xl bg-[#edf2f7]">
-              <Image
-                src="/logo.png"
-                alt="Short-Go logo"
-                fill
-                className="object-contain p-1"
-              />
+          <div className="flex items-center justify-between gap-5">
+            <div className="flex items-center gap-5">
+              <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-2xl bg-[#edf2f7]">
+                <Image
+                  src="/logo.png"
+                  alt="Short-Go logo"
+                  fill
+                  className="object-contain p-1"
+                />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">
+                  Client Dashboard
+                </h1>
+                <p className="mt-1 text-sm text-slate-600 md:text-base">
+                  Search by owner or horse, then open the full horse record.
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">
-                Client Dashboard
-              </h1>
-              <p className="mt-1 text-sm text-slate-600 md:text-base">
-                Search by owner or horse, then open the full horse record.
-              </p>
+            <div className="flex flex-shrink-0 gap-2">
+              <button
+                onClick={() => setShowAddOwnerModal(true)}
+                className="rounded-xl bg-[#0f2040] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#162d55] transition"
+              >
+                + Add Owner
+              </button>
+              <button
+                onClick={() => setShowAddPatientModal(true)}
+                className="rounded-xl border border-[#0f2040] px-4 py-2.5 text-sm font-semibold text-[#0f2040] hover:bg-slate-50 transition"
+              >
+                + Add Patient
+              </button>
             </div>
           </div>
         </div>
@@ -1421,19 +1444,38 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="mt-5 grid gap-5 xl:grid-cols-2">
-          <div className="rounded-3xl bg-white p-5 shadow-md md:p-6">
-            <h2 className="text-xl font-semibold text-slate-900 md:text-2xl">
-              Quick Add Owner
-            </h2>
+        {message ? (
+          <div className="mt-5 rounded-3xl bg-white p-4 text-sm text-slate-700 shadow-sm">
+            {message}
+          </div>
+        ) : null}
+      </div>
 
-            <div className="mt-4 grid gap-4">
+      {/* ── Add Owner Modal ── */}
+      {showAddOwnerModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowAddOwnerModal(false) }}
+        >
+          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-slate-900">Add Owner</h2>
+              <button
+                onClick={() => setShowAddOwnerModal(false)}
+                className="rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-500 hover:bg-slate-50 transition"
+              >
+                ✕ Close
+              </button>
+            </div>
+
+            <div className="grid gap-4">
               <Field label="Full Name">
                 <input
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
                   placeholder="Owner full name"
+                  autoFocus
                 />
               </Field>
 
@@ -1491,19 +1533,33 @@ export default function Home() {
 
               <button
                 onClick={addOwner}
-                className="min-h-[48px] rounded-2xl bg-slate-900 px-5 py-3 text-base font-medium text-white"
+                className="min-h-[48px] rounded-2xl bg-[#0f2040] px-5 py-3 text-base font-semibold text-white hover:bg-[#162d55] transition"
               >
                 Save Owner
               </button>
             </div>
           </div>
+        </div>
+      )}
 
-          <div className="rounded-3xl bg-white p-5 shadow-md md:p-6">
-            <h2 className="text-xl font-semibold text-slate-900 md:text-2xl">
-              Quick Add Patient
-            </h2>
+      {/* ── Add Patient Modal ── */}
+      {showAddPatientModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowAddPatientModal(false) }}
+        >
+          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-slate-900">Add Patient</h2>
+              <button
+                onClick={() => setShowAddPatientModal(false)}
+                className="rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-500 hover:bg-slate-50 transition"
+              >
+                ✕ Close
+              </button>
+            </div>
 
-            <div className="mt-4 grid gap-4">
+            <div className="grid gap-4">
               <Field label="Owner">
                 <select
                   value={selectedOwnerIdForAdd}
@@ -1525,8 +1581,8 @@ export default function Home() {
                   onChange={(e) => setAddSpecies(e.target.value as 'equine' | 'canine')}
                   className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
                 >
-                  <option value="equine">Equine (Horse)</option>
-                  <option value="canine">Canine (Dog)</option>
+                  <option value="equine">🐴 Equine (Horse)</option>
+                  <option value="canine">🐕 Canine (Dog)</option>
                 </select>
               </Field>
 
@@ -1536,6 +1592,7 @@ export default function Home() {
                   onChange={(e) => setHorseName(e.target.value)}
                   className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
                   placeholder={addSpecies === 'canine' ? 'Dog name' : 'Horse name'}
+                  autoFocus
                 />
               </Field>
 
@@ -1554,7 +1611,7 @@ export default function Home() {
                     value={horseDiscipline}
                     onChange={(e) => setHorseDiscipline(e.target.value)}
                     className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
-                    placeholder={addSpecies === 'canine' ? 'Agility, hunting, sport, etc.' : 'Barrel, ranch, dressage, etc.'}
+                    placeholder={addSpecies === 'canine' ? 'Agility, hunting, sport…' : 'Barrel, ranch, dressage…'}
                   />
                 </Field>
               </div>
@@ -1596,20 +1653,14 @@ export default function Home() {
 
               <button
                 onClick={addHorse}
-                className="min-h-[48px] rounded-2xl bg-slate-900 px-5 py-3 text-base font-medium text-white"
+                className="min-h-[48px] rounded-2xl bg-[#0f2040] px-5 py-3 text-base font-semibold text-white hover:bg-[#162d55] transition"
               >
                 Save Patient
               </button>
             </div>
           </div>
         </div>
-
-        {message ? (
-          <div className="mt-5 rounded-3xl bg-white p-4 text-sm text-slate-700 shadow-sm">
-            {message}
-          </div>
-        ) : null}
-      </div>
+      )}
     </main>
   )
 }
