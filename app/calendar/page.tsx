@@ -195,6 +195,7 @@ function ApptPopup({
   onNotesSaved,
   patientCount,
   onEditAppt,
+  onCancelAppt,
 }: {
   appt: Appointment
   onClose: () => void
@@ -203,15 +204,33 @@ function ApptPopup({
   onNotesSaved: (id: string, notes: string) => void
   patientCount: number
   onEditAppt: (appt: Appointment) => void
+  onCancelAppt: (id: string) => void
 }) {
   const ownerName   = appt.owners?.full_name ?? appt.horses?.owners?.full_name ?? 'Unknown Owner'
   const patientName = appt.horses?.name ?? 'No patient'
   const species     = appt.horses?.species ?? null
 
-  const [notes, setNotes]   = useState(appt.notes ?? '')
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved]   = useState(false)
-  const [err, setErr]       = useState<string | null>(null)
+  const [notes, setNotes]       = useState(appt.notes ?? '')
+  const [saving, setSaving]     = useState(false)
+  const [saved, setSaved]       = useState(false)
+  const [err, setErr]           = useState<string | null>(null)
+  const [cancelling, setCancelling] = useState(false)
+
+  async function handleCancel() {
+    if (!window.confirm('Cancel this appointment?')) return
+    setCancelling(true)
+    const { error } = await supabase
+      .from('appointments')
+      .update({ status: 'cancelled' })
+      .eq('id', appt.id)
+    setCancelling(false)
+    if (error) {
+      setErr('Failed to cancel. Please try again.')
+    } else {
+      onCancelAppt(appt.id)
+      onClose()
+    }
+  }
 
   const isDirty = notes !== (appt.notes ?? '')
 
@@ -338,8 +357,17 @@ function ApptPopup({
           onClick={() => { onClose(); onEditAppt(appt) }}
           className="flex-1 rounded-lg border border-white/20 px-3 py-2 text-center text-xs font-medium text-white transition hover:bg-white/10"
         >
-          Edit Appt
+          Edit
         </button>
+        {appt.status !== 'cancelled' && (
+          <button
+            onClick={handleCancel}
+            disabled={cancelling}
+            className="flex-1 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-center text-xs font-semibold text-red-300 transition hover:bg-red-500/20 disabled:opacity-50"
+          >
+            {cancelling ? '…' : 'Cancel'}
+          </button>
+        )}
       </div>
     </div>
   )
@@ -398,17 +426,49 @@ function QuickBookModal({
   const [form, setForm] = useState({
     date,
     time,
-    duration: '60',
-    horseId: '',
     reason: '',
     location: '',
     notes: '',
   })
-  const [search, setSearch] = useState('')
+
+  // ── Owner selection ──
+  const [ownerSearch, setOwnerSearch] = useState('')
+  const [showOwnerDropdown, setShowOwnerDropdown] = useState(false)
+  const [selectedOwnerId, setSelectedOwnerId] = useState<string | null>(null)
+
+  // ── Patient multi-select ──
+  const [selectedPatientIds, setSelectedPatientIds] = useState<string[]>([])
   const [showPatientDropdown, setShowPatientDropdown] = useState(false)
+
+  // ── Other ──
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [showLocSuggestions, setShowLocSuggestions] = useState(false)
+
+  // Derive unique owners from the horses list
+  const uniqueOwners: { id: string; name: string }[] = []
+  const seenOwners = new Set<string>()
+  for (const h of horses) {
+    if (h.owner_id && h.owners?.full_name && !seenOwners.has(h.owner_id)) {
+      seenOwners.add(h.owner_id)
+      uniqueOwners.push({ id: h.owner_id, name: h.owners.full_name })
+    }
+  }
+  uniqueOwners.sort((a, b) => a.name.localeCompare(b.name))
+
+  const filteredOwners = ownerSearch.length > 0
+    ? uniqueOwners.filter(o => o.name.toLowerCase().includes(ownerSearch.toLowerCase()))
+    : uniqueOwners
+
+  const selectedOwner = uniqueOwners.find(o => o.id === selectedOwnerId) ?? null
+
+  // Patients that belong to the selected owner
+  const ownerPatients = selectedOwnerId
+    ? horses.filter(h => h.owner_id === selectedOwnerId)
+    : []
+
+  // Duration auto-calculated: 15 min per patient (minimum 15)
+  const totalDuration = Math.max(15, selectedPatientIds.length * 15)
 
   const filteredLocations = form.location.length > 0
     ? locationSuggestions.filter(l =>
@@ -417,34 +477,43 @@ function QuickBookModal({
       )
     : []
 
-  // Show all horses when search is empty, filter when typing
-  const filtered = search.length > 0
-    ? horses.filter(h =>
-        h.name.toLowerCase().includes(search.toLowerCase()) ||
-        (h.owners?.full_name ?? '').toLowerCase().includes(search.toLowerCase())
-      )
-    : horses
-
-  const selectedHorse = horses.find(h => h.id === form.horseId) ?? null
+  function togglePatient(id: string) {
+    setSelectedPatientIds(prev =>
+      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
+    )
+  }
 
   async function handleSave() {
     if (!form.date || !form.time) { setErr('Date and time are required.'); return }
+    if (!selectedOwnerId) { setErr('Select an owner.'); return }
+    if (selectedPatientIds.length === 0) { setErr('Select at least one patient.'); return }
     setSaving(true)
     setErr(null)
     const { data: { user } } = await supabase.auth.getUser()
-    const { error } = await supabase.from('appointments').insert({
-      horse_id:         form.horseId || null,
-      owner_id:         selectedHorse?.owner_id ?? null,
-      appointment_date: form.date,
-      appointment_time: form.time,
-      duration_minutes: parseInt(form.duration) || 60,
-      reason:           form.reason || null,
-      location:         form.location || null,
-      notes:            form.notes || null,
-      status:           'scheduled',
-      provider_name:    'Dr. Andrew Leo',
-      practitioner_id:  user?.id,
+
+    // Create one 15-min appointment per patient, staggered by 15 min each
+    const [startH, startM] = form.time.split(':').map(Number)
+    const records = selectedPatientIds.map((horseId, i) => {
+      const totalMins = startH * 60 + startM + i * 15
+      const h = Math.floor(totalMins / 60) % 24
+      const m = totalMins % 60
+      const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+      return {
+        horse_id:         horseId,
+        owner_id:         selectedOwnerId,
+        appointment_date: form.date,
+        appointment_time: timeStr,
+        duration_minutes: 15,
+        reason:           form.reason || null,
+        location:         form.location || null,
+        notes:            form.notes || null,
+        status:           'scheduled',
+        provider_name:    'Dr. Andrew Leo',
+        practitioner_id:  user?.id,
+      }
     })
+
+    const { error } = await supabase.from('appointments').insert(records)
     setSaving(false)
     if (error) { setErr(error.message); return }
     onSaved()
@@ -471,6 +540,9 @@ function QuickBookModal({
             <p className="text-xs text-blue-300 mt-0.5">
               {new Date(form.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
               {' · '}{formatTime12(form.time)}
+              {selectedPatientIds.length > 0 && (
+                <span className="ml-1 text-[#c9a227]">· {totalDuration} min total</span>
+              )}
             </p>
           </div>
           <button onClick={onClose} className="text-white/50 hover:text-white text-2xl leading-none">×</button>
@@ -490,60 +562,53 @@ function QuickBookModal({
             </div>
           </div>
 
-          {/* Duration */}
+          {/* Owner search */}
           <div>
-            <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Duration</label>
-            <select value={form.duration} onChange={e => setForm(f => ({ ...f, duration: e.target.value }))} className={inputCls}>
-              {['15','30','45','60','75','90','120'].map(d => (
-                <option key={d} value={d}>{d} min</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Patient search */}
-          <div>
-            <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Patient</label>
-            {form.horseId ? (
+            <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Owner</label>
+            {selectedOwner ? (
               <div className="flex items-center justify-between rounded-lg border border-[#c9a227] bg-[#081120] px-3 py-2">
-                <span className="text-sm text-white">
-                  {selectedHorse?.species === 'canine' ? '🐕 ' : '🐴 '}
-                  {selectedHorse?.name}
-                  <span className="ml-1 text-xs text-blue-300">— {selectedHorse?.owners?.full_name ?? ''}</span>
-                </span>
+                <span className="text-sm font-medium text-white">{selectedOwner.name}</span>
                 <button
-                  onClick={() => { setForm(f => ({ ...f, horseId: '' })); setSearch(''); setShowPatientDropdown(false) }}
-                  className="text-white/40 hover:text-white text-sm"
+                  onClick={() => {
+                    setSelectedOwnerId(null)
+                    setOwnerSearch('')
+                    setSelectedPatientIds([])
+                  }}
+                  className="text-white/40 hover:text-white text-sm ml-2"
                 >✕</button>
               </div>
             ) : (
               <div className="relative">
                 <input
                   type="text"
-                  value={search}
-                  onChange={e => { setSearch(e.target.value); setShowPatientDropdown(true) }}
-                  onFocus={() => setShowPatientDropdown(true)}
-                  onBlur={() => setTimeout(() => setShowPatientDropdown(false), 150)}
-                  placeholder="Search or choose a patient…"
+                  value={ownerSearch}
+                  onChange={e => { setOwnerSearch(e.target.value); setShowOwnerDropdown(true) }}
+                  onFocus={() => setShowOwnerDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowOwnerDropdown(false), 150)}
+                  placeholder="Search or choose an owner…"
                   className={inputCls}
                   autoFocus
                   autoComplete="off"
                 />
-                {/* dropdown arrow indicator */}
                 <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 text-xs">▾</span>
-                {showPatientDropdown && (
+                {showOwnerDropdown && (
                   <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-52 overflow-y-auto rounded-lg border border-[#1a3358] bg-[#081120] shadow-xl">
-                    {filtered.length === 0 ? (
-                      <div className="px-3 py-2 text-xs text-blue-300">No patients found</div>
-                    ) : filtered.slice(0, 20).map(h => (
+                    {filteredOwners.length === 0 ? (
+                      <div className="px-3 py-2 text-xs text-blue-300">No owners found</div>
+                    ) : filteredOwners.map(o => (
                       <button
-                        key={h.id}
+                        key={o.id}
                         type="button"
-                        onMouseDown={() => { setForm(f => ({ ...f, horseId: h.id })); setSearch(''); setShowPatientDropdown(false) }}
+                        onMouseDown={() => {
+                          setSelectedOwnerId(o.id)
+                          setOwnerSearch('')
+                          setShowOwnerDropdown(false)
+                          setSelectedPatientIds([])
+                        }}
                         className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white hover:bg-white/10 transition"
                       >
-                        <span>{h.species === 'canine' ? '🐕' : '🐴'}</span>
-                        <span className="font-medium">{h.name}</span>
-                        {h.owners?.full_name && <span className="text-xs text-blue-300 ml-auto">{h.owners.full_name}</span>}
+                        <span className="text-blue-300">👤</span>
+                        <span className="font-medium">{o.name}</span>
                       </button>
                     ))}
                   </div>
@@ -551,6 +616,82 @@ function QuickBookModal({
               </div>
             )}
           </div>
+
+          {/* Patient multi-select — only shown after owner is selected */}
+          {selectedOwnerId && (
+            <div>
+              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">
+                Patients
+                {selectedPatientIds.length > 0 && (
+                  <span className="ml-2 normal-case font-normal text-[#c9a227]">
+                    {selectedPatientIds.length} selected · {totalDuration} min
+                  </span>
+                )}
+              </label>
+
+              {/* Selected patient chips */}
+              {selectedPatientIds.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {selectedPatientIds.map(id => {
+                    const h = horses.find(h => h.id === id)!
+                    return (
+                      <span
+                        key={id}
+                        className="inline-flex items-center gap-1 rounded-full border border-[#c9a227]/50 bg-[#c9a227]/10 px-2.5 py-0.5 text-xs text-[#c9a227]"
+                      >
+                        {h.species === 'canine' ? '🐕' : '🐴'} {h.name}
+                        <button
+                          type="button"
+                          onClick={() => togglePatient(id)}
+                          className="ml-0.5 text-[#c9a227]/60 hover:text-[#c9a227]"
+                        >✕</button>
+                      </span>
+                    )
+                  })}
+                </div>
+              )}
+
+              {ownerPatients.length === 0 ? (
+                <p className="text-xs text-blue-300 italic">No patients found for this owner.</p>
+              ) : (
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowPatientDropdown(v => !v)}
+                    className={`${inputCls} flex items-center justify-between text-left`}
+                  >
+                    <span className={selectedPatientIds.length === 0 ? 'text-white/30' : 'text-white'}>
+                      {selectedPatientIds.length === 0
+                        ? 'Select patients…'
+                        : `${selectedPatientIds.length} patient${selectedPatientIds.length > 1 ? 's' : ''} selected`}
+                    </span>
+                    <span className="text-blue-400 text-xs">▾</span>
+                  </button>
+                  {showPatientDropdown && (
+                    <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-52 overflow-y-auto rounded-lg border border-[#1a3358] bg-[#081120] shadow-xl">
+                      {ownerPatients.map(h => {
+                        const checked = selectedPatientIds.includes(h.id)
+                        return (
+                          <button
+                            key={h.id}
+                            type="button"
+                            onMouseDown={e => { e.preventDefault(); togglePatient(h.id) }}
+                            className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm text-white hover:bg-white/10 transition"
+                          >
+                            <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] font-bold transition ${
+                              checked ? 'border-[#c9a227] bg-[#c9a227] text-[#0f2040]' : 'border-white/30 bg-transparent text-transparent'
+                            }`}>✓</span>
+                            <span>{h.species === 'canine' ? '🐕' : '🐴'}</span>
+                            <span className="font-medium">{h.name}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Reason */}
           <div>
@@ -592,10 +733,14 @@ function QuickBookModal({
 
           <button
             onClick={handleSave}
-            disabled={saving}
-            className="w-full rounded-xl bg-[#c9a227] py-3 text-sm font-bold text-[#0f2040] transition hover:bg-[#b89020] disabled:opacity-50"
+            disabled={saving || selectedPatientIds.length === 0}
+            className="w-full rounded-xl bg-[#c9a227] py-3 text-sm font-bold text-[#0f2040] transition hover:bg-[#b89020] disabled:opacity-40"
           >
-            {saving ? 'Saving…' : '✓ Schedule Appointment'}
+            {saving
+              ? 'Saving…'
+              : selectedPatientIds.length === 0
+              ? '✓ Schedule Appointment'
+              : `✓ Schedule ${selectedPatientIds.length} Appointment${selectedPatientIds.length > 1 ? 's' : ''} (${totalDuration} min)`}
           </button>
         </div>
       </div>
@@ -1227,6 +1372,10 @@ export default function CalendarPage() {
               setSelectedAppt(prev => prev?.id === id ? { ...prev, notes: newNotes } : prev)
             }}
             onEditAppt={appt => { setSelectedAppt(null); setEditingAppt(appt) }}
+            onCancelAppt={id => {
+              setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'cancelled' } : a))
+              setSelectedAppt(null)
+            }}
           />
         )}
 
@@ -1620,6 +1769,10 @@ export default function CalendarPage() {
             setSelectedAppt(prev => prev?.id === id ? { ...prev, notes: newNotes } : prev)
           }}
           onEditAppt={appt => { setSelectedAppt(null); setEditingAppt(appt) }}
+          onCancelAppt={id => {
+            setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'cancelled' } : a))
+            setSelectedAppt(null)
+          }}
         />
       )}
 
