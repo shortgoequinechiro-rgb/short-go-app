@@ -248,6 +248,16 @@ function AppointmentsContent() {
   // Status update state
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
 
+  // ── Owner combobox ───────────────────────────────────────────────────────────
+  const [ownerSearch, setOwnerSearch] = useState('')
+  const [showOwnerSuggestions, setShowOwnerSuggestions] = useState(false)
+
+  const filteredOwners = useMemo(() => {
+    const q = ownerSearch.trim().toLowerCase()
+    if (!q) return owners
+    return owners.filter(o => o.full_name.toLowerCase().includes(q))
+  }, [owners, ownerSearch])
+
   // ── Location autocomplete ────────────────────────────────────────────────────
   const locationDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [locationSuggestions, setLocationSuggestions] = useState<{ description: string; place_id: string }[]>([])
@@ -413,6 +423,8 @@ function AppointmentsContent() {
   function openNewForm(date?: string) {
     setEditingId(null)
     setForm(emptyForm(date || today))
+    setOwnerSearch('')
+    setShowOwnerSuggestions(false)
     setFormMsg('')
     setShowForm(true)
   }
@@ -421,6 +433,10 @@ function AppointmentsContent() {
     setEditingId(appt.id)
     const dur = appt.duration_minutes || 15
     const numAnimals = Math.max(1, Math.round(dur / 15))
+    // Populate owner search box with the owner's name
+    const ownerObj = owners.find(o => o.id === appt.owner_id)
+    setOwnerSearch(ownerObj?.full_name || appt.owners?.full_name || '')
+    setShowOwnerSuggestions(false)
     setForm({
       owner_id: appt.owner_id || '',
       num_animals: numAnimals,
@@ -724,19 +740,60 @@ function AppointmentsContent() {
             </div>
 
             <div className="space-y-4">
-              {/* Owner */}
+              {/* Owner — type-ahead combobox */}
               <div>
                 <label className="mb-1.5 block text-sm font-semibold text-slate-700">Owner <span className="text-red-400">*</span></label>
-                <select
-                  value={form.owner_id}
-                  onChange={e => setForm(f => ({ ...f, owner_id: e.target.value }))}
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
-                >
-                  <option value="">— Select owner —</option>
-                  {owners.map(o => (
-                    <option key={o.id} value={o.id}>{o.full_name}</option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={ownerSearch}
+                    onChange={e => {
+                      setOwnerSearch(e.target.value)
+                      // Clear the selected id so validation doesn't pass on a stale id
+                      setForm(f => ({ ...f, owner_id: '' }))
+                      setShowOwnerSuggestions(true)
+                    }}
+                    onFocus={() => setShowOwnerSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowOwnerSuggestions(false), 150)}
+                    placeholder="Type to search owner…"
+                    autoComplete="off"
+                    className={`w-full rounded-2xl border bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 ${
+                      form.owner_id ? 'border-emerald-300' : 'border-slate-200'
+                    }`}
+                  />
+                  {/* Checkmark when a valid owner is selected */}
+                  {form.owner_id && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500 text-base pointer-events-none">✓</span>
+                  )}
+                  {/* Suggestions dropdown */}
+                  {showOwnerSuggestions && filteredOwners.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-52 overflow-y-auto overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+                      {filteredOwners.map((o, i) => (
+                        <button
+                          key={o.id}
+                          type="button"
+                          onMouseDown={() => {
+                            setOwnerSearch(o.full_name)
+                            setForm(f => ({ ...f, owner_id: o.id }))
+                            setShowOwnerSuggestions(false)
+                          }}
+                          className={`flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition hover:bg-slate-50 ${
+                            i < filteredOwners.length - 1 ? 'border-b border-slate-100' : ''
+                          } ${form.owner_id === o.id ? 'bg-slate-50' : ''}`}
+                        >
+                          <span className="font-medium text-slate-800">{o.full_name}</span>
+                          {o.phone && <span className="ml-auto shrink-0 text-xs text-slate-400">{o.phone}</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {/* No results hint */}
+                  {showOwnerSuggestions && ownerSearch.trim().length > 0 && filteredOwners.length === 0 && (
+                    <div className="absolute left-0 right-0 top-full z-50 mt-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-xl">
+                      <p className="text-sm text-slate-400">No owners found for &ldquo;{ownerSearch}&rdquo;</p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Number of animals */}
