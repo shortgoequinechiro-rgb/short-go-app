@@ -368,6 +368,192 @@ function ApptPopup({
   )
 }
 
+// ── Quick-Book Modal ──────────────────────────────────────────────────────────
+
+type HorseOption = {
+  id: string
+  name: string
+  species: 'equine' | 'canine' | null
+  owner_id: string | null
+  owners?: { full_name: string } | null
+}
+
+function QuickBookModal({
+  date,
+  time,
+  horses,
+  onClose,
+  onSaved,
+}: {
+  date: string
+  time: string
+  horses: HorseOption[]
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [form, setForm] = useState({
+    date,
+    time,
+    duration: '60',
+    horseId: '',
+    reason: '',
+    location: '',
+    notes: '',
+  })
+  const [search, setSearch] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  const filtered = horses.filter(h =>
+    h.name.toLowerCase().includes(search.toLowerCase()) ||
+    (h.owners?.full_name ?? '').toLowerCase().includes(search.toLowerCase())
+  )
+
+  const selectedHorse = horses.find(h => h.id === form.horseId) ?? null
+
+  async function handleSave() {
+    if (!form.date || !form.time) { setErr('Date and time are required.'); return }
+    setSaving(true)
+    setErr(null)
+    const { data: { user } } = await supabase.auth.getUser()
+    const { error } = await supabase.from('appointments').insert({
+      horse_id:         form.horseId || null,
+      owner_id:         selectedHorse?.owner_id ?? null,
+      appointment_date: form.date,
+      appointment_time: form.time,
+      duration_minutes: parseInt(form.duration) || 60,
+      reason:           form.reason || null,
+      location:         form.location || null,
+      notes:            form.notes || null,
+      status:           'scheduled',
+      provider_name:    'Dr. Andrew Leo',
+      practitioner_id:  user?.id,
+    })
+    setSaving(false)
+    if (error) { setErr(error.message); return }
+    onSaved()
+    onClose()
+  }
+
+  const inputCls = 'w-full rounded-lg border border-[#1a3358] bg-[#081120] px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/30 transition'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60 p-0 md:p-4" onClick={onClose}>
+      <div
+        className="w-full md:max-w-md rounded-t-2xl md:rounded-2xl border border-[#1a3358] bg-[#0d1b30] shadow-2xl max-h-[90vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Handle bar */}
+        <div className="flex justify-center pt-3 pb-1 md:hidden">
+          <div className="h-1 w-10 rounded-full bg-white/20" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#1a3358]">
+          <div>
+            <h3 className="font-bold text-white text-base">New Appointment</h3>
+            <p className="text-xs text-blue-300 mt-0.5">
+              {new Date(form.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+              {' · '}{formatTime12(form.time)}
+            </p>
+          </div>
+          <button onClick={onClose} className="text-white/50 hover:text-white text-2xl leading-none">×</button>
+        </div>
+
+        <div className="p-5 space-y-4">
+
+          {/* Date + Time row */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Date</label>
+              <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className={inputCls} />
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Time</label>
+              <input type="time" value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))} className={inputCls} />
+            </div>
+          </div>
+
+          {/* Duration */}
+          <div>
+            <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Duration</label>
+            <select value={form.duration} onChange={e => setForm(f => ({ ...f, duration: e.target.value }))} className={inputCls}>
+              {['15','30','45','60','75','90','120'].map(d => (
+                <option key={d} value={d}>{d} min</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Patient search */}
+          <div>
+            <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Patient</label>
+            {form.horseId ? (
+              <div className="flex items-center justify-between rounded-lg border border-[#c9a227] bg-[#081120] px-3 py-2">
+                <span className="text-sm text-white">
+                  {selectedHorse?.species === 'canine' ? '🐕 ' : '🐴 '}
+                  {selectedHorse?.name}
+                  <span className="ml-1 text-xs text-blue-300">— {selectedHorse?.owners?.full_name ?? ''}</span>
+                </span>
+                <button onClick={() => { setForm(f => ({ ...f, horseId: '' })); setSearch('') }} className="text-white/40 hover:text-white text-sm">✕</button>
+              </div>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Search by patient or owner name…"
+                  className={inputCls}
+                  autoFocus
+                />
+                {search.length > 0 && (
+                  <div className="mt-1 max-h-44 overflow-y-auto rounded-lg border border-[#1a3358] bg-[#081120]">
+                    {filtered.length === 0 ? (
+                      <div className="px-3 py-2 text-xs text-blue-300">No patients found</div>
+                    ) : filtered.slice(0, 10).map(h => (
+                      <button
+                        key={h.id}
+                        onClick={() => { setForm(f => ({ ...f, horseId: h.id })); setSearch('') }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white hover:bg-white/10 transition"
+                      >
+                        <span>{h.species === 'canine' ? '🐕' : '🐴'}</span>
+                        <span className="font-medium">{h.name}</span>
+                        {h.owners?.full_name && <span className="text-xs text-blue-300 ml-auto">{h.owners.full_name}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Reason */}
+          <div>
+            <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Reason</label>
+            <input type="text" value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))} placeholder="e.g. Routine adjustment" className={inputCls} />
+          </div>
+
+          {/* Location */}
+          <div>
+            <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Location</label>
+            <input type="text" value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} placeholder="Barn / address" className={inputCls} />
+          </div>
+
+          {err && <p className="text-xs text-red-400">{err}</p>}
+
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="w-full rounded-xl bg-[#c9a227] py-3 text-sm font-bold text-[#0f2040] transition hover:bg-[#b89020] disabled:opacity-50"
+          >
+            {saving ? 'Saving…' : '✓ Schedule Appointment'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main Calendar Page ────────────────────────────────────────────────────────
 
 export default function CalendarPage() {
@@ -390,6 +576,9 @@ export default function CalendarPage() {
   const [showBlockModal, setShowBlockModal] = useState(false)
   const [blockForm, setBlockForm] = useState({ date: toISO(today), startTime: '08:00', endTime: '09:00', label: '' })
   const [savingBlock, setSavingBlock] = useState(false)
+
+  const [horses, setHorses] = useState<HorseOption[]>([])
+  const [quickBook, setQuickBook] = useState<{ date: string; time: string } | null>(null)
 
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -421,8 +610,18 @@ export default function CalendarPage() {
   useEffect(() => {
     if (checkingAuth) return
     loadWeek()
+    loadHorses()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekStart, checkingAuth])
+
+  async function loadHorses() {
+    const { data } = await supabase
+      .from('horses')
+      .select('id, name, species, owner_id, owners(full_name)')
+      .eq('archived', false)
+      .order('name', { ascending: true })
+    if (data) setHorses(data as unknown as HorseOption[])
+  }
 
   async function loadWeek() {
     setLoading(true)
@@ -682,6 +881,7 @@ export default function CalendarPage() {
         {/* Popup (bottom sheet on mobile) */}
         {selectedAppt && (
           <ApptPopup
+            key={selectedAppt.id}
             appt={selectedAppt}
             onClose={() => setSelectedAppt(null)}
             style={popupStyle}
@@ -694,6 +894,17 @@ export default function CalendarPage() {
               setAppointments(prev => prev.map(a => a.id === id ? { ...a, notes: newNotes } : a))
               setSelectedAppt(prev => prev?.id === id ? { ...prev, notes: newNotes } : prev)
             }}
+          />
+        )}
+
+        {/* Quick-Book Modal (mobile) */}
+        {quickBook && (
+          <QuickBookModal
+            date={quickBook.date}
+            time={quickBook.time}
+            horses={horses}
+            onClose={() => setQuickBook(null)}
+            onSaved={() => { loadWeek(); loadHorses() }}
           />
         )}
 
@@ -899,6 +1110,20 @@ export default function CalendarPage() {
                 key={colIdx}
                 className={`relative flex-1 border-r border-[#1a3358] last:border-r-0 ${isToday ? 'bg-[#c9a227]/5' : ''}`}
                 style={{ height: GRID_HEIGHT, minWidth: 90 }}
+                onClick={e => {
+                  // Only open quick-book when clicking empty grid space (not on an appt/block)
+                  if ((e.target as HTMLElement).closest('button, a')) return
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                  const scrollTop = scrollRef.current?.scrollTop ?? 0
+                  const relY = e.clientY - rect.top + scrollTop
+                  const totalMins = Math.round((relY / PX_PER_MIN + GRID_START_HOUR * 60) / 15) * 15
+                  const hh = Math.floor(totalMins / 60)
+                  const mm = totalMins % 60
+                  if (hh < GRID_START_HOUR || hh >= GRID_END_HOUR) return
+                  const timeStr = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`
+                  setSelectedAppt(null)
+                  setQuickBook({ date: iso, time: timeStr })
+                }}
               >
                 {HOUR_LABELS.map((_, i) => (
                   <div key={i} className="absolute left-0 right-0 border-t border-[#1a3358]/60" style={{ top: i * 60 * PX_PER_MIN }} />
@@ -1008,6 +1233,7 @@ export default function CalendarPage() {
       {/* Desktop popup */}
       {selectedAppt && (
         <ApptPopup
+          key={selectedAppt.id}
           appt={selectedAppt}
           onClose={() => setSelectedAppt(null)}
           style={popupStyle}
@@ -1020,6 +1246,17 @@ export default function CalendarPage() {
             setAppointments(prev => prev.map(a => a.id === id ? { ...a, notes: newNotes } : a))
             setSelectedAppt(prev => prev?.id === id ? { ...prev, notes: newNotes } : prev)
           }}
+        />
+      )}
+
+      {/* Quick-Book Modal */}
+      {quickBook && (
+        <QuickBookModal
+          date={quickBook.date}
+          time={quickBook.time}
+          horses={horses}
+          onClose={() => setQuickBook(null)}
+          onSaved={() => { loadWeek(); loadHorses() }}
         />
       )}
 
