@@ -115,6 +115,7 @@ export default function Home() {
   const [selectedOwnerId, setSelectedOwnerId] = useState<string | null>(null)
 
   const [sendingIntake, setSendingIntake] = useState(false)
+  const [sendingIntakeSms, setSendingIntakeSms] = useState(false)
   const [editingOwner, setEditingOwner] = useState(false)
   const [ownerNameEdit, setOwnerNameEdit] = useState('')
   const [ownerPhoneEdit, setOwnerPhoneEdit] = useState('')
@@ -616,6 +617,28 @@ export default function Home() {
     setOwnerAddressEdit(selectedOwner?.address || '')
   }
 
+  async function sendIntakeSms(ownerId: string, ownerPhone: string | null) {
+    if (!ownerPhone) {
+      setMessage('This owner does not have a phone number on file.')
+      return
+    }
+    setSendingIntakeSms(true)
+    setMessage('')
+    try {
+      const res = await fetch(`/api/owners/${ownerId}/send-intake-sms`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) {
+        setMessage(data.error || 'Failed to send text message.')
+      } else {
+        setMessage(`Intake form link texted to ${ownerPhone}.`)
+      }
+    } catch {
+      setMessage('Failed to send text message.')
+    } finally {
+      setSendingIntakeSms(false)
+    }
+  }
+
   async function sendIntakeEmail(ownerId: string, ownerEmail: string | null) {
     if (!ownerEmail) {
       setMessage('This owner does not have an email address on file.')
@@ -998,6 +1021,13 @@ export default function Home() {
                               className="rounded-xl border border-blue-300 bg-blue-50 px-3 py-2 text-sm text-blue-800 hover:bg-blue-100 transition disabled:opacity-50"
                             >
                               {sendingIntake ? 'Sending…' : '📧 Send Intake Link'}
+                            </button>
+                            <button
+                              onClick={() => sendIntakeSms(selectedOwner.id, selectedOwner.phone)}
+                              disabled={sendingIntakeSms}
+                              className="rounded-xl border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-800 hover:bg-green-100 transition disabled:opacity-50"
+                            >
+                              {sendingIntakeSms ? 'Sending…' : '📱 Text Intake Link'}
                             </button>
                             <a
                               href={`/consent/${selectedOwner.id}`}
