@@ -403,6 +403,7 @@ function QuickBookModal({
     notes: '',
   })
   const [search, setSearch] = useState('')
+  const [showPatientDropdown, setShowPatientDropdown] = useState(false)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [showLocSuggestions, setShowLocSuggestions] = useState(false)
@@ -414,10 +415,13 @@ function QuickBookModal({
       )
     : []
 
-  const filtered = horses.filter(h =>
-    h.name.toLowerCase().includes(search.toLowerCase()) ||
-    (h.owners?.full_name ?? '').toLowerCase().includes(search.toLowerCase())
-  )
+  // Show all horses when search is empty, filter when typing
+  const filtered = search.length > 0
+    ? horses.filter(h =>
+        h.name.toLowerCase().includes(search.toLowerCase()) ||
+        (h.owners?.full_name ?? '').toLowerCase().includes(search.toLowerCase())
+      )
+    : horses
 
   const selectedHorse = horses.find(h => h.id === form.horseId) ?? null
 
@@ -504,26 +508,35 @@ function QuickBookModal({
                   {selectedHorse?.name}
                   <span className="ml-1 text-xs text-blue-300">— {selectedHorse?.owners?.full_name ?? ''}</span>
                 </span>
-                <button onClick={() => { setForm(f => ({ ...f, horseId: '' })); setSearch('') }} className="text-white/40 hover:text-white text-sm">✕</button>
+                <button
+                  onClick={() => { setForm(f => ({ ...f, horseId: '' })); setSearch(''); setShowPatientDropdown(false) }}
+                  className="text-white/40 hover:text-white text-sm"
+                >✕</button>
               </div>
             ) : (
-              <>
+              <div className="relative">
                 <input
                   type="text"
                   value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  placeholder="Search by patient or owner name…"
+                  onChange={e => { setSearch(e.target.value); setShowPatientDropdown(true) }}
+                  onFocus={() => setShowPatientDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowPatientDropdown(false), 150)}
+                  placeholder="Search or choose a patient…"
                   className={inputCls}
                   autoFocus
+                  autoComplete="off"
                 />
-                {search.length > 0 && (
-                  <div className="mt-1 max-h-44 overflow-y-auto rounded-lg border border-[#1a3358] bg-[#081120]">
+                {/* dropdown arrow indicator */}
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 text-xs">▾</span>
+                {showPatientDropdown && (
+                  <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-52 overflow-y-auto rounded-lg border border-[#1a3358] bg-[#081120] shadow-xl">
                     {filtered.length === 0 ? (
                       <div className="px-3 py-2 text-xs text-blue-300">No patients found</div>
-                    ) : filtered.slice(0, 10).map(h => (
+                    ) : filtered.slice(0, 20).map(h => (
                       <button
                         key={h.id}
-                        onClick={() => { setForm(f => ({ ...f, horseId: h.id })); setSearch('') }}
+                        type="button"
+                        onMouseDown={() => { setForm(f => ({ ...f, horseId: h.id })); setSearch(''); setShowPatientDropdown(false) }}
                         className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-white hover:bg-white/10 transition"
                       >
                         <span>{h.species === 'canine' ? '🐕' : '🐴'}</span>
@@ -533,7 +546,7 @@ function QuickBookModal({
                     ))}
                   </div>
                 )}
-              </>
+              </div>
             )}
           </div>
 
