@@ -181,27 +181,55 @@ function MiniCalendar({
   )
 }
 
-// ── Appointment Tooltip / Popup ───────────────────────────────────────────────
+// ── Appointment Popup ─────────────────────────────────────────────────────────
 
 function ApptPopup({
   appt,
   onClose,
   style,
+  onNotesSaved,
 }: {
   appt: Appointment
   onClose: () => void
   style: React.CSSProperties
+  onNotesSaved: (id: string, notes: string) => void
 }) {
-  const ownerName = appt.owners?.full_name ?? appt.horses?.owners?.full_name ?? 'Unknown Owner'
+  const ownerName   = appt.owners?.full_name ?? appt.horses?.owners?.full_name ?? 'Unknown Owner'
   const patientName = appt.horses?.name ?? 'No patient'
-  const species = appt.horses?.species ?? null
+  const species     = appt.horses?.species ?? null
+
+  const [notes, setNotes]   = useState(appt.notes ?? '')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved]   = useState(false)
+  const [err, setErr]       = useState<string | null>(null)
+
+  const isDirty = notes !== (appt.notes ?? '')
+
+  async function handleSave() {
+    setSaving(true)
+    setErr(null)
+    const { error } = await supabase
+      .from('appointments')
+      .update({ notes })
+      .eq('id', appt.id)
+    setSaving(false)
+    if (error) {
+      setErr('Failed to save. Please try again.')
+    } else {
+      setSaved(true)
+      onNotesSaved(appt.id, notes)
+      setTimeout(() => setSaved(false), 2000)
+    }
+  }
 
   return (
     <div
-      className="absolute z-50 w-64 rounded-xl border border-[#1a3358] bg-[#0d1b30] shadow-2xl p-4"
+      className="fixed z-50 w-72 rounded-xl border border-[#1a3358] bg-[#0d1b30] shadow-2xl"
       style={style}
+      onClick={e => e.stopPropagation()}
     >
-      <div className="flex items-start justify-between mb-2">
+      {/* Header */}
+      <div className="flex items-start justify-between p-4 pb-2">
         <div className="flex items-center gap-2">
           <span className="text-lg">{species === 'canine' ? '🐕' : '🐴'}</span>
           <div>
@@ -212,42 +240,71 @@ function ApptPopup({
         <button onClick={onClose} className="text-white/50 hover:text-white text-lg leading-none">×</button>
       </div>
 
-      <div className="space-y-1 text-xs text-blue-200 mb-3">
+      {/* Details */}
+      <div className="px-4 space-y-1 text-xs text-blue-200">
         <div className="flex gap-2">
-          <span className="text-blue-400">Time:</span>
+          <span className="text-blue-400 shrink-0">Time:</span>
           <span>{formatTime12(appt.appointment_time)}</span>
-          {appt.duration_minutes && <span>({appt.duration_minutes} min)</span>}
+          {appt.duration_minutes && <span className="text-white/50">({appt.duration_minutes} min)</span>}
         </div>
         {appt.reason && (
           <div className="flex gap-2">
-            <span className="text-blue-400">Reason:</span>
+            <span className="text-blue-400 shrink-0">Reason:</span>
             <span>{appt.reason}</span>
           </div>
         )}
         {appt.location && (
           <div className="flex gap-2">
-            <span className="text-blue-400">Location:</span>
+            <span className="text-blue-400 shrink-0">Location:</span>
             <span>{appt.location}</span>
           </div>
         )}
         {appt.provider_name && (
           <div className="flex gap-2">
-            <span className="text-blue-400">Provider:</span>
+            <span className="text-blue-400 shrink-0">Provider:</span>
             <span>{appt.provider_name}</span>
           </div>
         )}
         <div className="flex gap-2 items-center">
-          <span className="text-blue-400">Status:</span>
+          <span className="text-blue-400 shrink-0">Status:</span>
           <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold text-white ${STATUS_BG[appt.status]}`}>
             {STATUS_LABEL[appt.status]}
           </span>
         </div>
-        {appt.notes && (
-          <div className="mt-1 text-white/60 italic">{appt.notes}</div>
-        )}
       </div>
 
-      <div className="flex gap-2">
+      {/* Notes section */}
+      <div className="px-4 pt-3 pb-1">
+        <div className="mb-1 flex items-center justify-between">
+          <label className="text-[11px] font-bold uppercase tracking-wider text-blue-400">
+            Notes
+          </label>
+          {saved && (
+            <span className="text-[10px] text-emerald-400 font-semibold">✓ Saved</span>
+          )}
+        </div>
+        <textarea
+          value={notes}
+          onChange={e => { setNotes(e.target.value); setSaved(false) }}
+          rows={4}
+          placeholder="Add appointment notes…"
+          className="w-full resize-none rounded-lg border border-[#1a3358] bg-[#081120] px-3 py-2 text-xs text-white placeholder-white/30 outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/40 transition"
+        />
+        {err && <p className="mt-1 text-[10px] text-red-400">{err}</p>}
+        <button
+          onClick={handleSave}
+          disabled={saving || !isDirty}
+          className={`mt-2 w-full rounded-lg py-1.5 text-xs font-semibold transition
+            ${isDirty
+              ? 'bg-[#c9a227] text-[#0f2040] hover:bg-[#b89020]'
+              : 'bg-white/5 text-white/30 cursor-not-allowed'}`}
+        >
+          {saving ? 'Saving…' : 'Save Notes'}
+        </button>
+      </div>
+
+      {/* Footer links */}
+      <div className="flex gap-2 p-4 pt-2">
         {appt.owner_id && (
           <Link
             href={`/owners/${appt.owner_id}`}
@@ -659,6 +716,12 @@ export default function CalendarPage() {
           appt={selectedAppt}
           onClose={() => setSelectedAppt(null)}
           style={popupStyle}
+          onNotesSaved={(id, newNotes) => {
+            setAppointments(prev =>
+              prev.map(a => a.id === id ? { ...a, notes: newNotes } : a)
+            )
+            setSelectedAppt(prev => prev && prev.id === id ? { ...prev, notes: newNotes } : prev)
+          }}
         />
       )}
     </div>
