@@ -1037,6 +1037,37 @@ export default function HorseDetailPage() {
     event.target.value = ''
   }
 
+  async function removeProfilePhoto() {
+    if (!horse?.profile_photo_path) return
+    if (!confirm('Remove profile photo?')) return
+
+    setUploadingProfilePhoto(true)
+    try {
+      const oldPath = horse.profile_photo_path
+
+      // 1. Clear the DB column
+      const { error: updateError } = await supabase
+        .from('horses')
+        .update({ profile_photo_path: null })
+        .eq('id', horseId)
+
+      if (updateError) {
+        setMessage(`Error removing profile photo: ${updateError.message}`)
+        return
+      }
+
+      // 2. Remove the file from storage (best-effort)
+      await supabase.storage.from('horse-photos').remove([oldPath])
+
+      // 3. Update local state
+      setProfilePhotoUrl(null)
+      setHorse(prev => prev ? { ...prev, profile_photo_path: null } : prev)
+      setMessage('Profile photo removed.')
+    } finally {
+      setUploadingProfilePhoto(false)
+    }
+  }
+
   async function emailVisitPdf(visitId: string) {
     try {
       setEmailingVisitId(visitId)
@@ -1436,6 +1467,17 @@ export default function HorseDetailPage() {
                   <span className="text-2xl">📷</span>
                 </div>
               </button>
+              {/* Remove photo button */}
+              {profilePhotoUrl && !uploadingProfilePhoto && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); removeProfilePhoto() }}
+                  title="Remove profile photo"
+                  className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white shadow-md transition hover:bg-red-600"
+                >
+                  ✕
+                </button>
+              )}
               {/* Hidden file input fallback */}
               <input
                 ref={profileFileInputRef}
@@ -2799,28 +2841,39 @@ export default function HorseDetailPage() {
               <canvas ref={profileCanvasRef} className="hidden" />
             </div>
             {!profileCameraError && (
-              <div className="flex gap-3 p-4">
-                <button
-                  type="button"
-                  onClick={closeProfileCamera}
-                  className="flex-1 rounded-xl border border-slate-200 px-5 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { closeProfileCamera(); profileFileInputRef.current?.click() }}
-                  className="flex-1 rounded-xl border border-slate-200 px-5 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                >
-                  📁 Library
-                </button>
-                <button
-                  type="button"
-                  onClick={captureProfilePhoto}
-                  className="flex-1 rounded-xl bg-[#0f2040] px-5 py-3 text-sm font-semibold text-white shadow hover:bg-[#162d55]"
-                >
-                  📸 Capture
-                </button>
+              <div className="flex flex-col gap-2 p-4">
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={closeProfileCamera}
+                    className="flex-1 rounded-xl border border-slate-200 px-5 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { closeProfileCamera(); profileFileInputRef.current?.click() }}
+                    className="flex-1 rounded-xl border border-slate-200 px-5 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    📁 Library
+                  </button>
+                  <button
+                    type="button"
+                    onClick={captureProfilePhoto}
+                    className="flex-1 rounded-xl bg-[#0f2040] px-5 py-3 text-sm font-semibold text-white shadow hover:bg-[#162d55]"
+                  >
+                    📸 Capture
+                  </button>
+                </div>
+                {profilePhotoUrl && (
+                  <button
+                    type="button"
+                    onClick={() => { closeProfileCamera(); removeProfilePhoto() }}
+                    className="w-full rounded-xl border border-red-200 px-5 py-3 text-sm font-medium text-red-600 hover:bg-red-50"
+                  >
+                    🗑 Remove Photo
+                  </button>
+                )}
               </div>
             )}
           </div>
