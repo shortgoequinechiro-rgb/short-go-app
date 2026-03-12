@@ -196,6 +196,7 @@ function ApptPopup({
   patientCount,
   onEditAppt,
   onCancelAppt,
+  onDeleteAppt,
 }: {
   appt: Appointment
   onClose: () => void
@@ -205,6 +206,7 @@ function ApptPopup({
   patientCount: number
   onEditAppt: (appt: Appointment) => void
   onCancelAppt: (id: string) => void
+  onDeleteAppt: (id: string) => void
 }) {
   const ownerName   = appt.owners?.full_name ?? appt.horses?.owners?.full_name ?? 'Unknown Owner'
   const patientName = appt.horses?.name ?? 'No patient'
@@ -215,6 +217,23 @@ function ApptPopup({
   const [saved, setSaved]       = useState(false)
   const [err, setErr]           = useState<string | null>(null)
   const [cancelling, setCancelling] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  async function handleDelete() {
+    if (!window.confirm('Permanently delete this appointment? This cannot be undone.')) return
+    setDeleting(true)
+    const { error } = await supabase
+      .from('appointments')
+      .delete()
+      .eq('id', appt.id)
+    setDeleting(false)
+    if (error) {
+      setErr('Failed to delete. Please try again.')
+    } else {
+      onDeleteAppt(appt.id)
+      onClose()
+    }
+  }
 
   async function handleCancel() {
     if (!window.confirm('Cancel this appointment?')) return
@@ -368,6 +387,13 @@ function ApptPopup({
             {cancelling ? '…' : 'Cancel'}
           </button>
         )}
+        <button
+          onClick={handleDelete}
+          disabled={deleting}
+          className="flex-1 rounded-lg border border-red-500/40 bg-red-600/20 px-3 py-2 text-center text-xs font-semibold text-red-300 transition hover:bg-red-600/40 disabled:opacity-50"
+        >
+          {deleting ? '…' : '🗑 Delete'}
+        </button>
       </div>
     </div>
   )
@@ -1388,6 +1414,10 @@ export default function CalendarPage() {
               setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'cancelled' } : a))
               setSelectedAppt(null)
             }}
+            onDeleteAppt={id => {
+              setAppointments(prev => prev.filter(a => a.id !== id))
+              setSelectedAppt(null)
+            }}
           />
         )}
 
@@ -1783,6 +1813,10 @@ export default function CalendarPage() {
           onEditAppt={appt => { setSelectedAppt(null); setEditingAppt(appt) }}
           onCancelAppt={id => {
             setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'cancelled' } : a))
+            setSelectedAppt(null)
+          }}
+          onDeleteAppt={id => {
+            setAppointments(prev => prev.filter(a => a.id !== id))
             setSelectedAppt(null)
           }}
         />
