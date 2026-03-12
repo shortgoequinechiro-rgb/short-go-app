@@ -995,7 +995,7 @@ export default function Home() {
 
   if (checkingAuth) {
     return (
-      <main className="min-h-screen bg-[#edf2f7] p-4 md:p-8">
+      <main className="min-h-screen bg-[#0f2040] p-4 md:p-8">
         <div className="mx-auto max-w-7xl rounded-3xl bg-white p-6 shadow-md">
           <p className="text-slate-700">Checking login...</p>
         </div>
@@ -1004,12 +1004,12 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-[#edf2f7] p-4 md:p-6 xl:p-8">
+    <main className="min-h-screen bg-[#0f2040] p-4 md:p-6 xl:p-8">
       <div className="mx-auto max-w-7xl">
         <div className="rounded-3xl bg-white p-4 shadow-md md:p-6">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded-xl bg-[#edf2f7] md:h-16 md:w-16 md:rounded-2xl">
+              <div className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded-xl bg-white/10 md:h-16 md:w-16 md:rounded-2xl">
                 <Image
                   src="/logo.png"
                   alt="Short-Go logo"
