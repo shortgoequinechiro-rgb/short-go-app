@@ -137,6 +137,91 @@ export default function Home() {
   const [showAddOwnerModal, setShowAddOwnerModal] = useState(false)
   const [showAddPatientModal, setShowAddPatientModal] = useState(false)
 
+  // ── Book Appointment Modal ──────────────────────────────────────────────────
+  const [showBookModal, setShowBookModal] = useState(false)
+  const [bookForm, setBookForm] = useState({
+    owner_id: '',
+    num_animals: 1,
+    appointment_date: '',
+    appointment_time: '09:00',
+    duration_minutes: 15,
+    location: '',
+    reason: '',
+    status: 'scheduled' as 'scheduled' | 'confirmed' | 'completed' | 'cancelled',
+    provider_name: 'Dr. Andrew Leo',
+    notes: '',
+  })
+  const [bookSaving, setBookSaving] = useState(false)
+  const [bookFormMsg, setBookFormMsg] = useState('')
+  const [bookOwnerSearch, setBookOwnerSearch] = useState('')
+  const [showBookOwnerSuggestions, setShowBookOwnerSuggestions] = useState(false)
+  const bookLocationDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [bookLocationSuggestions, setBookLocationSuggestions] = useState<{ description: string; place_id: string }[]>([])
+  const [showBookLocationSuggestions, setShowBookLocationSuggestions] = useState(false)
+
+  const filteredBookOwners = useMemo(() => {
+    const q = bookOwnerSearch.trim().toLowerCase()
+    if (!q) return owners
+    return owners.filter(o => o.full_name.toLowerCase().includes(q))
+  }, [owners, bookOwnerSearch])
+
+  function openBookModal() {
+    const today = new Date()
+    const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    setBookForm({
+      owner_id: '', num_animals: 1, appointment_date: iso, appointment_time: '09:00',
+      duration_minutes: 15, location: '', reason: '', status: 'scheduled',
+      provider_name: 'Dr. Andrew Leo', notes: '',
+    })
+    setBookOwnerSearch('')
+    setShowBookOwnerSuggestions(false)
+    setBookFormMsg('')
+    setShowBookModal(true)
+  }
+
+  function handleBookLocationChange(value: string) {
+    setBookForm(f => ({ ...f, location: value }))
+    if (bookLocationDebounceRef.current) clearTimeout(bookLocationDebounceRef.current)
+    if (value.trim().length < 2) {
+      setBookLocationSuggestions([]); setShowBookLocationSuggestions(false); return
+    }
+    bookLocationDebounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/places?input=${encodeURIComponent(value)}`)
+        const data = await res.json()
+        if (data.predictions?.length > 0) {
+          setBookLocationSuggestions(data.predictions); setShowBookLocationSuggestions(true)
+        } else {
+          setBookLocationSuggestions([]); setShowBookLocationSuggestions(false)
+        }
+      } catch { setBookLocationSuggestions([]); setShowBookLocationSuggestions(false) }
+    }, 300)
+  }
+
+  async function saveBooking() {
+    if (!bookForm.owner_id || !bookForm.appointment_date) {
+      setBookFormMsg('Owner and date are required.'); return
+    }
+    setBookSaving(true); setBookFormMsg('')
+    const { error } = await supabase.from('appointments').insert({
+      horse_id: null,
+      owner_id: bookForm.owner_id,
+      appointment_date: bookForm.appointment_date,
+      appointment_time: bookForm.appointment_time || null,
+      duration_minutes: bookForm.duration_minutes,
+      location: bookForm.location || null,
+      reason: bookForm.reason || null,
+      status: bookForm.status,
+      provider_name: bookForm.provider_name || null,
+      notes: bookForm.notes || null,
+      practitioner_id: userId,
+    })
+    setBookSaving(false)
+    if (error) { setBookFormMsg(`Error: ${error.message}`); return }
+    await loadTodayAppointments()
+    setShowBookModal(false)
+  }
+
   const [ownerNameEdit, setOwnerNameEdit] = useState('')
   const [ownerPhoneEdit, setOwnerPhoneEdit] = useState('')
   const [ownerEmailEdit, setOwnerEmailEdit] = useState('')
@@ -960,12 +1045,12 @@ export default function Home() {
               <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-10 text-center">
                 <p className="text-2xl">📅</p>
                 <p className="mt-2 text-sm font-medium text-slate-500">No appointments scheduled for today</p>
-                <Link
-                  href="/appointments"
+                <button
+                  onClick={openBookModal}
                   className="mt-3 rounded-xl bg-[#0f2040] px-4 py-2 text-sm font-semibold text-white hover:bg-[#162d55] transition"
                 >
                   + Book Appointment
-                </Link>
+                </button>
               </div>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -1647,6 +1732,203 @@ export default function Home() {
       )}
 
       {/* ── Add Patient Modal ── */}
+      {/* ── Book Appointment Modal ── */}
+      {showBookModal && (
+        <div className="fixed inset-0 z-40 flex items-end justify-center sm:items-center" onClick={() => setShowBookModal(false)}>
+          <div className="absolute inset-0 bg-black/40" />
+          <div
+            className="relative z-50 w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-semibold text-slate-900">New Appointment</h2>
+              <button onClick={() => setShowBookModal(false)} className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50">✕</button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Owner */}
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700">Owner <span className="text-red-400">*</span></label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={bookOwnerSearch}
+                    onChange={e => {
+                      setBookOwnerSearch(e.target.value)
+                      setBookForm(f => ({ ...f, owner_id: '' }))
+                      setShowBookOwnerSuggestions(true)
+                    }}
+                    onFocus={() => setShowBookOwnerSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowBookOwnerSuggestions(false), 150)}
+                    placeholder="Type to search owner…"
+                    autoComplete="off"
+                    className={`w-full rounded-2xl border bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 ${
+                      bookForm.owner_id ? 'border-emerald-300' : 'border-slate-200'
+                    }`}
+                  />
+                  {bookForm.owner_id && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500 text-base pointer-events-none">✓</span>
+                  )}
+                  {showBookOwnerSuggestions && filteredBookOwners.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-52 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-xl">
+                      {filteredBookOwners.map((o, i) => (
+                        <button
+                          key={o.id}
+                          type="button"
+                          onMouseDown={() => {
+                            setBookOwnerSearch(o.full_name)
+                            setBookForm(f => ({ ...f, owner_id: o.id }))
+                            setShowBookOwnerSuggestions(false)
+                          }}
+                          className={`flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition hover:bg-slate-50 ${
+                            i < filteredBookOwners.length - 1 ? 'border-b border-slate-100' : ''
+                          } ${bookForm.owner_id === o.id ? 'bg-slate-50' : ''}`}
+                        >
+                          <span className="font-medium text-slate-800">{o.full_name}</span>
+                          {o.phone && <span className="ml-auto shrink-0 text-xs text-slate-400">{o.phone}</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {showBookOwnerSuggestions && bookOwnerSearch.trim().length > 0 && filteredBookOwners.length === 0 && (
+                    <div className="absolute left-0 right-0 top-full z-50 mt-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-xl">
+                      <p className="text-sm text-slate-400">No owners found for &ldquo;{bookOwnerSearch}&rdquo;</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Number of animals */}
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700">Number of Animals</label>
+                <select
+                  value={bookForm.num_animals}
+                  onChange={e => {
+                    const n = Number(e.target.value)
+                    setBookForm(f => ({ ...f, num_animals: n, duration_minutes: n * 15 }))
+                  }}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                >
+                  {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                    <option key={n} value={n}>{n} animal{n > 1 ? 's' : ''} — {n * 15} min</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Duration */}
+              <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                <span>⏱</span>
+                <span>Total duration: <strong className="text-slate-900">{bookForm.duration_minutes} min</strong> ({bookForm.num_animals} animal{bookForm.num_animals > 1 ? 's' : ''} × 15 min each)</span>
+              </div>
+
+              {/* Date + Time */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1.5 block text-sm font-semibold text-slate-700">Date <span className="text-red-400">*</span></label>
+                  <input
+                    type="date"
+                    value={bookForm.appointment_date}
+                    onChange={e => setBookForm(f => ({ ...f, appointment_date: e.target.value }))}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-semibold text-slate-700">Time</label>
+                  <input
+                    type="time"
+                    value={bookForm.appointment_time}
+                    onChange={e => setBookForm(f => ({ ...f, appointment_time: e.target.value }))}
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  />
+                </div>
+              </div>
+
+              {/* Reason */}
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700">Reason</label>
+                <input
+                  type="text"
+                  value={bookForm.reason}
+                  onChange={e => setBookForm(f => ({ ...f, reason: e.target.value }))}
+                  placeholder="e.g. Routine adjustment, Post-competition"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+
+              {/* Location */}
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700">Location</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={bookForm.location}
+                    onChange={e => handleBookLocationChange(e.target.value)}
+                    onBlur={() => setTimeout(() => setShowBookLocationSuggestions(false), 150)}
+                    onFocus={() => bookForm.location.length >= 2 && bookLocationSuggestions.length > 0 && setShowBookLocationSuggestions(true)}
+                    placeholder="Start typing an address or barn name…"
+                    autoComplete="off"
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                  />
+                  {showBookLocationSuggestions && bookLocationSuggestions.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+                      {bookLocationSuggestions.map((s, i) => (
+                        <button
+                          key={s.place_id}
+                          type="button"
+                          onMouseDown={() => {
+                            setBookForm(f => ({ ...f, location: s.description }))
+                            setBookLocationSuggestions([])
+                            setShowBookLocationSuggestions(false)
+                          }}
+                          className={`flex w-full items-start gap-3 px-4 py-3 text-left text-sm transition hover:bg-slate-50 ${i < bookLocationSuggestions.length - 1 ? 'border-b border-slate-100' : ''}`}
+                        >
+                          <span className="mt-0.5 shrink-0 text-slate-400">📍</span>
+                          <span className="text-slate-700">{s.description}</span>
+                        </button>
+                      ))}
+                      <div className="flex items-center justify-end gap-1 border-t border-slate-100 px-4 py-1.5">
+                        <span className="text-[10px] text-slate-400">Powered by</span>
+                        <span className="text-[10px] font-medium text-slate-500">Google</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700">Notes</label>
+                <textarea
+                  value={bookForm.notes}
+                  onChange={e => setBookForm(f => ({ ...f, notes: e.target.value }))}
+                  rows={2}
+                  placeholder="Any prep notes or special instructions…"
+                  className="w-full resize-none rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+
+              {bookFormMsg && <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{bookFormMsg}</p>}
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={saveBooking}
+                  disabled={bookSaving}
+                  className="flex-1 rounded-2xl bg-slate-900 py-3 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-40 transition"
+                >
+                  {bookSaving ? 'Saving…' : 'Book Appointment'}
+                </button>
+                <button
+                  onClick={() => setShowBookModal(false)}
+                  className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showAddPatientModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
