@@ -445,6 +445,19 @@ function QuickBookModal({
   const [err, setErr] = useState<string | null>(null)
   const [showLocSuggestions, setShowLocSuggestions] = useState(false)
 
+  // Click-outside ref for patient dropdown
+  const patientDropdownRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!showPatientDropdown) return
+    function handleOutsideClick(e: MouseEvent) {
+      if (patientDropdownRef.current && !patientDropdownRef.current.contains(e.target as Node)) {
+        setShowPatientDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick)
+    return () => document.removeEventListener('mousedown', handleOutsideClick)
+  }, [showPatientDropdown])
+
   // Derive unique owners from the horses list
   const uniqueOwners: { id: string; name: string }[] = []
   const seenOwners = new Set<string>()
@@ -587,7 +600,6 @@ function QuickBookModal({
                   onBlur={() => setTimeout(() => setShowOwnerDropdown(false), 150)}
                   placeholder="Search or choose an owner…"
                   className={inputCls}
-                  autoFocus
                   autoComplete="off"
                 />
                 <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 text-xs">▾</span>
@@ -654,7 +666,7 @@ function QuickBookModal({
               {ownerPatients.length === 0 ? (
                 <p className="text-xs text-blue-300 italic">No patients found for this owner.</p>
               ) : (
-                <div className="relative">
+                <div className="relative" ref={patientDropdownRef}>
                   <button
                     type="button"
                     onClick={() => setShowPatientDropdown(v => !v)}
