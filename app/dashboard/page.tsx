@@ -141,16 +141,15 @@ export default function Home() {
   const [showBookModal, setShowBookModal] = useState(false)
   const [bookForm, setBookForm] = useState({
     owner_id: '',
-    num_animals: 1,
     appointment_date: '',
     appointment_time: '09:00',
-    duration_minutes: 15,
     location: '',
     reason: '',
     status: 'scheduled' as 'scheduled' | 'confirmed' | 'completed' | 'cancelled',
     provider_name: 'Dr. Andrew Leo',
     notes: '',
   })
+  const [selectedPatientIds, setSelectedPatientIds] = useState<string[]>([])
   const [bookSaving, setBookSaving] = useState(false)
   const [bookFormMsg, setBookFormMsg] = useState('')
   const [bookOwnerSearch, setBookOwnerSearch] = useState('')
@@ -165,14 +164,29 @@ export default function Home() {
     return owners.filter(o => o.full_name.toLowerCase().includes(q))
   }, [owners, bookOwnerSearch])
 
+  // Patients belonging to the selected owner
+  const ownerPatients = useMemo(() => {
+    if (!bookForm.owner_id) return []
+    return horses.filter(h => h.owner_id === bookForm.owner_id && !h.archived)
+  }, [horses, bookForm.owner_id])
+
+  const bookDuration = Math.max(1, selectedPatientIds.length) * 15
+
+  function togglePatient(id: string) {
+    setSelectedPatientIds(prev =>
+      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
+    )
+  }
+
   function openBookModal() {
     const today = new Date()
     const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
     setBookForm({
-      owner_id: '', num_animals: 1, appointment_date: iso, appointment_time: '09:00',
-      duration_minutes: 15, location: '', reason: '', status: 'scheduled',
+      owner_id: '', appointment_date: iso, appointment_time: '09:00',
+      location: '', reason: '', status: 'scheduled',
       provider_name: 'Dr. Andrew Leo', notes: '',
     })
+    setSelectedPatientIds([])
     setBookOwnerSearch('')
     setShowBookOwnerSuggestions(false)
     setBookFormMsg('')
@@ -202,18 +216,26 @@ export default function Home() {
     if (!bookForm.owner_id || !bookForm.appointment_date) {
       setBookFormMsg('Owner and date are required.'); return
     }
+    if (selectedPatientIds.length === 0) {
+      setBookFormMsg('Please select at least one patient.'); return
+    }
     setBookSaving(true); setBookFormMsg('')
     const { error } = await supabase.from('appointments').insert({
-      horse_id: null,
+      horse_id: selectedPatientIds.length === 1 ? selectedPatientIds[0] : null,
       owner_id: bookForm.owner_id,
       appointment_date: bookForm.appointment_date,
       appointment_time: bookForm.appointment_time || null,
-      duration_minutes: bookForm.duration_minutes,
+      duration_minutes: bookDuration,
       location: bookForm.location || null,
       reason: bookForm.reason || null,
       status: bookForm.status,
       provider_name: bookForm.provider_name || null,
-      notes: bookForm.notes || null,
+      notes: selectedPatientIds.length > 1
+        ? [
+            `Patients: ${selectedPatientIds.map(id => horses.find(h => h.id === id)?.name || 'Unknown').join(', ')}`,
+            bookForm.notes,
+          ].filter(Boolean).join('\n')
+        : bookForm.notes || null,
       practitioner_id: userId,
     })
     setBookSaving(false)
@@ -1756,6 +1778,7 @@ export default function Home() {
                     onChange={e => {
                       setBookOwnerSearch(e.target.value)
                       setBookForm(f => ({ ...f, owner_id: '' }))
+                      setSelectedPatientIds([])
                       setShowBookOwnerSuggestions(true)
                     }}
                     onFocus={() => setShowBookOwnerSuggestions(true)}
@@ -1778,6 +1801,7 @@ export default function Home() {
                           onMouseDown={() => {
                             setBookOwnerSearch(o.full_name)
                             setBookForm(f => ({ ...f, owner_id: o.id }))
+                            setSelectedPatientIds([])
                             setShowBookOwnerSuggestions(false)
                           }}
                           className={`flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition hover:bg-slate-50 ${
@@ -1798,28 +1822,57 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Number of animals */}
+              {/* Patients (multi-select) */}
               <div>
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700">Number of Animals</label>
-                <select
-                  value={bookForm.num_animals}
-                  onChange={e => {
-                    const n = Number(e.target.value)
-                    setBookForm(f => ({ ...f, num_animals: n, duration_minutes: n * 15 }))
-                  }}
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
-                >
-                  {[1,2,3,4,5,6,7,8,9,10].map(n => (
-                    <option key={n} value={n}>{n} animal{n > 1 ? 's' : ''} — {n * 15} min</option>
-                  ))}
-                </select>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+                  Patients <span className="text-red-400">*</span>
+                  {selectedPatientIds.length > 0 && (
+                    <span className="ml-2 text-xs font-normal text-slate-400">({selectedPatientIds.length} selected)</span>
+                  )}
+                </label>
+                {!bookForm.owner_id ? (
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-400 text-center">
+                    Select an owner first to see their patients
+                  </div>
+                ) : ownerPatients.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 text-center">
+                    No patients found for this owner
+                  </div>
+                ) : (
+                  <div className="max-h-44 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50">
+                    {ownerPatients.map((patient, i) => {
+                      const isSelected = selectedPatientIds.includes(patient.id)
+                      return (
+                        <button
+                          key={patient.id}
+                          type="button"
+                          onClick={() => togglePatient(patient.id)}
+                          className={`flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition hover:bg-slate-100 ${
+                            i < ownerPatients.length - 1 ? 'border-b border-slate-200' : ''
+                          } ${isSelected ? 'bg-emerald-50' : ''}`}
+                        >
+                          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-xs transition ${
+                            isSelected ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300 bg-white'
+                          }`}>
+                            {isSelected && '✓'}
+                          </span>
+                          <span className="text-base">{patient.species === 'canine' ? '🐕' : '🐴'}</span>
+                          <span className="font-medium text-slate-800">{patient.name}</span>
+                          {patient.breed && <span className="ml-auto text-xs text-slate-400">{patient.breed}</span>}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
 
-              {/* Duration */}
-              <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                <span>⏱</span>
-                <span>Total duration: <strong className="text-slate-900">{bookForm.duration_minutes} min</strong> ({bookForm.num_animals} animal{bookForm.num_animals > 1 ? 's' : ''} × 15 min each)</span>
-              </div>
+              {/* Duration auto-display */}
+              {selectedPatientIds.length > 0 && (
+                <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                  <span>⏱</span>
+                  <span>Total duration: <strong className="text-slate-900">{bookDuration} min</strong> ({selectedPatientIds.length} patient{selectedPatientIds.length > 1 ? 's' : ''} × 15 min each)</span>
+                </div>
+              )}
 
               {/* Date + Time */}
               <div className="grid grid-cols-2 gap-3">
