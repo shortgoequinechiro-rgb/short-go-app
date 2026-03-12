@@ -78,7 +78,7 @@ export default function NavBar() {
               className="object-contain p-0.5"
             />
           </div>
-          <span className="hidden whitespace-nowrap text-sm font-semibold text-white sm:block tracking-wide">
+          <span className="hidden whitespace-nowrap text-lg font-bold sm:block tracking-wide md:text-xl" style={{ color: '#d4a017' }}>
             Short-Go Equine Chiropractic
           </span>
         </Link>
