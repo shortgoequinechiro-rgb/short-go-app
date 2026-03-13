@@ -1056,6 +1056,8 @@ export default function CalendarPage() {
   const [blockForm, setBlockForm] = useState({ date: toISO(today), startTime: '08:00', endTime: '09:00', label: '' })
   const [savingBlock, setSavingBlock] = useState(false)
   const [blockSaveErr, setBlockSaveErr] = useState<string | null>(null)
+  const [editingBlockId, setEditingBlockId] = useState<string | null>(null)
+  const [selectedBlock, setSelectedBlock] = useState<{ block: BlockedTime; x: number; y: number } | null>(null)
 
   const [horses, setHorses] = useState<HorseOption[]>([])
   const [locations, setLocations] = useState<string[]>([])
@@ -1175,6 +1177,7 @@ export default function CalendarPage() {
       }
     } else {
       setShowBlockModal(false)
+      setEditingBlockId(null)
       setBlockSaveErr(null)
       setBlockForm({ date: toISO(today), startTime: '08:00', endTime: '09:00', label: '' })
       await loadWeek()
@@ -1185,6 +1188,46 @@ export default function CalendarPage() {
     if (!confirm('Remove this blocked time?')) return
     await supabase.from('blocked_times').delete().eq('id', id)
     setBlockedTimes(prev => prev.filter(b => b.id !== id))
+    setSelectedBlock(null)
+  }
+
+  async function updateBlockedTime() {
+    if (!editingBlockId || !blockForm.date || !blockForm.startTime || !blockForm.endTime) return
+    if (blockForm.endTime <= blockForm.startTime) {
+      setBlockSaveErr('End time must be after start time.')
+      return
+    }
+    setSavingBlock(true)
+    setBlockSaveErr(null)
+    const { error } = await supabase.from('blocked_times').update({
+      block_date: blockForm.date,
+      start_time: blockForm.startTime,
+      end_time: blockForm.endTime,
+      label: blockForm.label || null,
+    }).eq('id', editingBlockId)
+    setSavingBlock(false)
+    if (error) {
+      setBlockSaveErr(error.message ?? 'Failed to update. Please try again.')
+    } else {
+      setShowBlockModal(false)
+      setEditingBlockId(null)
+      setBlockSaveErr(null)
+      setBlockForm({ date: toISO(today), startTime: '08:00', endTime: '09:00', label: '' })
+      await loadWeek()
+    }
+  }
+
+  function openEditBlock(block: BlockedTime) {
+    setSelectedBlock(null)
+    setEditingBlockId(block.id)
+    setBlockForm({
+      date: block.block_date,
+      startTime: block.start_time,
+      endTime: block.end_time,
+      label: block.label || '',
+    })
+    setBlockSaveErr(null)
+    setShowBlockModal(true)
   }
 
   function openNewApptModal(date?: string) {
@@ -1310,7 +1353,7 @@ export default function CalendarPage() {
             Today
           </button>
           <button
-            onClick={() => { setBlockSaveErr(null); setBlockForm(f => ({ ...f, date: toISO(mobileDay) })); setShowBlockModal(true) }}
+            onClick={() => { setBlockSaveErr(null); setEditingBlockId(null); setBlockForm(f => ({ ...f, date: toISO(mobileDay) })); setShowBlockModal(true) }}
             className="rounded-xl border border-white/20 px-3 py-1.5 text-sm text-white hover:bg-white/10 transition"
           >
             🚫 Block
@@ -1332,7 +1375,10 @@ export default function CalendarPage() {
                 <span className="text-xs font-semibold text-red-300">🚫 {block.label || 'Blocked'}</span>
                 <div className="text-[10px] text-red-400">{formatTime12(block.start_time)} – {formatTime12(block.end_time)}</div>
               </div>
-              <button onClick={() => deleteBlockedTime(block.id)} className="text-red-400 hover:text-red-200 text-lg leading-none">×</button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => openEditBlock(block)} className="text-blue-300 hover:text-blue-100 text-xs font-medium">Edit</button>
+                <button onClick={() => deleteBlockedTime(block.id)} className="text-red-400 hover:text-red-200 text-lg leading-none">×</button>
+              </div>
             </div>
           ))}
           {loading ? (
@@ -1651,8 +1697,7 @@ export default function CalendarPage() {
                 style={{ height: GRID_HEIGHT, minWidth: 90 }}
                 onMouseMove={e => {
                   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                  const scrollTop = scrollRef.current?.scrollTop ?? 0
-                  const relY = e.clientY - rect.top + scrollTop
+                  const relY = e.clientY - rect.top
                   const mins = Math.floor((relY / PX_PER_MIN + GRID_START_HOUR * 60) / 15) * 15
                   if (mins >= GRID_START_HOUR * 60 && mins < GRID_END_HOUR * 60) {
                     setHoveredSlot({ colIdx, mins })
@@ -1663,8 +1708,7 @@ export default function CalendarPage() {
                   // Only open quick-book when clicking empty grid space (not on an appt/block)
                   if ((e.target as HTMLElement).closest('button, a')) return
                   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                  const scrollTop = scrollRef.current?.scrollTop ?? 0
-                  const relY = e.clientY - rect.top + scrollTop
+                  const relY = e.clientY - rect.top
                   const totalMins = Math.round((relY / PX_PER_MIN + GRID_START_HOUR * 60) / 15) * 15
                   const hh = Math.floor(totalMins / 60)
                   const mm = totalMins % 60
@@ -1717,8 +1761,14 @@ export default function CalendarPage() {
                   return (
                     <button
                       key={block.id}
-                      title={`Blocked: ${block.label || 'Unavailable'} — click to remove`}
-                      onClick={e => { e.stopPropagation(); deleteBlockedTime(block.id) }}
+                      title={`Blocked: ${block.label || 'Unavailable'} — click to edit or delete`}
+                      onClick={e => {
+                        e.stopPropagation()
+                        setSelectedAppt(null)
+                        const popupX = Math.min(e.clientX + 8, window.innerWidth - 240)
+                        const popupY = Math.min(e.clientY + 8, window.innerHeight - 180)
+                        setSelectedBlock({ block, x: popupX, y: popupY })
+                      }}
                       className="absolute left-0 right-0 z-10 cursor-pointer overflow-hidden border-l-2 border-red-700 bg-red-900/30 text-left transition hover:bg-red-900/50"
                       style={{
                         top,
@@ -1845,13 +1895,47 @@ export default function CalendarPage() {
         />
       )}
 
-      {/* Block Time Modal */}
+      {/* Blocked Time Popup (click on a blocked slot) */}
+      {selectedBlock && (
+        <div
+          className="fixed z-50 w-56 rounded-xl border border-[#1a3358] bg-[#0d1b30] shadow-2xl"
+          style={{ left: selectedBlock.x, top: selectedBlock.y }}
+        >
+          <div className="p-3">
+            <div className="flex items-start justify-between mb-2">
+              <div>
+                <div className="text-xs font-semibold text-red-300">🚫 {selectedBlock.block.label || 'Blocked'}</div>
+                <div className="text-[10px] text-red-400/80 mt-0.5">
+                  {formatTime12(selectedBlock.block.start_time)} – {formatTime12(selectedBlock.block.end_time)}
+                </div>
+              </div>
+              <button onClick={() => setSelectedBlock(null)} className="text-white/50 hover:text-white text-lg leading-none">×</button>
+            </div>
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={() => openEditBlock(selectedBlock.block)}
+                className="flex-1 rounded-lg border border-white/20 px-3 py-2 text-center text-xs font-medium text-white transition hover:bg-white/10"
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => deleteBlockedTime(selectedBlock.block.id)}
+                className="flex-1 rounded-lg border border-red-500/40 bg-red-600/20 px-3 py-2 text-center text-xs font-semibold text-red-300 transition hover:bg-red-600/40"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Block Time Modal (create + edit) */}
       {showBlockModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowBlockModal(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => { setShowBlockModal(false); setEditingBlockId(null) }}>
           <div className="w-full max-w-sm rounded-2xl border border-[#1a3358] bg-[#0d1b30] p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="font-bold text-white">🚫 Block Out Time</h3>
-              <button onClick={() => setShowBlockModal(false)} className="text-white/50 hover:text-white text-xl leading-none">×</button>
+              <h3 className="font-bold text-white">{editingBlockId ? '✏️ Edit Blocked Time' : '🚫 Block Out Time'}</h3>
+              <button onClick={() => { setShowBlockModal(false); setEditingBlockId(null) }} className="text-white/50 hover:text-white text-xl leading-none">×</button>
             </div>
             <div className="space-y-3">
               <div>
@@ -1897,11 +1981,11 @@ export default function CalendarPage() {
                 <p className="rounded-lg border border-red-700 bg-red-900/30 px-3 py-2 text-xs text-red-300">{blockSaveErr}</p>
               )}
               <button
-                onClick={saveBlockedTime}
+                onClick={editingBlockId ? updateBlockedTime : saveBlockedTime}
                 disabled={savingBlock}
                 className="mt-2 w-full rounded-lg bg-red-700 py-2.5 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-50"
               >
-                {savingBlock ? 'Saving…' : '🚫 Block This Time'}
+                {savingBlock ? 'Saving…' : editingBlockId ? '✏️ Update Block' : '🚫 Block This Time'}
               </button>
             </div>
           </div>
