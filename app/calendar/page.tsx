@@ -1296,6 +1296,7 @@ export default function CalendarPage() {
 
   function handleApptClick(appt: Appointment, e: React.MouseEvent) {
     e.stopPropagation()
+    setSelectedBlock(null)
     if (selectedAppt?.id === appt.id) {
       setSelectedAppt(null)
       return
@@ -1490,13 +1491,13 @@ export default function CalendarPage() {
           />
         )}
 
-        {/* Block Time Modal (mobile) */}
+        {/* Block Time Modal (mobile - create + edit) */}
         {showBlockModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowBlockModal(false)}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => { setShowBlockModal(false); setEditingBlockId(null) }}>
             <div className="w-full max-w-sm rounded-2xl border border-[#1a3358] bg-[#0d1b30] p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
               <div className="mb-4 flex items-center justify-between">
-                <h3 className="font-bold text-white">🚫 Block Out Time</h3>
-                <button onClick={() => setShowBlockModal(false)} className="text-white/50 hover:text-white text-xl leading-none">×</button>
+                <h3 className="font-bold text-white">{editingBlockId ? '✏️ Edit Blocked Time' : '🚫 Block Out Time'}</h3>
+                <button onClick={() => { setShowBlockModal(false); setEditingBlockId(null) }} className="text-white/50 hover:text-white text-xl leading-none">×</button>
               </div>
               <div className="space-y-3">
                 <div>
@@ -1520,8 +1521,8 @@ export default function CalendarPage() {
                 {blockSaveErr && (
                   <p className="rounded-lg border border-red-700 bg-red-900/30 px-3 py-2 text-xs text-red-300">{blockSaveErr}</p>
                 )}
-                <button onClick={saveBlockedTime} disabled={savingBlock} className="mt-2 w-full rounded-lg bg-red-700 py-2.5 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-50">
-                  {savingBlock ? 'Saving…' : '🚫 Block This Time'}
+                <button onClick={editingBlockId ? updateBlockedTime : saveBlockedTime} disabled={savingBlock} className="mt-2 w-full rounded-lg bg-red-700 py-2.5 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-50">
+                  {savingBlock ? 'Saving…' : editingBlockId ? '✏️ Update Block' : '🚫 Block This Time'}
                 </button>
               </div>
             </div>
@@ -1612,7 +1613,7 @@ export default function CalendarPage() {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => { setBlockSaveErr(null); setBlockForm(f => ({ ...f, date: toISO(weekStart) })); setShowBlockModal(true) }}
+              onClick={() => { setBlockSaveErr(null); setEditingBlockId(null); setBlockForm(f => ({ ...f, date: toISO(weekStart) })); setShowBlockModal(true) }}
               className="rounded-lg border border-white/20 px-3 py-1.5 text-sm text-white hover:bg-white/10 transition"
               title="Block out unavailable time"
             >
