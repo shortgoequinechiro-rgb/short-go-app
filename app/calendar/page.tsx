@@ -445,6 +445,7 @@ function QuickBookModal({
   date,
   time,
   horses,
+  owners,
   locationSuggestions,
   onClose,
   onSaved,
@@ -452,6 +453,7 @@ function QuickBookModal({
   date: string
   time: string
   horses: HorseOption[]
+  owners: { id: string; full_name: string }[]
   locationSuggestions: string[]
   onClose: () => void
   onSaved: () => void
@@ -491,22 +493,14 @@ function QuickBookModal({
     return () => document.removeEventListener('mousedown', handleOutsideClick)
   }, [showPatientDropdown])
 
-  // Derive unique owners from the horses list
-  const uniqueOwners: { id: string; name: string }[] = []
-  const seenOwners = new Set<string>()
-  for (const h of horses) {
-    if (h.owner_id && h.owners?.full_name && !seenOwners.has(h.owner_id)) {
-      seenOwners.add(h.owner_id)
-      uniqueOwners.push({ id: h.owner_id, name: h.owners.full_name })
-    }
-  }
-  uniqueOwners.sort((a, b) => a.name.localeCompare(b.name))
+  // Map owners into a consistent shape for display
+  const ownerList = owners.map(o => ({ id: o.id, name: o.full_name }))
 
   const filteredOwners = ownerSearch.length > 0
-    ? uniqueOwners.filter(o => o.name.toLowerCase().includes(ownerSearch.toLowerCase()))
-    : uniqueOwners
+    ? ownerList.filter(o => o.name.toLowerCase().includes(ownerSearch.toLowerCase()))
+    : ownerList
 
-  const selectedOwner = uniqueOwners.find(o => o.id === selectedOwnerId) ?? null
+  const selectedOwner = ownerList.find(o => o.id === selectedOwnerId) ?? null
 
   // Patients that belong to the selected owner
   const ownerPatients = selectedOwnerId
@@ -1066,6 +1060,7 @@ export default function CalendarPage() {
   const [selectedBlock, setSelectedBlock] = useState<{ block: BlockedTime; x: number; y: number } | null>(null)
 
   const [horses, setHorses] = useState<HorseOption[]>([])
+  const [allOwners, setAllOwners] = useState<{ id: string; full_name: string }[]>([])
   const [locations, setLocations] = useState<string[]>([])
   const [quickBook, setQuickBook] = useState<{ date: string; time: string } | null>(null)
 
@@ -1101,6 +1096,7 @@ export default function CalendarPage() {
     if (checkingAuth) return
     loadWeek()
     loadHorses()
+    loadOwners()
     loadLocations()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekStart, checkingAuth])
@@ -1112,6 +1108,14 @@ export default function CalendarPage() {
       .eq('archived', false)
       .order('name', { ascending: true })
     if (data) setHorses(data as unknown as HorseOption[])
+  }
+
+  async function loadOwners() {
+    const { data } = await supabase
+      .from('owners')
+      .select('id, full_name')
+      .order('full_name', { ascending: true })
+    if (data) setAllOwners(data)
   }
 
   async function loadLocations() {
@@ -1472,9 +1476,10 @@ export default function CalendarPage() {
             date={quickBook.date}
             time={quickBook.time}
             horses={horses}
+            owners={allOwners}
             locationSuggestions={locations}
             onClose={() => setQuickBook(null)}
-            onSaved={() => { loadWeek(); loadHorses(); loadLocations() }}
+            onSaved={() => { loadWeek(); loadHorses(); loadOwners(); loadLocations() }}
           />
         )}
 
@@ -1887,9 +1892,10 @@ export default function CalendarPage() {
           date={quickBook.date}
           time={quickBook.time}
           horses={horses}
+          owners={allOwners}
           locationSuggestions={locations}
           onClose={() => setQuickBook(null)}
-          onSaved={() => { loadWeek(); loadHorses(); loadLocations() }}
+          onSaved={() => { loadWeek(); loadHorses(); loadOwners(); loadLocations() }}
         />
       )}
 
