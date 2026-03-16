@@ -1157,6 +1157,20 @@ export default function Home() {
                         </div>
                       )}
 
+                      {/* Start Visit button */}
+                      {appt.status !== 'completed' && appt.horses?.id && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            router.push(`/horses/${appt.horses!.id}/spine?newVisit=true&species=${appt.horses!.species || 'equine'}`)
+                          }}
+                          className="mt-3 w-full rounded-xl bg-[#0f2040] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#162d55]"
+                        >
+                          Start Visit
+                        </button>
+                      )}
+
                       {/* "View" hint on hover */}
                       <span className="mt-2 text-xs font-medium text-slate-400 opacity-0 transition-opacity group-hover:opacity-100">
                         {appt.owner_id ? 'View owner & animals →' : 'View record →'}
