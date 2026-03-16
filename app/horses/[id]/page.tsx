@@ -2150,34 +2150,6 @@ export default function HorseDetailPage() {
               )}
             </div>
 
-            {/* Spine Assessment + Progress Tracker Banners */}
-            <div className="flex flex-col gap-3 rounded-3xl border border-[#0f2040]/10 bg-white p-4 shadow-md sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
-              <div>
-                <p className="font-semibold text-slate-900">Spine Assessment</p>
-                <p className="mt-0.5 text-sm text-slate-500">
-                  {editingVisitId
-                    ? 'Linked to the visit you\'re editing — results will appear in the PDF.'
-                    : 'Check each spinal segment for left / right issues.'}
-                </p>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <Link
-                  href={`/horses/${horse?.id}/progress`}
-                  className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                >
-                  Progress
-                </Link>
-                <Link
-                  href={editingVisitId
-                    ? `/horses/${horse?.id}/spine?visitId=${editingVisitId}&species=${horse?.species || 'equine'}`
-                    : `/horses/${horse?.id}/spine?species=${horse?.species || 'equine'}`}
-                  className="rounded-2xl bg-[#0f2040] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#162d55]"
-                >
-                  Open →
-                </Link>
-              </div>
-            </div>
-
             {(editingVisitId || pendingSpineId) && (
             <div className="rounded-3xl bg-white p-6 shadow-md">
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
