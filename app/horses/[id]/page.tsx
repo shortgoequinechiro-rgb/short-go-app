@@ -486,7 +486,8 @@ export default function HorseDetailPage() {
 
     const { data: { user } } = await supabase.auth.getUser()
     const ext = recordFile.name.split('.').pop() || 'file'
-    const filePath = `records/${horseId}/${Date.now()}_${recordFile.name}`
+    const safeName = recordFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const filePath = `records/${horseId}/${Date.now()}_${safeName}`
 
     const { error: storageErr } = await supabase.storage
       .from('horse-photos')
