@@ -1542,6 +1542,116 @@ export default function HorseDetailPage() {
               </div>
             </div>
           )}
+
+          {/* ── Owner Info (inline under header) ── */}
+          {horse?.owners && (
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-700">
+                  <span className="font-semibold text-slate-900">
+                    👤 {horse.owners.full_name}
+                  </span>
+                  {horse.owners.phone && (
+                    <a href={`tel:${horse.owners.phone}`} className="text-blue-600 hover:underline">
+                      📞 {formatPhone(horse.owners.phone)}
+                    </a>
+                  )}
+                  {horse.owners.email && (
+                    <a href={`mailto:${horse.owners.email}`} className="text-blue-600 hover:underline">
+                      ✉️ {horse.owners.email}
+                    </a>
+                  )}
+                  {horse.owners.address && (
+                    <span className="text-slate-500">📍 {horse.owners.address}</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {/* Consent badge */}
+                  {horse.owner_id && consentOnFile !== undefined && (
+                    consentOnFile ? (
+                      <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                        ✓ Consent
+                        <a
+                          href={`/api/consent/${consentOnFile.id}/pdf`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ml-1 underline hover:text-emerald-900"
+                        >
+                          View
+                        </a>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-lg bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+                        ! No consent
+                      </span>
+                    )
+                  )}
+                  {ownerOtherHorses.length > 0 && (
+                    <select
+                      value={selectedOwnerHorseId}
+                      onChange={(e) => handleOwnerHorseJump(e.target.value)}
+                      className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700"
+                    >
+                      <option value="">Other patients ({ownerOtherHorses.length})</option>
+                      {ownerOtherHorses.map((ownerHorse) => (
+                        <option key={ownerHorse.id} value={ownerHorse.id}>
+                          {ownerHorse.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {horse.owner_id && (
+                    <Link
+                      href={`/owners/${horse.owner_id}`}
+                      className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 transition"
+                    >
+                      View Owner
+                    </Link>
+                  )}
+                  <button
+                    onClick={() => setEditingOwner(true)}
+                    className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 transition"
+                  >
+                    Edit
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Owner Edit Modal ── */}
+          {editingOwner && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => cancelOwnerEdit()}>
+              <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-slate-900">Edit Owner Info</h3>
+                  <button onClick={cancelOwnerEdit} className="text-slate-400 hover:text-slate-700 text-xl leading-none">×</button>
+                </div>
+                <div className="space-y-3">
+                  <Field label="Owner Name">
+                    <input value={ownerNameEdit} onChange={(e) => setOwnerNameEdit(e.target.value)} className="w-full rounded-xl border border-slate-300 px-4 py-3" placeholder="Owner name" />
+                  </Field>
+                  <Field label="Phone">
+                    <input value={ownerPhoneEdit} onChange={(e) => setOwnerPhoneEdit(e.target.value)} className="w-full rounded-xl border border-slate-300 px-4 py-3" placeholder="Phone" />
+                  </Field>
+                  <Field label="Email">
+                    <input value={ownerEmailEdit} onChange={(e) => setOwnerEmailEdit(e.target.value)} className="w-full rounded-xl border border-slate-300 px-4 py-3" placeholder="Email" />
+                  </Field>
+                  <Field label="Address">
+                    <textarea value={ownerAddressEdit} onChange={(e) => setOwnerAddressEdit(e.target.value)} className="min-h-[80px] w-full rounded-xl border border-slate-300 px-4 py-3" placeholder="Owner address" />
+                  </Field>
+                  <div className="flex gap-2 pt-2">
+                    <button onClick={saveOwnerInfo} className="rounded-xl bg-[#0f2040] px-4 py-3 text-sm text-white hover:bg-[#162d55] transition-colors">
+                      Save Owner Info
+                    </button>
+                    <button onClick={cancelOwnerEdit} className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Tab navigation */}
@@ -1835,135 +1945,6 @@ export default function HorseDetailPage() {
                 </div>
               )
             })()}
-
-            <div className="rounded-3xl bg-white p-6 shadow-md">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-xl font-semibold text-slate-900">Owner Info</h2>
-                {!editingOwner ? (
-                  <button
-                    onClick={() => setEditingOwner(true)}
-                    className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
-                  >
-                    Edit
-                  </button>
-                ) : null}
-              </div>
-
-              {!editingOwner ? (
-                <div className="mt-4 space-y-3 text-sm text-slate-700">
-                  <InfoRow label="Owner" value={horse?.owners?.full_name || '—'} />
-                  <InfoRow label="Phone" value={formatPhone(horse?.owners?.phone)} />
-                  <InfoRow label="Email" value={horse?.owners?.email || '—'} />
-                  <InfoRow label="Address" value={horse?.owners?.address || '—'} />
-
-                  {/* Consent status */}
-                  {horse?.owner_id && consentOnFile !== undefined && (
-                    <div className="pt-2 border-t border-slate-100">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          {consentOnFile ? (
-                            <>
-                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 text-xs font-bold">✓</span>
-                              <div>
-                                <p className="text-xs font-semibold text-emerald-700">Consent on file</p>
-                                <p className="text-xs text-slate-400">
-                                  Signed {new Date(consentOnFile.signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                </p>
-                              </div>
-                            </>
-                          ) : (
-                            <>
-                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-600 text-xs font-bold">!</span>
-                              <p className="text-xs font-semibold text-amber-700">No consent on file</p>
-                            </>
-                          )}
-                        </div>
-                        {consentOnFile && (
-                          <a
-                            href={`/api/consent/${consentOnFile.id}/pdf`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 transition"
-                          >
-                            View PDF
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="mt-4 grid gap-4">
-                  <Field label="Owner Name">
-                    <input
-                      value={ownerNameEdit}
-                      onChange={(e) => setOwnerNameEdit(e.target.value)}
-                      className="w-full rounded-xl border border-slate-300 px-4 py-3"
-                      placeholder="Owner name"
-                    />
-                  </Field>
-
-                  <Field label="Phone">
-                    <input
-                      value={ownerPhoneEdit}
-                      onChange={(e) => setOwnerPhoneEdit(e.target.value)}
-                      className="w-full rounded-xl border border-slate-300 px-4 py-3"
-                      placeholder="Phone"
-                    />
-                  </Field>
-
-                  <Field label="Email">
-                    <input
-                      value={ownerEmailEdit}
-                      onChange={(e) => setOwnerEmailEdit(e.target.value)}
-                      className="w-full rounded-xl border border-slate-300 px-4 py-3"
-                      placeholder="Email"
-                    />
-                  </Field>
-
-                  <Field label="Address">
-                    <textarea
-                      value={ownerAddressEdit}
-                      onChange={(e) => setOwnerAddressEdit(e.target.value)}
-                      className="min-h-[96px] w-full rounded-xl border border-slate-300 px-4 py-3"
-                      placeholder="Owner address"
-                    />
-                  </Field>
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={saveOwnerInfo}
-                      className="rounded-xl bg-[#0f2040] px-4 py-3 text-sm text-white hover:bg-[#162d55] transition-colors"
-                    >
-                      Save Owner Info
-                    </button>
-                    <button
-                      onClick={cancelOwnerEdit}
-                      className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <div className="mt-5 border-t border-slate-200 pt-5">
-                <Field label="Other Patients For This Owner">
-                  <select
-                    value={selectedOwnerHorseId}
-                    onChange={(e) => handleOwnerHorseJump(e.target.value)}
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3"
-                  >
-                    <option value="">Select a horse</option>
-                    {ownerOtherHorses.map((ownerHorse) => (
-                      <option key={ownerHorse.id} value={ownerHorse.id}>
-                        {ownerHorse.name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-              </div>
-            </div>
 
             {/* ── Additional Contacts Card ── */}
             <div className="rounded-3xl bg-white p-6 shadow-md">
