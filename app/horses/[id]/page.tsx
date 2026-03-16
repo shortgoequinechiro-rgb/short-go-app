@@ -1556,12 +1556,6 @@ export default function HorseDetailPage() {
                 <h1 className="text-xl font-bold text-slate-900 md:text-3xl">
                   {horse?.name || 'Patient Record'}
                 </h1>
-                <Link
-                  href={`/horses/${horseId}/spine?newVisit=true&species=${horse?.species || 'equine'}`}
-                  className="rounded-xl bg-[#0f2040] px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#162d55]"
-                >
-                  + Start New Visit
-                </Link>
                 {horse?.species === 'canine' ? (
                   <span className="rounded-xl bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">🐕 Canine</span>
                 ) : (
@@ -1599,6 +1593,14 @@ export default function HorseDetailPage() {
                 <span>{horse?.barn_location || '—'}</span>
               </p>
             </div>
+
+            {/* ── Start New Visit (far right) ── */}
+            <Link
+              href={`/horses/${horseId}/spine?newVisit=true&species=${horse?.species || 'equine'}`}
+              className="flex-shrink-0 rounded-xl bg-[#0f2040] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#162d55]"
+            >
+              + Start New Visit
+            </Link>
           </div>
 
           {horse?.medical_alerts && (
@@ -2176,10 +2178,11 @@ export default function HorseDetailPage() {
               </div>
             </div>
 
+            {(editingVisitId || pendingSpineId) && (
             <div className="rounded-3xl bg-white p-6 shadow-md">
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <h2 className="text-2xl font-semibold text-slate-900">
-                  {editingVisitId ? 'Edit Visit' : 'Add Visit'}
+                  {editingVisitId ? 'Edit Visit' : 'New Visit'}
                 </h2>
 
                 {editingVisitId ? (
@@ -2394,6 +2397,7 @@ export default function HorseDetailPage() {
                 </div>
               </div>
             </div>
+            )}
 
             {message ? (
               <div className="rounded-2xl bg-white p-4 text-sm text-slate-700 shadow-sm">
