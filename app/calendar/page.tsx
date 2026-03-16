@@ -190,7 +190,6 @@ function MiniCalendar({
 function ApptPopup({
   appt,
   onClose,
-  style,
   isMobile,
   onNotesSaved,
   patientCount,
@@ -200,7 +199,6 @@ function ApptPopup({
 }: {
   appt: Appointment
   onClose: () => void
-  style: React.CSSProperties
   isMobile: boolean
   onNotesSaved: (id: string, notes: string) => void
   patientCount: number
@@ -415,12 +413,21 @@ function ApptPopup({
   }
 
   return (
-    <div
-      className="fixed z-50 w-72 rounded-xl border border-[#1a3358] bg-[#0d1b30] shadow-2xl"
-      style={style}
-    >
-      {inner}
-    </div>
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-40 bg-black/40"
+        onClick={onClose}
+      />
+      {/* Centered popup */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+        <div
+          className="pointer-events-auto w-72 max-h-[85vh] overflow-y-auto rounded-xl border border-[#1a3358] bg-[#0d1b30] shadow-2xl"
+        >
+          {inner}
+        </div>
+      </div>
+    </>
   )
 }
 
@@ -1048,7 +1055,6 @@ export default function CalendarPage() {
   const [loading, setLoading]       = useState(true)
   const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null)
   const [editingAppt, setEditingAppt] = useState<Appointment | null>(null)
-  const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({})
   const [miniCalDate, setMiniCalDate] = useState<Date>(today)
 
   const [blockedTimes, setBlockedTimes] = useState<BlockedTime[]>([])
@@ -1301,14 +1307,6 @@ export default function CalendarPage() {
       setSelectedAppt(null)
       return
     }
-    if (!isMobile) {
-      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-      const popupW = 256
-      let left = rect.right + 8
-      if (left + popupW > window.innerWidth) left = rect.left - popupW - 8
-      const top = Math.min(rect.top, window.innerHeight - 300)
-      setPopupStyle({ position: 'fixed', top, left, zIndex: 9999 })
-    }
     setSelectedAppt(appt)
   }
 
@@ -1446,7 +1444,7 @@ export default function CalendarPage() {
             key={selectedAppt.id}
             appt={selectedAppt}
             onClose={() => setSelectedAppt(null)}
-            style={popupStyle}
+
             isMobile={true}
             patientCount={appointments.filter(a =>
               a.appointment_date === selectedAppt.appointment_date &&
@@ -1851,7 +1849,6 @@ export default function CalendarPage() {
           key={selectedAppt.id}
           appt={selectedAppt}
           onClose={() => setSelectedAppt(null)}
-          style={popupStyle}
           isMobile={false}
           patientCount={appointments.filter(a =>
             a.appointment_date === selectedAppt.appointment_date &&
