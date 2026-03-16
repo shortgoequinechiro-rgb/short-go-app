@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 
 type Owner = {
@@ -121,6 +121,7 @@ const REGION_LABELS: Record<string, string> = {
 export default function HorseDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const horseId = params.id as string
 
   const [checkingAuth, setCheckingAuth] = useState(true)
@@ -128,6 +129,7 @@ export default function HorseDetailPage() {
   const [userId, setUserId] = useState('')
   const [message, setMessage] = useState('')
   const [activeTab, setActiveTab] = useState<'info' | 'visits' | 'photos'>('info')
+  const [pendingSpineId, setPendingSpineId] = useState<string | null>(null)
 
   const [owners, setOwners] = useState<Owner[]>([])
   const [horse, setHorse] = useState<Horse | null>(null)
@@ -555,6 +557,7 @@ export default function HorseDetailPage() {
 
   function resetVisitForm() {
     setEditingVisitId(null)
+    setPendingSpineId(null)
     setVisitDate(emptyVisitForm.visitDate)
     setVisitLocation(emptyVisitForm.visitLocation)
     setProviderName(emptyVisitForm.providerName)
@@ -767,6 +770,15 @@ export default function HorseDetailPage() {
 
       savedVisitId = data.id
       setMessage('Visit saved successfully.')
+    }
+
+    // Link spine assessment to the new visit if we came from the new visit flow
+    if (pendingSpineId && savedVisitId) {
+      await supabase
+        .from('spine_assessments')
+        .update({ visit_id: savedVisitId })
+        .eq('id', pendingSpineId)
+      setPendingSpineId(null)
     }
 
     if (autoEmailAfterSave && savedVisitId) {
@@ -1249,6 +1261,56 @@ export default function HorseDetailPage() {
     init()
   }, [horseId])
 
+  // ── Detect redirect from spine assessment (new visit flow) ──
+  useEffect(() => {
+    const fromSpineId = searchParams.get('fromSpine')
+    if (!fromSpineId || checkingAuth) return
+
+    async function prefillFromSpine() {
+      const { data: spineData } = await supabase
+        .from('spine_assessments')
+        .select('id, findings, notes')
+        .eq('id', fromSpineId)
+        .single()
+
+      if (!spineData) return
+
+      const findings = (spineData.findings ?? {}) as Record<string, { left?: boolean; right?: boolean }>
+
+      // Build treated areas summary from flagged segments
+      const flagged: string[] = []
+      for (const [key, val] of Object.entries(findings)) {
+        if (!val.left && !val.right) continue
+        const sides: string[] = []
+        if (val.left) sides.push('L')
+        if (val.right) sides.push('R')
+        const label = key.toUpperCase().replace('_', ' ')
+        flagged.push(`${label} (${sides.join('/')})`)
+      }
+
+      const treatedSummary = flagged.length > 0 ? flagged.join(', ') : ''
+      const objectiveSummary = flagged.length > 0
+        ? `Spine assessment: ${flagged.length} segment${flagged.length === 1 ? '' : 's'} flagged — ${treatedSummary}${spineData.notes ? `\nNotes: ${spineData.notes}` : ''}`
+        : spineData.notes ? `Spine assessment notes: ${spineData.notes}` : ''
+
+      // Pre-fill the visit form
+      const todayISO = new Date().toISOString().slice(0, 10)
+      setVisitDate(todayISO)
+      setReasonForVisit('Chiropractic Adjustment')
+      setTreatedAreas(treatedSummary)
+      setObjective(objectiveSummary)
+      if (spineData.notes) setQuickNotes(spineData.notes)
+      setPendingSpineId(fromSpineId)
+      setActiveTab('visits')
+
+      // Clear the URL param so refreshing doesn't re-trigger
+      window.history.replaceState({}, '', `/horses/${horseId}`)
+    }
+
+    prefillFromSpine()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, checkingAuth])
+
   useEffect(() => {
     if (horse?.owner_id) {
       loadOwnerOtherHorses(horse.owner_id)
@@ -1494,6 +1556,12 @@ export default function HorseDetailPage() {
                 <h1 className="text-xl font-bold text-slate-900 md:text-3xl">
                   {horse?.name || 'Patient Record'}
                 </h1>
+                <Link
+                  href={`/horses/${horseId}/spine?newVisit=true&species=${horse?.species || 'equine'}`}
+                  className="rounded-xl bg-[#0f2040] px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#162d55]"
+                >
+                  + Start New Visit
+                </Link>
                 {horse?.species === 'canine' ? (
                   <span className="rounded-xl bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">🐕 Canine</span>
                 ) : (

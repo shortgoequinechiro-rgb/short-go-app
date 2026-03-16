@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, Suspense } from 'react'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../../lib/supabase'
 
@@ -113,8 +113,10 @@ type Visit = { id: string; visit_date: string | null; reason_for_visit: string |
 function SpineInner() {
   const { id: horseId } = useParams<{ id: string }>()
   const searchParams     = useSearchParams()
+  const router           = useRouter()
   const urlVisitId       = searchParams.get('visitId') ?? null
   const urlSpecies       = searchParams.get('species') ?? 'equine'
+  const isNewVisitFlow   = searchParams.get('newVisit') === 'true'
   const SPINE_SECTIONS   = urlSpecies === 'canine' ? CANINE_SPINE_SECTIONS : EQUINE_SPINE_SECTIONS
 
   const [horseName,       setHorseName]       = useState('')
@@ -201,14 +203,14 @@ function SpineInner() {
     setSaveMsg('')
 
     const { data: { user } } = await supabase.auth.getUser()
-    const { error } = await supabase.from('spine_assessments').insert({
+    const { data, error } = await supabase.from('spine_assessments').insert({
       horse_id:       horseId,
       visit_id:       selectedVisitId || null,
       findings,
       notes,
       assessed_at:    new Date().toISOString(),
       practitioner_id: user?.id,
-    })
+    }).select('id').single()
 
     setSaving(false)
 
@@ -217,6 +219,13 @@ function SpineInner() {
     } else {
       const ts = new Date().toISOString()
       setLastSaved(ts)
+
+      if (isNewVisitFlow && data?.id) {
+        // Redirect back to patient page to pre-fill visit form with spine data
+        router.push(`/horses/${horseId}?fromSpine=${data.id}`)
+        return
+      }
+
       setSaveMsg('Saved! This will appear on the visit PDF.')
       setTimeout(() => setSaveMsg(''), 4000)
     }
@@ -250,7 +259,7 @@ function SpineInner() {
               </h1>
               <p className="text-xs text-slate-500">
                 {horseName && `${horseName} · `}
-                {selectedVisitId ? 'Linked to visit' : 'No visit selected'}
+                {isNewVisitFlow ? 'Complete assessment, then continue to visit form' : selectedVisitId ? 'Linked to visit' : 'No visit selected'}
               </p>
             </div>
           </div>
@@ -261,7 +270,7 @@ function SpineInner() {
               disabled={saving || noTable || loading}
               className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-40"
             >
-              {saving ? 'Saving…' : 'Save'}
+              {saving ? 'Saving…' : isNewVisitFlow ? 'Save & Continue to Visit' : 'Save'}
             </button>
             {flaggedCount > 0 && (
               <button
