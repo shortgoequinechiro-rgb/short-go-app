@@ -245,26 +245,28 @@ function SpineInner() {
 
       {/* ── Sticky header ── */}
       <div className="sticky top-0 z-20 border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-4">
+        <div className="mx-auto max-w-2xl px-4 py-4">
+          {/* Top row: Back + title */}
           <div className="flex items-center gap-3">
             <Link
               href={`/horses/${horseId}`}
-              className="flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
+              className="flex-shrink-0 flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
             >
               ← Back
             </Link>
-            <div>
+            <div className="min-w-0">
               <h1 className="text-lg font-semibold text-slate-900 leading-tight">
                 {urlSpecies === 'canine' ? 'Canine Spine Assessment' : 'Spine Assessment'}
               </h1>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 truncate">
                 {horseName && `${horseName} · `}
                 {isNewVisitFlow ? 'Complete assessment, then continue to visit form' : selectedVisitId ? 'Linked to visit' : 'No visit selected'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Action buttons row */}
+          <div className="mt-3 flex items-center gap-2">
             <button
               onClick={save}
               disabled={saving || noTable || loading}
