@@ -1696,15 +1696,14 @@ export default function HorseDetailPage() {
                 )}
               </div>
               <p className="mt-2 flex flex-wrap gap-x-2 text-sm text-slate-600 md:text-base">
-                <span>{horse?.breed || '—'}</span>
-                <span className="text-slate-300">•</span>
-                <span>{horse?.sex || '—'}</span>
-                <span className="text-slate-300">•</span>
-                <span>{horse?.age || '—'}</span>
-                <span className="text-slate-300">•</span>
-                <span>{horse?.discipline || '—'}</span>
-                <span className="text-slate-300">•</span>
-                <span>{horse?.barn_location || '—'}</span>
+                {[horse?.breed, horse?.sex, horse?.age, horse?.discipline, horse?.barn_location]
+                  .filter(Boolean)
+                  .map((val, i, arr) => (
+                    <span key={i}>
+                      <span>{val}</span>
+                      {i < arr.length - 1 && <span className="ml-2 text-slate-300">•</span>}
+                    </span>
+                  ))}
               </p>
             </div>
 
