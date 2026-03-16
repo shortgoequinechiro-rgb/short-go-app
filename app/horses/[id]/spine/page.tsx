@@ -314,34 +314,45 @@ function SpineInner() {
         <div className="mx-auto max-w-2xl space-y-4 px-4 py-5">
 
           {/* Visit selector */}
-          <div className="rounded-3xl bg-white px-5 py-4 shadow-sm">
-            <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-              Link to Visit
-            </label>
-            <select
-              value={selectedVisitId}
-              onChange={e => setSelectedVisitId(e.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
-            >
-              <option value="">— No visit (standalone record) —</option>
-              {visits.map(v => (
-                <option key={v.id} value={v.id}>
-                  {v.visit_date
-                    ? new Date(v.visit_date + 'T00:00:00').toLocaleDateString('en-US', {
-                        month: 'short', day: 'numeric', year: 'numeric',
-                      })
-                    : 'No date'
-                  }
-                  {v.reason_for_visit ? ` — ${v.reason_for_visit}` : ''}
-                </option>
-              ))}
-            </select>
-            {selectedVisitId && (
-              <p className="mt-1.5 text-xs text-slate-500">
-                This assessment will appear in that visit&apos;s PDF export.
+          {isNewVisitFlow ? (
+            <div className="rounded-3xl bg-emerald-50 border border-emerald-200 px-5 py-4 shadow-sm">
+              <p className="text-sm font-semibold text-emerald-800">
+                New Visit — {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </p>
-            )}
-          </div>
+              <p className="mt-1 text-xs text-emerald-600">
+                This assessment will be linked to the visit automatically after you save &amp; continue.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-3xl bg-white px-5 py-4 shadow-sm">
+              <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+                Link to Visit
+              </label>
+              <select
+                value={selectedVisitId}
+                onChange={e => setSelectedVisitId(e.target.value)}
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
+              >
+                <option value="">— No visit (standalone record) —</option>
+                {visits.map(v => (
+                  <option key={v.id} value={v.id}>
+                    {v.visit_date
+                      ? new Date(v.visit_date + 'T00:00:00').toLocaleDateString('en-US', {
+                          month: 'short', day: 'numeric', year: 'numeric',
+                        })
+                      : 'No date'
+                    }
+                    {v.reason_for_visit ? ` — ${v.reason_for_visit}` : ''}
+                  </option>
+                ))}
+              </select>
+              {selectedVisitId && (
+                <p className="mt-1.5 text-xs text-slate-500">
+                  This assessment will appear in that visit&apos;s PDF export.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* L / R column header */}
           <div className="flex items-center justify-between rounded-2xl bg-white px-5 py-3 shadow-sm">
