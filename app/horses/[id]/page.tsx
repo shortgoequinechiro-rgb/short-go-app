@@ -83,6 +83,17 @@ type VisitAnatomySummaryItem = {
   notes: string
 }
 
+type PatientRecord = {
+  id: string
+  horse_id: string
+  file_name: string
+  file_path: string
+  file_type: string | null
+  note: string | null
+  uploaded_at: string
+  practitioner_id: string | null
+}
+
 const RECENT_HORSE_IDS_KEY = 'shortgo_recent_horse_ids'
 const RECENT_OWNER_IDS_KEY = 'shortgo_recent_owner_ids'
 
@@ -128,7 +139,7 @@ export default function HorseDetailPage() {
   const [userEmail, setUserEmail] = useState('')
   const [userId, setUserId] = useState('')
   const [message, setMessage] = useState('')
-  const [activeTab, setActiveTab] = useState<'info' | 'visits' | 'photos'>('info')
+  const [activeTab, setActiveTab] = useState<'info' | 'visits' | 'photos' | 'records'>('info')
   const [pendingSpineId, setPendingSpineId] = useState<string | null>(null)
 
   const [owners, setOwners] = useState<Owner[]>([])
@@ -216,6 +227,16 @@ export default function HorseDetailPage() {
   const profileCanvasRef = useRef<HTMLCanvasElement>(null)
   const profileStreamRef = useRef<MediaStream | null>(null)
   const profileFileInputRef = useRef<HTMLInputElement>(null)
+
+  // Records state
+  const [records, setRecords] = useState<PatientRecord[]>([])
+  const [recordFile, setRecordFile] = useState<File | null>(null)
+  const [recordNote, setRecordNote] = useState('')
+  const [uploadingRecord, setUploadingRecord] = useState(false)
+  const [recordMsg, setRecordMsg] = useState('')
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null)
+  const [editingRecordNote, setEditingRecordNote] = useState('')
+  const recordFileInputRef = useRef<HTMLInputElement>(null)
 
   async function checkUser() {
     const {
@@ -438,6 +459,97 @@ export default function HorseDetailPage() {
     )
 
     setPhotos(signedPhotos)
+  }
+
+  // ── Records CRUD ──────────────────────────────────────────────────────────
+
+  async function loadRecords() {
+    const { data, error } = await supabase
+      .from('patient_records')
+      .select('*')
+      .eq('horse_id', horseId)
+      .order('uploaded_at', { ascending: false })
+
+    if (error) {
+      // Table may not exist yet
+      if (error.code === '42P01') return
+      console.error('Error loading records:', error.message)
+      return
+    }
+    setRecords((data ?? []) as PatientRecord[])
+  }
+
+  async function uploadRecord() {
+    if (!recordFile) { setRecordMsg('Please select a file.'); return }
+    setUploadingRecord(true)
+    setRecordMsg('')
+
+    const { data: { user } } = await supabase.auth.getUser()
+    const ext = recordFile.name.split('.').pop() || 'file'
+    const filePath = `records/${horseId}/${Date.now()}_${recordFile.name}`
+
+    const { error: storageErr } = await supabase.storage
+      .from('horse-photos')
+      .upload(filePath, recordFile)
+
+    if (storageErr) {
+      setUploadingRecord(false)
+      setRecordMsg('Upload failed: ' + storageErr.message)
+      return
+    }
+
+    const { error: dbErr } = await supabase.from('patient_records').insert({
+      horse_id: horseId,
+      file_name: recordFile.name,
+      file_path: filePath,
+      file_type: ext.toLowerCase(),
+      note: recordNote || null,
+      uploaded_at: new Date().toISOString(),
+      practitioner_id: user?.id,
+    })
+
+    setUploadingRecord(false)
+
+    if (dbErr) {
+      // Clean up uploaded file if DB insert fails
+      await supabase.storage.from('horse-photos').remove([filePath])
+      if (dbErr.code === '42P01') {
+        setRecordMsg('The patient_records table does not exist. Please run migration 008_add_patient_records.sql in Supabase.')
+      } else {
+        setRecordMsg('Error saving record: ' + dbErr.message)
+      }
+      return
+    }
+
+    setRecordFile(null)
+    setRecordNote('')
+    setRecordMsg('Record uploaded successfully.')
+    if (recordFileInputRef.current) recordFileInputRef.current.value = ''
+    setTimeout(() => setRecordMsg(''), 3000)
+    await loadRecords()
+  }
+
+  async function deleteRecord(rec: PatientRecord) {
+    if (!confirm(`Delete "${rec.file_name}"? This cannot be undone.`)) return
+    await supabase.storage.from('horse-photos').remove([rec.file_path])
+    await supabase.from('patient_records').delete().eq('id', rec.id)
+    setRecords(prev => prev.filter(r => r.id !== rec.id))
+  }
+
+  async function updateRecordNote(id: string, note: string) {
+    await supabase.from('patient_records').update({ note: note || null }).eq('id', id)
+    setRecords(prev => prev.map(r => r.id === id ? { ...r, note: note || null } : r))
+    setEditingRecordId(null)
+    setEditingRecordNote('')
+  }
+
+  async function downloadRecord(rec: PatientRecord) {
+    const { data, error } = await supabase.storage
+      .from('horse-photos')
+      .createSignedUrl(rec.file_path, 300)
+    if (data?.signedUrl) {
+      window.open(data.signedUrl, '_blank')
+    }
   }
 
   async function saveHorseInfo() {
@@ -1256,6 +1368,7 @@ export default function HorseDetailPage() {
       await loadHorse()
       await loadVisits()
       await loadPhotos()
+      await loadRecords()
     }
 
     init()
@@ -1726,7 +1839,7 @@ export default function HorseDetailPage() {
 
         {/* Tab navigation */}
         <div className="mt-6 flex gap-1 rounded-2xl bg-[#edf2f7] p-1.5 shadow-sm">
-          {(['info', 'visits', 'photos'] as const).map((tab) => (
+          {(['info', 'visits', 'photos', 'records'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -1736,7 +1849,7 @@ export default function HorseDetailPage() {
                   : 'text-slate-600 hover:bg-white hover:shadow-sm'
               }`}
             >
-              {tab === 'info' ? 'Info' : tab === 'visits' ? 'Visits' : 'Photos'}
+              {tab === 'info' ? 'Info' : tab === 'visits' ? 'Visits' : tab === 'photos' ? 'Photos' : 'Records'}
             </button>
           ))}
         </div>
@@ -2769,6 +2882,144 @@ export default function HorseDetailPage() {
                 )}
               </div>
             </div>
+        </div>
+        )}
+
+        {/* Records Tab */}
+        {activeTab === 'records' && (
+        <div className="mt-6 space-y-6">
+
+          {/* Upload new record */}
+          <div className="rounded-3xl bg-white p-6 shadow-md">
+            <h2 className="text-xl font-semibold text-slate-900">Upload Record</h2>
+            <p className="mt-1 text-sm text-slate-500">Upload vet records, imaging, lab results, or any other files from the owner.</p>
+
+            <div className="mt-4 space-y-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">File</label>
+                <input
+                  ref={recordFileInputRef}
+                  type="file"
+                  onChange={e => setRecordFile(e.target.files?.[0] ?? null)}
+                  className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-[#0f2040] file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-[#162d55]"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Note</label>
+                <textarea
+                  value={recordNote}
+                  onChange={e => setRecordNote(e.target.value)}
+                  placeholder="e.g. X-ray of left hind hock from 3/10/26, Bloodwork results from Dr. Smith..."
+                  className="min-h-[80px] w-full rounded-xl border border-slate-300 px-4 py-3 text-sm placeholder-slate-400"
+                />
+              </div>
+
+              {recordMsg && (
+                <p className={`rounded-xl px-3 py-2 text-sm ${recordMsg.includes('Error') || recordMsg.includes('failed') || recordMsg.includes('does not exist') ? 'border border-red-200 bg-red-50 text-red-700' : 'border border-emerald-200 bg-emerald-50 text-emerald-700'}`}>
+                  {recordMsg}
+                </p>
+              )}
+
+              <button
+                onClick={uploadRecord}
+                disabled={uploadingRecord || !recordFile}
+                className="rounded-xl bg-[#0f2040] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#162d55] disabled:opacity-40"
+              >
+                {uploadingRecord ? 'Uploading…' : 'Upload Record'}
+              </button>
+            </div>
+          </div>
+
+          {/* Records list */}
+          <div className="rounded-3xl bg-white p-6 shadow-md">
+            <h2 className="text-xl font-semibold text-slate-900">Uploaded Records</h2>
+
+            {records.length === 0 ? (
+              <p className="mt-4 text-sm text-slate-400">No records uploaded yet.</p>
+            ) : (
+              <div className="mt-4 space-y-3">
+                {records.map(rec => {
+                  const isEditing = editingRecordId === rec.id
+                  const icon = rec.file_type === 'pdf' ? '📄'
+                    : ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(rec.file_type || '') ? '🖼️'
+                    : ['doc', 'docx'].includes(rec.file_type || '') ? '📝'
+                    : ['xls', 'xlsx', 'csv'].includes(rec.file_type || '') ? '📊'
+                    : '📎'
+
+                  return (
+                    <div key={rec.id} className="rounded-2xl border border-slate-200 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 min-w-0">
+                          <span className="mt-0.5 text-xl leading-none">{icon}</span>
+                          <div className="min-w-0">
+                            <p className="font-medium text-slate-900 text-sm truncate">{rec.file_name}</p>
+                            <p className="text-xs text-slate-400 mt-0.5">
+                              Uploaded {new Date(rec.uploaded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              {rec.file_type && <span className="ml-1 uppercase text-slate-300">· {rec.file_type}</span>}
+                            </p>
+
+                            {isEditing ? (
+                              <div className="mt-2 flex items-end gap-2">
+                                <textarea
+                                  value={editingRecordNote}
+                                  onChange={e => setEditingRecordNote(e.target.value)}
+                                  className="min-h-[60px] w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                                  placeholder="Add a note about this file…"
+                                />
+                                <div className="flex flex-col gap-1 shrink-0">
+                                  <button
+                                    onClick={() => updateRecordNote(rec.id, editingRecordNote)}
+                                    className="rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#162d55]"
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    onClick={() => { setEditingRecordId(null); setEditingRecordNote('') }}
+                                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-50"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : rec.note ? (
+                              <p className="mt-1.5 text-sm text-slate-600 bg-slate-50 rounded-lg px-3 py-2">{rec.note}</p>
+                            ) : (
+                              <p className="mt-1.5 text-xs text-slate-300 italic">No note</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => downloadRecord(rec)}
+                            title="View / Download"
+                            className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition"
+                          >
+                            View
+                          </button>
+                          <button
+                            onClick={() => { setEditingRecordId(rec.id); setEditingRecordNote(rec.note || '') }}
+                            title="Edit note"
+                            className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => deleteRecord(rec)}
+                            title="Delete record"
+                            className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-500 hover:bg-red-50 transition"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </div>
         )}
       </div>
