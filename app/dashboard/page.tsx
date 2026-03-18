@@ -83,6 +83,7 @@ export default function Home() {
   const [checkingAuth, setCheckingAuth] = useState(true)
   const [userEmail, setUserEmail] = useState('')
   const [userId, setUserId] = useState('')
+  const [practitionerLogoUrl, setPractitionerLogoUrl] = useState<string | null>(null)
   const [message, setMessage] = useState('')
 
   const [owners, setOwners] = useState<Owner[]>([])
@@ -309,6 +310,17 @@ export default function Home() {
 
     setUserEmail(user.email || '')
     setUserId(user.id)
+
+    // Fetch practitioner logo
+    const { data: practitioner } = await supabase
+      .from('practitioners')
+      .select('logo_url')
+      .eq('id', user.id)
+      .single()
+    if (practitioner?.logo_url) {
+      setPractitionerLogoUrl(practitioner.logo_url)
+    }
+
     setCheckingAuth(false)
     return true
   }
@@ -1011,10 +1023,11 @@ export default function Home() {
             <div className="flex items-center gap-3">
               <div className="relative h-14 w-14 flex-shrink-0 md:h-20 md:w-20">
                 <Image
-                  src="/logo-gold.png"
-                  alt="Stride logo"
+                  src={practitionerLogoUrl || '/logo-gold.png'}
+                  alt="Practice logo"
                   fill
                   className="object-contain"
+                  unoptimized={!!practitionerLogoUrl}
                 />
               </div>
               <div>
