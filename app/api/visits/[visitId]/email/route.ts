@@ -332,10 +332,10 @@ async function buildVisitPdf(visitId: string) {
         height: drawHeight,
       })
 
-      drawTextLine('Short-Go Equine Chiropractic', margin + drawWidth + 14, y - 2, 19, true, colors.dark)
+      drawTextLine('Stride Equine Chiropractic', margin + drawWidth + 14, y - 2, 19, true, colors.dark)
       drawTextLine('Equine Chiropractic Visit Report', margin + drawWidth + 14, y - 22, 11, false, colors.muted)
     } else {
-      drawTextLine('Short-Go Equine Chiropractic', margin, y - 2, 19, true, colors.dark)
+      drawTextLine('Stride Equine Chiropractic', margin, y - 2, 19, true, colors.dark)
       drawTextLine('Equine Chiropractic Visit Report', margin, y - 22, 11, false, colors.muted)
     }
 
@@ -558,7 +558,7 @@ async function buildVisitPdf(visitId: string) {
   y -= 16
   drawTextLine('Dr. Andrew Leo D.C., M.S., cAVCA', margin, y, 11, true, colors.text)
   y -= 14
-  drawTextLine('Short-Go Equine Chiropractic', margin, y, 10, false, colors.muted)
+  drawTextLine('Stride Equine Chiropractic', margin, y, 10, false, colors.muted)
 
   const pdfBytes = await pdfDoc.save()
   const fileName = `${horse?.name || 'horse'}-visit-${visit.visit_date || 'report'}.pdf`
@@ -616,7 +616,7 @@ Attached is your visit report for ${horse?.name || 'your horse'} on ${visit.visi
 
 Thank you,
 Dr. Andrew Leo D.C., M.S., cAVCA
-Short-Go Equine Chiropractic`,
+Stride Equine Chiropractic`,
       attachments: [
         {
           filename: fileName,

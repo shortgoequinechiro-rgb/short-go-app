@@ -1012,7 +1012,7 @@ export default function Home() {
               <div className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded-xl bg-white/10 md:h-16 md:w-16 md:rounded-2xl">
                 <Image
                   src="/logo.png"
-                  alt="Short-Go logo"
+                  alt="Stride logo"
                   fill
                   className="object-contain p-1"
                 />

@@ -14,6 +14,12 @@ type Owner = {
   practitioner_id: string | null
 }
 
+type Practitioner = {
+  id: string
+  practice_name: string
+  logo_url: string | null
+}
+
 type ConsentRecord = {
   id: string
   owner_id: string
@@ -51,7 +57,7 @@ CREATE INDEX ON consent_forms (owner_id, signed_at DESC);
 const AGREEMENT_ITEMS = [
   {
     key: 'scope',
-    text: 'I understand that Short-Go Equine Chiropractic provides animal chiropractic care and that this service is complementary to, and not a replacement for, conventional veterinary care.',
+    text: 'I understand that Stride Equine Chiropractic provides animal chiropractic care and that this service is complementary to, and not a replacement for, conventional veterinary care.',
   },
   {
     key: 'risks',
@@ -59,7 +65,7 @@ const AGREEMENT_ITEMS = [
   },
   {
     key: 'records',
-    text: 'I authorize Short-Go Equine Chiropractic to create and retain health records for my animal(s) and to contact me regarding follow-up care and scheduling.',
+    text: 'I authorize Stride Equine Chiropractic to create and retain health records for my animal(s) and to contact me regarding follow-up care and scheduling.',
   },
   {
     key: 'photos',
@@ -91,6 +97,7 @@ export default function ConsentFormPage() {
 
   // Data state
   const [owner, setOwner] = useState<Owner | null>(null)
+  const [practitioner, setPractitioner] = useState<Practitioner | null>(null)
   const [existingConsents, setExistingConsents] = useState<ConsentRecord[]>([])
   const [horses, setHorses] = useState<{ id: string; name: string }[]>([])
 
@@ -134,6 +141,15 @@ export default function ConsentFormPage() {
 
       setOwner(ownerData as Owner)
       setHorses((horseData || []) as { id: string; name: string }[])
+
+      // Fetch practitioner data if practitioner_id exists
+      if (ownerData.practitioner_id) {
+        const practRes = await fetch(`/api/public/practitioner/${ownerData.practitioner_id}`)
+        if (practRes.ok) {
+          const practData = await practRes.json()
+          setPractitioner(practData)
+        }
+      }
 
       const params = new URLSearchParams(window.location.search)
       const horseIdParam = params.get('horseId')
@@ -403,7 +419,13 @@ export default function ConsentFormPage() {
 
             {/* Practice header */}
             <div className="rounded-3xl bg-slate-900 px-6 py-6 text-center">
-              <h2 className="text-xl font-bold text-white">Short-Go Equine Chiropractic</h2>
+              {practitioner?.logo_url && (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={practitioner.logo_url} alt="Practice Logo" className="mx-auto mb-4 max-h-16 object-contain" />
+                </>
+              )}
+              <h2 className="text-xl font-bold text-white">{practitioner?.practice_name || 'Stride Equine Chiropractic'}</h2>
               <p className="mt-1 text-sm text-slate-400">Client Consent & Service Agreement</p>
               <p className="mt-2 text-xs text-slate-500">Version 1.0 · {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
             </div>

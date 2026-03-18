@@ -62,7 +62,7 @@ const TESTIMONIALS = [
     title: "Equine & Canine Practitioner, KY",
   },
   {
-    quote: "I've tried three different practice management apps. None of them understood what we actually do until Short-Go.",
+    quote: "I've tried three different practice management apps. None of them understood what we actually do until Stride.",
     name: "Dr. Alicia R.",
     title: "cAVCA Certified Chiropractor, CO",
   },
@@ -89,8 +89,8 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="Short-Go" className="h-8 w-8 rounded-lg" />
-            <span className="text-lg font-bold text-white tracking-wide">Short-Go</span>
+            <img src="/logo.png" alt="Stride" className="h-8 w-8 rounded-lg" />
+            <span className="text-lg font-bold text-white tracking-wide">Stride</span>
           </div>
           <nav className="flex items-center gap-3">
             <Link
@@ -142,7 +142,7 @@ export default function LandingPage() {
           </h1>
 
           <p className="mt-6 max-w-2xl text-lg text-blue-200 leading-relaxed">
-            Short-Go is the only practice management platform designed specifically for
+            Stride is the only practice management platform designed specifically for
             equine and canine chiropractors. AI SOAP notes, digital intake forms, spine
             tracking, and offline access — everything you need, nothing you don&apos;t.
           </p>
@@ -286,7 +286,7 @@ export default function LandingPage() {
 
           <div className="rounded-3xl border-2 border-[#0f2040] bg-white p-10 shadow-xl">
             <div className="mb-2 text-sm font-semibold uppercase tracking-widest text-slate-500">
-              Short-Go Pro
+              Stride Pro
             </div>
             <div className="mb-1 flex items-end justify-center gap-1">
               <span className="text-6xl font-black text-slate-900">$59</span>
@@ -362,15 +362,15 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 text-sm text-blue-200/50 sm:flex-row">
           <div className="flex items-center gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="Short-Go" className="h-5 w-5 rounded opacity-60" />
-            <span>Short-Go Equine &amp; Canine Chiropractic</span>
+            <img src="/logo.png" alt="Stride" className="h-5 w-5 rounded opacity-60" />
+            <span>Stride Equine &amp; Canine Chiropractic</span>
           </div>
           <div className="flex gap-6">
             <Link href="/login" className="transition hover:text-white">Sign In</Link>
             <Link href="/signup" className="transition hover:text-white">Sign Up</Link>
             <Link href="/billing" className="transition hover:text-white">Billing</Link>
           </div>
-          <span>© {new Date().getFullYear()} Short-Go. All rights reserved.</span>
+          <span>© {new Date().getFullYear()} Stride. All rights reserved.</span>
         </div>
       </footer>
 

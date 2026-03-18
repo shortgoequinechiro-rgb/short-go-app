@@ -55,7 +55,7 @@ async function generateSummaryPDF(summaryText: string, horseName: string, visitD
 
   // ── Header bar ──
   page.drawRectangle({ x: 0, y: PAGE_H - 80, width: PAGE_W, height: 80, color: rgb(0.059, 0.090, 0.165) })
-  page.drawText('Short-Go Equine Chiropractic', { x: MARGIN, y: PAGE_H - 38, size: 16, font: fontBold, color: rgb(1, 1, 1) })
+  page.drawText('Stride Equine Chiropractic', { x: MARGIN, y: PAGE_H - 38, size: 16, font: fontBold, color: rgb(1, 1, 1) })
   page.drawText(`Visit Summary — ${horseName}`, { x: MARGIN, y: PAGE_H - 60, size: 11, font, color: rgb(0.58, 0.64, 0.75) })
   y = PAGE_H - 80 - 24
 
@@ -99,7 +99,7 @@ async function generateSummaryPDF(summaryText: string, horseName: string, visitD
 
   // ── Footer ──
   const footerY = MARGIN - 12
-  page.drawText('Dr. Andrew Leo D.C., M.S., cAVCA · Short-Go Equine Chiropractic', { x: MARGIN, y: footerY, size: 9, font, color: rgb(0.6, 0.65, 0.70) })
+  page.drawText('Dr. Andrew Leo D.C., M.S., cAVCA · Stride Equine Chiropractic', { x: MARGIN, y: footerY, size: 9, font, color: rgb(0.6, 0.65, 0.70) })
 
   return doc.save()
 }
@@ -200,7 +200,7 @@ End with follow-up recommendations and a warm sign-off from Dr. Andrew Leo.
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8f9fa;margin:0;padding:24px;">
   <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
     <div style="background:#0f172a;padding:28px 32px;">
-      <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;">Short-Go Equine Chiropractic</h1>
+      <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;">Stride Equine Chiropractic</h1>
       <p style="margin:6px 0 0;color:#94a3b8;font-size:13px;">Visit Summary — ${horse?.name || 'Your Horse'}</p>
     </div>
     <div style="padding:28px 32px;">${htmlParagraphs}</div>
@@ -212,7 +212,7 @@ End with follow-up recommendations and a warm sign-off from Dr. Andrew Leo.
       </div>
     </div>
     <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 32px;">
-      <p style="margin:0;color:#94a3b8;font-size:12px;">Dr. Andrew Leo D.C., M.S., cAVCA · Short-Go Equine Chiropractic</p>
+      <p style="margin:0;color:#94a3b8;font-size:12px;">Dr. Andrew Leo D.C., M.S., cAVCA · Stride Equine Chiropractic</p>
       <p style="margin:4px 0 0;color:#cbd5e1;font-size:11px;">This is a plain-language summary for the horse owner. A full clinical report is available separately.</p>
     </div>
   </div>

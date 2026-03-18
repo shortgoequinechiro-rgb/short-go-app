@@ -19,6 +19,12 @@ type Owner = {
   practitioner_id: string | null
 }
 
+type Practitioner = {
+  id: string
+  practice_name: string
+  logo_url: string | null
+}
+
 type PatientAnimal = {
   id: string
   name: string
@@ -89,6 +95,7 @@ export default function IntakeFormPage() {
   const ownerId = params?.ownerId as string
 
   const [owner, setOwner] = useState<Owner | null>(null)
+  const [practitioner, setPractitioner] = useState<Practitioner | null>(null)
   const [ownerHorses, setOwnerHorses] = useState<PatientAnimal[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -138,6 +145,15 @@ export default function IntakeFormPage() {
       setPhone(ownerData.phone || '')
       setEmail(ownerData.email || '')
       if (ownerData.address) setStreetAddress(ownerData.address)
+
+      // Fetch practitioner data if practitioner_id exists
+      if (ownerData.practitioner_id) {
+        const practRes = await fetch(`/api/public/practitioner/${ownerData.practitioner_id}`)
+        if (practRes.ok) {
+          const practData = await practRes.json()
+          setPractitioner(practData)
+        }
+      }
     }
 
     if (horsesData) {
@@ -421,8 +437,14 @@ export default function IntakeFormPage() {
 
         {/* Header */}
         <div className="mb-8 rounded-3xl bg-white p-8 shadow-md text-center">
+          {practitioner?.logo_url && (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={practitioner.logo_url} alt="Practice Logo" className="mx-auto mb-4 max-h-16 object-contain" />
+            </>
+          )}
           <h1 className="text-3xl font-bold text-slate-900">Equine Chiropractic Intake Form</h1>
-          <p className="mt-2 text-sm text-slate-500">Short-Go Equine Chiropractic · Dr. Andrew Leo, D.C. c.AVCA</p>
+          <p className="mt-2 text-sm text-slate-500">{practitioner?.practice_name || 'Stride Equine Chiropractic · Dr. Andrew Leo, D.C. c.AVCA'}</p>
         </div>
 
         <form onSubmit={handleSubmit} noValidate className="space-y-6">
@@ -606,7 +628,7 @@ export default function IntakeFormPage() {
           </button>
 
           <p className="pb-8 text-center text-xs text-slate-400">
-            Short-Go Equine Chiropractic · Dr. Andrew Leo, D.C. c.AVCA, Animal Chiropractor
+            Stride Equine Chiropractic · Dr. Andrew Leo, D.C. c.AVCA, Animal Chiropractor
           </p>
         </form>
       </div>

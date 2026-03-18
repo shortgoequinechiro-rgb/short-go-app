@@ -16,13 +16,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Short-Go Equine Chiropractic",
-  description: "Equine chiropractic practice management",
+  title: "Stride Equine & Canine Chiropractic",
+  description: "Practice management built for equine and canine chiropractors",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Short-Go",
+    title: "Stride",
   },
   other: {
     "mobile-web-app-capable": "yes",

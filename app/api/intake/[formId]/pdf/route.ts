@@ -174,11 +174,11 @@ export async function GET(
       const d = logoImg.scale(1), sc = Math.min(44 / d.width, 44 / d.height)
       const lw = d.width * sc, lh = d.height * sc
       page.drawImage(logoImg, { x: M + 12, y: y - 12 - lh, width: lw, height: lh })
-      T('Short-Go Equine Chiropractic',       M + 14 + lw + 10, y - 18, 16, true,  C.white)
+      T('Stride Equine Chiropractic',       M + 14 + lw + 10, y - 18, 16, true,  C.white)
       T('Equine Chiropractic Intake Form',    M + 14 + lw + 10, y - 36, 9.5, false, rgb(0.65, 0.72, 0.85))
       T('Dr. Andrew Leo, D.C. c.AVCA',        M + 14 + lw + 10, y - 50, 9,   false, rgb(0.55, 0.62, 0.75))
     } else {
-      T('Short-Go Equine Chiropractic',   M + 14, y - 20, 16, true,  C.white)
+      T('Stride Equine Chiropractic',   M + 14, y - 20, 16, true,  C.white)
       T('Equine Chiropractic Intake Form',M + 14, y - 37, 9.5, false, rgb(0.65, 0.72, 0.85))
       T('Dr. Andrew Leo, D.C. c.AVCA',   M + 14, y - 51, 9,   false, rgb(0.55, 0.62, 0.75))
     }
@@ -307,7 +307,7 @@ export async function GET(
       const pg = pdfDoc.getPage(i)
       const fy = M - 10
       pg.drawLine({ start: { x: M, y: fy + 16 }, end: { x: PW - M, y: fy + 16 }, thickness: 0.5, color: C.line })
-      pg.drawText('Short-Go Equine Chiropractic  ·  Intake Form', { x: M, y: fy + 6, size: 7.5, font, color: C.muted })
+      pg.drawText('Stride Equine Chiropractic  ·  Intake Form', { x: M, y: fy + 6, size: 7.5, font, color: C.muted })
       pg.drawText(`Page ${i + 1} of ${totalPages}`, { x: PW - M - 50, y: fy + 6, size: 7.5, font, color: C.muted })
     }
 
