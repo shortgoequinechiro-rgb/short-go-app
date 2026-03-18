@@ -70,14 +70,12 @@ export async function POST(req: Request) {
     const { data } = supabaseAdmin.storage.from('logos').getPublicUrl(filePath)
     const publicUrl = data.publicUrl
 
-    // Update practitioners table with logo_url
+    // Update practitioners table with logo_url via RPC (bypasses schema cache)
     const { error: updateError } = await supabaseAdmin
-      .from('practitioners')
-      .update({
-        logo_url: publicUrl,
-        updated_at: new Date().toISOString(),
+      .rpc('update_practitioner_logo', {
+        p_id: user.id,
+        p_logo_url: publicUrl,
       })
-      .eq('id', user.id)
 
     if (updateError) {
       console.error('practitioners update error:', updateError)
@@ -141,14 +139,12 @@ export async function DELETE(req: Request) {
       }
     }
 
-    // Set logo_url to null in database
+    // Set logo_url to null in database via RPC (bypasses schema cache)
     const { error: updateError } = await supabaseAdmin
-      .from('practitioners')
-      .update({
-        logo_url: null,
-        updated_at: new Date().toISOString(),
+      .rpc('update_practitioner_logo', {
+        p_id: user.id,
+        p_logo_url: null,
       })
-      .eq('id', user.id)
 
     if (updateError) {
       console.error('practitioners update error:', updateError)
