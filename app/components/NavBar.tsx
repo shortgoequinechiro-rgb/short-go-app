@@ -79,8 +79,8 @@ export default function NavBar() {
             />
           </div>
           <div className="hidden flex-col leading-none sm:flex">
-            <span className="whitespace-nowrap text-lg font-extrabold tracking-tight text-white md:text-xl">
-              Stride
+            <span className="whitespace-nowrap text-lg font-extrabold tracking-widest text-white md:text-xl">
+              STRIDE
             </span>
             <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#c9a227]">
               Equine &amp; Canine Chiro

@@ -73,7 +73,7 @@ export default function SignupPage() {
 
           {/* Brand */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Stride</h1>
+            <h1 className="text-3xl font-bold tracking-widest text-slate-900">STRIDE</h1>
             <p className="mt-1 text-sm font-medium text-slate-500 uppercase tracking-widest">
               Equine &amp; Canine Chiropractic
             </p>
