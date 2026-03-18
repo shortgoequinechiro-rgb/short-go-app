@@ -70,17 +70,22 @@ export default function NavBar() {
 
         {/* Left: logo + brand */}
         <Link href="/dashboard" className="flex min-w-0 items-center gap-3">
-          <div className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-xl bg-white/10">
+          <div className="relative h-12 w-12 flex-shrink-0">
             <Image
-              src="/logo.png"
+              src="/logo-gold.png"
               alt="Stride"
               fill
-              className="object-contain p-0.5"
+              className="object-contain"
             />
           </div>
-          <span className="hidden whitespace-nowrap text-lg font-bold sm:block tracking-wide md:text-xl" style={{ color: '#d4a017' }}>
-            Stride Equine Chiropractic
-          </span>
+          <div className="hidden flex-col leading-none sm:flex">
+            <span className="whitespace-nowrap text-lg font-extrabold tracking-tight text-white md:text-xl">
+              Stride
+            </span>
+            <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#c9a227]">
+              Equine &amp; Canine Chiro
+            </span>
+          </div>
         </Link>
 
         {/* Center: breadcrumb on sub-pages (desktop only) */}

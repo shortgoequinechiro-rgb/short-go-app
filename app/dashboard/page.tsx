@@ -1009,12 +1009,12 @@ export default function Home() {
         <div className="rounded-3xl bg-white p-4 shadow-md md:p-6">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded-xl bg-white/10 md:h-16 md:w-16 md:rounded-2xl">
+              <div className="relative h-14 w-14 flex-shrink-0 md:h-20 md:w-20">
                 <Image
-                  src="/logo.png"
+                  src="/logo-gold.png"
                   alt="Stride logo"
                   fill
-                  className="object-contain p-1"
+                  className="object-contain"
                 />
               </div>
               <div>
