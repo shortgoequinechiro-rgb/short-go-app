@@ -366,6 +366,54 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Scheduler section ── */}
+      <section className="py-24 md:py-32 bg-gradient-to-b from-[#0a1628] via-[#0f2040] to-[#0a1628] border-y border-white/5">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <SlideIn direction="left" delay={0.1}>
+              <div className="rounded-3xl border border-white/10 overflow-hidden shadow-2xl">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/scheduler.png"
+                  alt="Stride appointment scheduler with calendar view, booking, and automated reminders"
+                  className="w-full h-auto object-cover rounded-3xl"
+                  draggable={false}
+                />
+              </div>
+            </SlideIn>
+
+            <SlideIn direction="right">
+              <p className="text-[#c9a227] text-sm tracking-[0.3em] uppercase font-medium mb-3">Scheduling</p>
+              <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
+                Book. Remind.
+                <span className="text-white/30"> Confirm.</span>
+              </h2>
+              <p className="text-white/50 text-base leading-relaxed mb-8">
+                Manage your entire schedule from one place. Book appointments, send automatic
+                reminders via email or SMS, and let clients confirm with a single tap.
+              </p>
+              <div className="space-y-4">
+                {[
+                  { icon: CalendarDays, text: "Full calendar view with day, week, and month layouts" },
+                  { icon: MessageSquare, text: "Automatic SMS and email reminders before appointments" },
+                  { icon: Check, text: "One-tap confirmation links for clients" },
+                  { icon: Users, text: "Track appointment history per patient and owner" },
+                ].map((item, i) => (
+                  <FadeIn key={i} delay={i * 0.1}>
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-[#c9a227]/10 flex items-center justify-center shrink-0 mt-0.5">
+                        <item.icon className="w-4 h-4 text-[#c9a227]" />
+                      </div>
+                      <span className="text-white/50 text-sm">{item.text}</span>
+                    </div>
+                  </FadeIn>
+                ))}
+              </div>
+            </SlideIn>
+          </div>
+        </div>
+      </section>
+
       {/* ── Built for the field ── */}
       <section className="py-24 md:py-32 bg-gradient-to-b from-[#0a1628] to-[#0f2040] border-y border-white/5">
         <div className="max-w-5xl mx-auto px-6 text-center">
