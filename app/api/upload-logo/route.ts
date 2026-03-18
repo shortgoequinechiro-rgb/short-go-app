@@ -40,7 +40,8 @@ export async function POST(req: Request) {
     const ext = file.type.split('/')[1] || 'png'
 
     // Read file as buffer
-    const buffer = await file.arrayBuffer()
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
 
     // Upload to Supabase Storage
     const filePath = `${user.id}/logo.${ext}`
