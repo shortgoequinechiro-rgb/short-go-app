@@ -129,7 +129,7 @@ export default function OnboardingPage() {
               <div className="mb-4 text-5xl">🎉</div>
               <h2 className="text-2xl font-bold text-slate-900">You&apos;re all set!</h2>
               <p className="mt-2 text-slate-500">
-                Welcome to Stride. Taking you to your practice dashboard…
+                Welcome to STRIDE. Taking you to your practice dashboard…
               </p>
               <div className="mt-6 flex justify-center">
                 <div className="h-1 w-48 rounded-full bg-slate-100 overflow-hidden">
@@ -145,7 +145,7 @@ export default function OnboardingPage() {
               <ProgressDots current={0} total={3} />
 
               <div className="mb-8">
-                <h2 className="text-2xl font-bold text-slate-900">Welcome to Stride</h2>
+                <h2 className="text-2xl font-bold text-slate-900">Welcome to STRIDE</h2>
                 <p className="mt-2 text-slate-500">
                   Let&apos;s get your practice set up. This takes about 60 seconds.
                 </p>

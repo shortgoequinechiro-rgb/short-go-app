@@ -411,7 +411,7 @@ function BillingTab({ practitioner }: { practitioner: Practitioner }) {
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-bold text-white">Billing &amp; Subscription</h2>
-        <p className="text-sm text-blue-300 mt-0.5">Manage your Stride subscription and payment method.</p>
+        <p className="text-sm text-blue-300 mt-0.5">Manage your STRIDE subscription and payment method.</p>
       </div>
 
       {/* Plan card */}
@@ -419,7 +419,7 @@ function BillingTab({ practitioner }: { practitioner: Practitioner }) {
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-blue-400 mb-1">Current Plan</p>
-            <p className="text-xl font-bold text-white">Stride Pro</p>
+            <p className="text-xl font-bold text-white tracking-wide">STRIDE Pro</p>
             <p className="text-sm text-blue-300 mt-0.5">$59 / month</p>
           </div>
           <StatusBadge status={status} />

@@ -91,8 +91,8 @@ export default function LandingPage() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo-gold.png" alt="Stride" className="h-14 w-14" />
             <div className="flex flex-col leading-none">
-              <span className="text-xl font-extrabold text-white tracking-tight" style={{ fontFamily: "'Geist', system-ui, sans-serif" }}>
-                Stride
+              <span className="text-xl font-extrabold text-white tracking-widest" style={{ fontFamily: "'Geist', system-ui, sans-serif" }}>
+                STRIDE
               </span>
               <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#c9a227]">
                 Equine &amp; Canine Chiro
@@ -145,8 +145,8 @@ export default function LandingPage() {
               className="h-60 w-60 sm:h-72 sm:w-72 drop-shadow-2xl"
             />
             <div>
-              <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl" style={{ fontFamily: "'Geist', system-ui, sans-serif" }}>
-                Stride
+              <h2 className="text-3xl font-extrabold tracking-widest text-white sm:text-4xl" style={{ fontFamily: "'Geist', system-ui, sans-serif", letterSpacing: '0.15em' }}>
+                STRIDE
               </h2>
               <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[#c9a227]">
                 Equine &amp; Canine Chiropractic
@@ -311,7 +311,7 @@ export default function LandingPage() {
 
           <div className="rounded-3xl border-2 border-[#0f2040] bg-white p-10 shadow-xl">
             <div className="mb-2 flex items-center justify-center gap-2">
-              <span className="text-sm font-extrabold uppercase tracking-widest text-slate-900">Stride</span>
+              <span className="text-sm font-extrabold tracking-widest text-slate-900">STRIDE</span>
               <span className="rounded-full bg-[#c9a227]/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#c9a227]">Pro</span>
             </div>
             <div className="mb-1 flex items-end justify-center gap-1">
@@ -390,7 +390,7 @@ export default function LandingPage() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo-gold.png" alt="Stride" className="h-10 w-10 opacity-70" />
             <div className="flex flex-col leading-tight">
-              <span className="font-bold text-blue-200/70 text-sm">Stride</span>
+              <span className="font-bold text-blue-200/70 text-sm tracking-widest">STRIDE</span>
               <span className="text-[10px] text-blue-200/40">Equine &amp; Canine Chiropractic</span>
             </div>
           </div>
@@ -399,7 +399,7 @@ export default function LandingPage() {
             <Link href="/signup" className="transition hover:text-white">Sign Up</Link>
             <Link href="/billing" className="transition hover:text-white">Billing</Link>
           </div>
-          <span>© {new Date().getFullYear()} Stride. All rights reserved.</span>
+          <span>© {new Date().getFullYear()} STRIDE. All rights reserved.</span>
         </div>
       </footer>
 
