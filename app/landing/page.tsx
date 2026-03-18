@@ -304,7 +304,7 @@ export default function LandingPage() {
                 <div className="rounded-3xl border border-white/10 overflow-hidden shadow-2xl">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src="https://pyuarwwhmtoflyzwblbn.supabase.co/storage/v1/object/public/marketing/anatomy-screenshot.png?v=1"
+                    src="/anatomy-screenshot.png"
                     alt="Stride 3D Horse Anatomy Viewer with skeleton layer, annotation tools, and region details"
                     className="w-full h-auto object-cover rounded-3xl"
                     draggable={false}
