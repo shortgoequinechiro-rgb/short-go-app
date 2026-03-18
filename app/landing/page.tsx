@@ -197,7 +197,7 @@ export default function LandingPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.45 }}
-                className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10"
+                className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10 mb-16 md:mb-24"
               >
                 <Link
                   href="/login"
