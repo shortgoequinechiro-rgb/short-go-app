@@ -85,7 +85,9 @@ function ProfileTab({ practitioner, onSaved }: { practitioner: Practitioner; onS
       setLogoUrl(data.logo_url)
       onSaved({ ...practitioner, logo_url: data.logo_url })
     } else {
-      setError('Failed to upload logo. Please try again.')
+      const errData = await res.json().catch(() => ({}))
+      console.error('Logo upload failed:', res.status, errData)
+      setError(errData.error || 'Failed to upload logo. Please try again.')
     }
     setLogoUploading(false)
   }
