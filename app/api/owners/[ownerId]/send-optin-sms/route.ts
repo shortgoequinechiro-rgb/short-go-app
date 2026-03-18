@@ -18,7 +18,6 @@ export async function POST(
   const accountSid = process.env.TWILIO_ACCOUNT_SID
   const authToken = process.env.TWILIO_AUTH_TOKEN
   const fromNumber = process.env.TWILIO_PHONE_NUMBER
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://stride-app.vercel.app'
 
   if (!accountSid || !authToken || !fromNumber) {
     return NextResponse.json({ error: 'Twilio is not configured.' }, { status: 500 })
@@ -28,7 +27,7 @@ export async function POST(
 
   const { data: owner, error } = await supabase
     .from('owners')
-    .select('id, full_name, phone, sms_consent_status')
+    .select('id, full_name, phone')
     .eq('id', ownerId)
     .single()
 
@@ -43,17 +42,8 @@ export async function POST(
     )
   }
 
-  if (owner.sms_consent_status !== 'opted_in') {
-    return NextResponse.json(
-      { error: 'SMS_CONSENT_REQUIRED', needsConsent: true },
-      { status: 403 }
-    )
-  }
-
   const digits = owner.phone.replace(/\D/g, '')
   const toNumber = digits.startsWith('1') ? `+${digits}` : `+1${digits}`
-
-  const consentUrl = `${appUrl}/consent/${ownerId}`
   const firstName = owner.full_name?.split(' ')[0] || owner.full_name || 'there'
 
   const client = twilio(accountSid, authToken)
@@ -62,7 +52,7 @@ export async function POST(
     const message = await client.messages.create({
       from: fromNumber,
       to: toNumber,
-      body: `Hi ${firstName}! Dr. Leo sent you a consent form to sign before your appointment. It only takes a minute: ${consentUrl}`,
+      body: `Hi ${firstName}! Short Go Equine Chiropractic would like to send you appointment reminders, intake forms, and consent forms via text. Reply YES to opt in or STOP to opt out. Msg & data rates may apply.`,
     })
 
     if (message.errorCode) {
@@ -71,6 +61,13 @@ export async function POST(
         { status: 500 }
       )
     }
+
+    // Mark consent as pending
+    await supabase.rpc('update_sms_consent', {
+      p_owner_id: ownerId,
+      p_status: 'pending',
+      p_sent_at: new Date().toISOString(),
+    })
 
     return NextResponse.json({ success: true, sid: message.sid })
   } catch (err: unknown) {

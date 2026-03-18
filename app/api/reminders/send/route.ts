@@ -183,8 +183,8 @@ export async function GET(req: NextRequest) {
       provider_name,
       owner_id,
       horse_id,
-      owners ( id, full_name, email, phone ),
-      horses ( name, species, owners ( full_name, email, phone ) )
+      owners ( id, full_name, email, phone, sms_consent_status ),
+      horses ( name, species, owners ( full_name, email, phone, sms_consent_status ) )
     `)
     .in('appointment_date', [tomorrow, dayAfter])
     .eq('reminder_sent', false)
@@ -261,8 +261,8 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // ── SMS ────────────────────────────────────────────────────────────────
-    if (hasSms && smsClient && owner.phone) {
+    // ── SMS (only if client has opted in) ───────────────────────────────
+    if (hasSms && smsClient && owner.phone && owner.sms_consent_status === 'opted_in') {
       try {
         const body = buildReminderSms({ ownerFirstName, patientName, dateStr, timeStr, providerName, confirmUrl })
         const msg = await smsClient.messages.create({
