@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Stride - Practice management software built for equine and canine chiropractors. Patient records, SOAP notes, scheduling, and more.">
+    <meta name="theme-color" content="#0f2040">
+    <title>Stride - Equine & Canine Chiropractic Practice Management</title>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --navy: #0f2040;
+            --gold: #c9a227;
+            --light-gold: #f5e6b8;
+            --white: #ffffff;
+            --dark-gray: #1a2f4a;
+            --medium-gray: #3a4f6f;
+            --light-gray: #f8f9fa;
+            --text-light: #e0e0e0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            color: var(--text-light);
+            background: var(--navy);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Playfair Display', serif;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--white);
+        }
+
+        h1 {
+            font-size: clamp(2.5rem, 8vw, 4rem);
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+        }
+
+        h2 {
+            font-size: clamp(2rem, 6vw, 3rem);
+            margin-bottom: 2rem;
+        }
+
+        h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        p {
+            font-size: 1rem;
+            line-height: 1.8;
+            color: var(--text-light);
+            margin-bottom: 1rem;
+        }
+
+        a {
+            color: var(--gold);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        a:hover {
+            color: var(--light-gold);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-block;
+            padding: 1rem 2.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            font-size: 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--gold);
+            color: var(--navy);
+            border-color: var(--gold);
+        }
+
+        .btn-primary:hover {
+            background: var(--light-gold);
+            border-color: var(--light-gold);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--gold);
+            border-color: var(--gold);
+        }
+
+        .btn-secondary:hover {
+            background: var(--gold);
+            color: var(--navy);
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* Sections */
+        section {
+            padding: 6rem 0;
+            position: relative;
+        }
+
+        .section-dark {
+            background: var(--navy);
+        }
+
+        .section-darker {
+            background: var(--dark-gray);
+        }
+
+        /* Gold divider */
+        .gold-divider {
+            width: 60px;
+            height: 3px;
+            background: var(--gold);
+            margin-bottom: 2rem;
+        }
+
+        /* Header / Navigation */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(15, 32, 64, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(201, 162, 39, 0.1);
+            padding: 1rem 0;
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--gold);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo img {
+            height: 32px;
+            width: auto;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-light);
+            font-size: 0.95rem;
+            transition: color 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            color: var(--gold);
+        }
+
+        /* Hero Section */
+        .hero {
+            padding-top: 12rem;
+            padding-bottom: 6rem;
+            background: linear-gradient(135deg, var(--navy) 0%, var(--dark-gray) 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(201, 162, 39, 0.1) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero-header {
+            margin-bottom: 2rem;
+        }
+
+        .tagline {
+            color: var(--gold);
+            font-size: 1.1rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            color: var(--text-light);
+            max-width: 600px;
+            margin-bottom: 2rem;
+        }
+
+        .hero-cta {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .hero-subtext {
+            font-size: 0.95rem;
+            color: var(--medium-gray);
+            margin-bottom: 3rem;
+        }
+
+        .hero-mockup {
+            background: linear-gradient(135deg, var(--medium-gray) 0%, var(--dark-gray) 100%);
+            border: 1px solid rgba(201, 162, 39, 0.2);
+            border-radius: 0.75rem;
+            padding: 3rem 2rem;
+            text-align: center;
+            color: var(--text-light);
+            font-size: 1.1rem;
+            margin-top: 3rem;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .hero-mockup::before {
+            content: '';
+            position: absolute;
+            top: -1px;
+            left: -1px;
+            right: -1px;
+            bottom: -1px;
+            background: linear-gradient(135deg, var(--gold), transparent);
+            border-radius: 0.75rem;
+            opacity: 0.1;
+            pointer-events: none;
+        }
+
+        /* Features Grid */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 3rem;
+            margin-top: 3rem;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(201, 162, 39, 0.15);
+            border-radius: 0.75rem;
+            padding: 2.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--gold);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .feature-card:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(201, 162, 39, 0.3);
+            transform: translateY(-5px);
+        }
+
+        .feature-card:hover::before {
+            opacity: 1;
+        }
+
+        .feature-icon {
+            font-size: 2.5rem;
+            color: var(--gold);
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h3 {
+            margin-bottom: 1rem;
+        }
+
+        .feature-card p {
+            font-size: 0.95rem;
+            color: var(--text-light);
+        }
+
+        /* Anatomy Section */
+        .anatomy {
+            background: linear-gradient(135deg, var(--dark-gray) 0%, var(--navy) 100%);
+        }
+
+        .anatomy-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            align-items: center;
+        }
+
+        .anatomy-content h2 {
+            margin-bottom: 2rem;
+        }
+
+        .anatomy-layers {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .layer-item {
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 3px solid var(--gold);
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .layer-item:hover {
+            background: rgba(255, 255, 255, 0.06);
+            padding-left: 1.5rem;
+        }
+
+        .layer-item strong {
+            color: var(--gold);
+        }
+
+        .anatomy-mockup {
+            background: linear-gradient(135deg, #1f3a5f 0%, var(--navy) 100%);
+            border: 2px solid rgba(201, 162, 39, 0.2);
+            border-radius: 1rem;
+            padding: 3rem 2rem;
+            text-align: center;
+            min-height: 450px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-light);
+            font-size: 1rem;
+            position: relative;
+        }
+
+        .anatomy-mockup::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(135deg, var(--gold), transparent);
+            border-radius: 1rem;
+            opacity: 0.15;
+            pointer-events: none;
+        }
+
+        /* How It Works */
+        .how-it-works {
+            background: var(--navy);
+        }
+
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 3rem;
+            margin-top: 3rem;
+        }
+
+        .step {
+            text-align: center;
+            position: relative;
+        }
+
+        .step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 60px;
+            height: 60px;
+            background: var(--gold);
+            color: var(--navy);
+            border-radius: 50%;
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+        }
+
+        .step h3 {
+            margin-bottom: 1rem;
+            color: var(--white);
+        }
+
+        .step p {
+            color: var(--text-light);
+            max-width: 280px;
+            margin: 0 auto;
+        }
+
+        /* Built for the Field */
+        .field-section {
+            background: linear-gradient(135deg, var(--dark-gray) 0%, #0a1927 100%);
+            text-align: center;
+        }
+
+        .field-content {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .field-section h2 {
+            color: var(--white);
+            margin-bottom: 2rem;
+        }
+
+        .field-section p {
+            font-size: 1.1rem;
+            color: var(--text-light);
+            margin-bottom: 2rem;
+        }
+
+        .field-features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .field-feature {
+            padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(201, 162, 39, 0.1);
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .field-feature:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(201, 162, 39, 0.3);
+        }
+
+        .field-feature strong {
+            color: var(--gold);
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Pricing */
+        .pricing {
+            background: var(--navy);
+        }
+
+        .pricing-box {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+            border: 2px solid var(--gold);
+            border-radius: 1rem;
+            padding: 3rem;
+            text-align: center;
+            max-width: 600px;
+            margin: 2rem auto;
+            position: relative;
+        }
+
+        .pricing-box::before {
+            content: '';
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--navy);
+            padding: 0 1rem;
+            color: var(--gold);
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        .price {
+            font-family: 'Playfair Display', serif;
+            font-size: 3.5rem;
+            color: var(--gold);
+            margin-bottom: 0.5rem;
+        }
+
+        .price-period {
+            color: var(--text-light);
+            margin-bottom: 2rem;
+        }
+
+        .price-description {
+            color: var(--text-light);
+            margin-bottom: 2rem;
+            font-size: 1.05rem;
+        }
+
+        .pricing-features {
+            text-align: left;
+            margin: 2rem 0;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .pricing-feature {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            font-size: 0.95rem;
+            color: var(--text-light);
+        }
+
+        .pricing-feature i {
+            color: var(--gold);
+            margin-top: 0.25rem;
+            flex-shrink: 0;
+        }
+
+        .pricing-cta {
+            margin-top: 2rem;
+        }
+
+        .pricing-trial {
+            margin-top: 2rem;
+            font-size: 0.9rem;
+            color: var(--medium-gray);
+        }
+
+        /* Footer */
+        footer {
+            background: #0a1927;
+            border-top: 1px solid rgba(201, 162, 39, 0.1);
+            padding: 4rem 0 2rem;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 3rem;
+            margin-bottom: 3rem;
+        }
+
+        .footer-section h4 {
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+            color: var(--white);
+        }
+
+        .footer-section p {
+            font-size: 0.95rem;
+            color: var(--text-light);
+            line-height: 1.8;
+        }
+
+        .footer-links {
+            list-style: none;
+        }
+
+        .footer-links li {
+            margin-bottom: 1rem;
+        }
+
+        .footer-links a {
+            color: var(--text-light);
+            transition: color 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: var(--gold);
+        }
+
+        .footer-bottom {
+            border-top: 1px solid rgba(201, 162, 39, 0.1);
+            padding-top: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 2rem;
+        }
+
+        .footer-logo {
+            color: var(--gold);
+            font-weight: 700;
+            font-size: 1.3rem;
+        }
+
+        .footer-copyright {
+            font-size: 0.9rem;
+            color: var(--medium-gray);
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeInUp 0.8s ease-out forwards;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            section {
+                padding: 4rem 0;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            h2 {
+                font-size: 1.75rem;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .anatomy-container {
+                grid-template-columns: 1fr;
+            }
+
+            .anatomy-mockup {
+                min-height: 300px;
+            }
+
+            .pricing-box {
+                padding: 2rem;
+            }
+
+            .price {
+                font-size: 2.5rem;
+            }
+
+            .footer-bottom {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .features {
+                grid-template-columns: 1fr;
+            }
+
+            .steps {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header / Navigation -->
+    <header>
+        <div class="container">
+            <nav>
+                <a href="#home" class="logo">
+                    <img src="stride-logo-gold.png" alt="Stride Logo">
+                    Stride
+                </a>
+                <ul class="nav-links">
+                    <li><a href="#features">Features</a></li>
+                    <li><a href="#anatomy">Anatomy</a></li>
+                    <li><a href="#pricing">Pricing</a></li>
+                    <li><a href="/login" class="btn btn-primary">Login</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero" id="home">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-header">
+                    <p class="tagline">Equine & Canine Chiropractic</p>
+                    <h1>The practice management app built for animal chiropractors.</h1>
+                </div>
+
+                <p>Patient records, SOAP notes, scheduling, digital forms, and more — designed for the field, not the office.</p>
+
+                <div class="hero-cta">
+                    <a href="/login" class="btn btn-primary">Start Your Free Trial</a>
+                    <a href="#pricing" class="btn btn-secondary">View Pricing</a>
+                </div>
+
+                <p class="hero-subtext">$59/month after 14-day free trial. No credit card required.</p>
+
+                <div class="hero-mockup">
+                    <div style="text-align: center;">
+                        <i class="fas fa-laptop" style="font-size: 3rem; color: var(--gold); margin-bottom: 1rem; display: block;"></i>
+                        <p>Interactive App Screenshot</p>
+                        <p style="font-size: 0.9rem; color: var(--medium-gray); margin-top: 0.5rem;">Patient dashboard, scheduling, and SOAP note interface</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="section-dark" id="features">
+        <div class="container">
+            <div style="text-align: center;">
+                <div class="gold-divider"></div>
+                <h2>Powerful Features Built for Your Practice</h2>
+                <p style="max-width: 600px; margin: 0 auto 3rem;">Everything you need to run a modern animal chiropractic practice, from scheduling to advanced diagnostics.</p>
+            </div>
+
+            <div class="features">
+                <div class="feature-card fade-in">
+                    <div class="feature-icon">
+                        <i class="fas fa-file-medical"></i>
+                    </div>
+                    <h3>Patient Records</h3>
+                    <p>Complete equine and canine profiles with breed, discipline, medical history, and visit tracking. Build a comprehensive patient database that grows with your practice.</p>
+                </div>
+
+                <div class="feature-card fade-in">
+                    <div class="feature-icon">
+                        <i class="fas fa-spine"></i>
+                    </div>
+                    <h3>Spine Assessment</h3>
+                    <p>Species-specific spinal maps. Track subluxation findings visit-to-visit and visualize patient progress. Standardized assessments for consistent care.</p>
+                </div>
+
+                <div class="feature-card fade-in">
+                    <div class="feature-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <h3>AI SOAP Notes</h3>
+                    <p>Generate professional SOAP notes from quick clinical observations. One click, done. Save hours on documentation while maintaining clinical accuracy.</p>
+                </div>
+
+                <div class="feature-card fade-in">
+                    <div class="feature-icon">
+                        <i class="fas fa-calendar-alt"></i>
+                    </div>
+                    <h3>Scheduling</h3>
+                    <p>Book appointments, send confirmations, and automate reminders via email and SMS. Reduce no-shows and keep your practice running smoothly.</p>
+                </div>
+
+                <div class="feature-card fade-in">
+                    <div class="feature-icon">
+                        <i class="fas fa-clipboard-list"></i>
+                    </div>
+                    <h3>Digital Forms</h3>
+                    <p>Send intake and consent forms directly to clients. E-signatures. No paper. Clients sign on their phone, you get records instantly.</p>
+                </div>
+
+                <div class="feature-card fade-in">
+                    <div class="feature-icon">
+                        <i class="fas fa-mobile-alt"></i>
+                    </div>
+                    <h3>Offline Mode</h3>
+                    <p>Works without cell signal. Take notes in the barn, the arena, or the pasture. Everything syncs automatically when you're back online.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Anatomy Section -->
+    <section class="anatomy" id="anatomy">
+        <div class="container">
+            <div class="anatomy-container">
+                <div class="anatomy-content fade-in">
+                    <div class="gold-divider"></div>
+                    <h2>Interactive 3D Anatomy</h2>
+                    <p>Annotate directly on anatomical models. Draw, circle, and label findings. Switch between clinical and owner-friendly language for patient education.</p>
+
+                    <div class="anatomy-layers">
+                        <div class="layer-item">
+                            <strong><i class="fas fa-layer-group"></i> Skeletal System</strong>
+                            <p style="margin: 0; color: var(--text-light); font-size: 0.9rem;">View complete bone structure and alignment</p>
+                        </div>
+                        <div class="layer-item">
+                            <strong><i class="fas fa-layer-group"></i> Muscular System</strong>
+                            <p style="margin: 0; color: var(--text-light); font-size: 0.9rem;">Identify muscle tensions and trigger points</p>
+                        </div>
+                        <div class="layer-item">
+                            <strong><i class="fas fa-layer-group"></i> Nervous System</strong>
+                            <p style="margin: 0; color: var(--text-light); font-size: 0.9rem;">Highlight nerve pathways and subluxations</p>
+                        </div>
+                        <div class="layer-item">
+                            <strong><i class="fas fa-layer-group"></i> Vascular System</strong>
+                            <p style="margin: 0; color: var(--text-light); font-size: 0.9rem;">Reference blood supply and circulation</p>
+                        </div>
+                        <div class="layer-item">
+                            <strong><i class="fas fa-layer-group"></i> Organ Systems</strong>
+                            <p style="margin: 0; color: var(--text-light); font-size: 0.9rem;">View organ positioning and relationships</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="anatomy-mockup fade-in">
+                    <div style="text-align: center;">
+                        <i class="fas fa-cube" style="font-size: 3rem; color: var(--gold); margin-bottom: 1rem; display: block;"></i>
+                        <p>Interactive 3D Model</p>
+                        <p style="font-size: 0.9rem; color: var(--medium-gray); margin-top: 0.5rem;">Rotate, zoom, and annotate anatomical models</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="how-it-works">
+        <div class="container">
+            <div style="text-align: center;">
+                <div class="gold-divider" style="margin-left: auto; margin-right: auto;"></div>
+                <h2>How It Works</h2>
+                <p style="max-width: 600px; margin: 0 auto 3rem;">Getting started is simple. Three steps to streamline your practice.</p>
+            </div>
+
+            <div class="steps">
+                <div class="step fade-in">
+                    <div class="step-number">1</div>
+                    <h3>Add Your Patients</h3>
+                    <p>Create profiles for each horse or dog with breed, discipline, and medical history. Build your patient database in minutes.</p>
+                </div>
+
+                <div class="step fade-in">
+                    <div class="step-number">2</div>
+                    <h3>Document Visits</h3>
+                    <p>Use AI-assisted SOAP notes, spine assessments, and anatomy annotations. Efficient, accurate, and complete documentation every time.</p>
+                </div>
+
+                <div class="step fade-in">
+                    <div class="step-number">3</div>
+                    <h3>Engage Clients</h3>
+                    <p>Send intake forms, consent forms, and appointment reminders via email or text. Keep your clients informed and involved in care.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Built for the Field -->
+    <section class="field-section">
+        <div class="container">
+            <div class="field-content">
+                <div class="gold-divider" style="margin-left: auto; margin-right: auto;"></div>
+                <h2>Built for the Field</h2>
+                <p>No signal? No problem.</p>
+                <p>Stride is a Progressive Web App that works offline. Take notes in the barn, the arena, or the middle of nowhere. Everything syncs automatically when you're back online.</p>
+
+                <div class="field-features">
+                    <div class="field-feature">
+                        <strong><i class="fas fa-download"></i> Install on Phone</strong>
+                        <p style="margin: 0; font-size: 0.9rem;">Add to home screen like a native app</p>
+                    </div>
+                    <div class="field-feature">
+                        <strong><i class="fas fa-wifi-off"></i> Works Offline</strong>
+                        <p style="margin: 0; font-size: 0.9rem;">Full functionality without cell signal</p>
+                    </div>
+                    <div class="field-feature">
+                        <strong><i class="fas fa-sync"></i> Auto Sync</strong>
+                        <p style="margin: 0; font-size: 0.9rem;">Syncs automatically when online</p>
+                    </div>
+                    <div class="field-feature">
+                        <strong><i class="fas fa-lock"></i> Secure & Private</strong>
+                        <p style="margin: 0; font-size: 0.9rem;">End-to-end encrypted data</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section class="pricing" id="pricing">
+        <div class="container">
+            <div style="text-align: center;">
+                <div class="gold-divider" style="margin-left: auto; margin-right: auto;"></div>
+                <h2>Simple, Transparent Pricing</h2>
+                <p style="max-width: 600px; margin: 0 auto 2rem; color: var(--text-light);">One plan. Everything included. No surprises.</p>
+            </div>
+
+            <div class="pricing-box fade-in">
+                <div class="price">$59</div>
+                <div class="price-period">/month</div>
+                <p class="price-description">Everything included. No tiers. No add-ons.</p>
+
+                <div class="pricing-features">
+                    <div class="pricing-feature">
+                        <i class="fas fa-check"></i>
+                        <span>Unlimited patients</span>
+                    </div>
+                    <div class="pricing-feature">
+                        <i class="fas fa-check"></i>
+                        <span>AI SOAP notes</span>
+                    </div>
+                    <div class="pricing-feature">
+                        <i class="fas fa-check"></i>
+                        <span>Species-specific spine assessments</span>
+                    </div>
+                    <div class="pricing-feature">
+                        <i class="fas fa-check"></i>
+                        <span>3D interactive anatomy viewer</span>
+                    </div>
+                    <div class="pricing-feature">
+                        <i class="fas fa-check"></i>
+                        <span>Digital intake & consent forms</span>
+                    </div>
+                    <div class="pricing-feature">
+                        <i class="fas fa-check"></i>
+                        <span>SMS & email reminders</span>
+                    </div>
+                    <div class="pricing-feature">
+                        <i class="fas fa-check"></i>
+                        <span>Offline mode</span>
+                    </div>
+                    <div class="pricing-feature">
+                        <i class="fas fa-check"></i>
+                        <span>Custom practice branding</span>
+                    </div>
+                    <div class="pricing-feature">
+                        <i class="fas fa-check"></i>
+                        <span>Priority support</span>
+                    </div>
+                </div>
+
+                <div class="pricing-cta">
+                    <a href="/login" class="btn btn-primary">Start Free Trial</a>
+                </div>
+
+                <p class="pricing-trial">14-day free trial. No credit card required.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <div class="footer-logo">Stride</div>
+                    <p>Built by animal chiropractors, for animal chiropractors. Managing equine and canine chiropractic practices, simplified.</p>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Product</h4>
+                    <ul class="footer-links">
+                        <li><a href="#features">Features</a></li>
+                        <li><a href="#anatomy">3D Anatomy</a></li>
+                        <li><a href="#pricing">Pricing</a></li>
+                        <li><a href="/login">Login</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Company</h4>
+                    <ul class="footer-links">
+                        <li><a href="#contact">Contact</a></li>
+                        <li><a href="#privacy">Privacy Policy</a></li>
+                        <li><a href="#terms">Terms of Service</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-section">
+                    <h4>Connect</h4>
+                    <ul class="footer-links">
+                        <li><a href="#twitter"><i class="fab fa-twitter"></i> Twitter</a></li>
+                        <li><a href="#linkedin"><i class="fab fa-linkedin"></i> LinkedIn</a></li>
+                        <li><a href="#instagram"><i class="fab fa-instagram"></i> Instagram</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p class="footer-copyright">&copy; 2026 Stride Equine & Canine Chiropractic Software. All rights reserved.</p>
+                <p style="color: var(--medium-gray);">Designed for precision. Built for practice.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                const href = this.getAttribute('href');
+                if (href !== '#' && document.querySelector(href)) {
+                    e.preventDefault();
+                    document.querySelector(href).scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+
+        // Intersection Observer for fade-in animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -100px 0px'
+        };
+
+        const observer = new IntersectionObserver(function(entries) {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.fade-in').forEach(el => {
+            el.style.opacity = '0';
+            observer.observe(el);
+        });
+
+        // Header scroll effect
+        const header = document.querySelector('header');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 100) {
+                header.style.background = 'rgba(15, 32, 64, 0.98)';
+            } else {
+                header.style.background = 'rgba(15, 32, 64, 0.95)';
+            }
+        });
+    </script>
+</body>
+</html>

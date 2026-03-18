@@ -28,7 +28,7 @@ export async function POST(
 
   const { data: owner, error } = await supabase
     .from('owners')
-    .select('id, full_name, phone')
+    .select('id, full_name, phone, sms_consent_status')
     .eq('id', ownerId)
     .single()
 
@@ -40,6 +40,13 @@ export async function POST(
     return NextResponse.json(
       { error: 'This owner does not have a phone number on file.' },
       { status: 400 }
+    )
+  }
+
+  if (owner.sms_consent_status !== 'opted_in') {
+    return NextResponse.json(
+      { error: 'SMS_CONSENT_REQUIRED', needsConsent: true },
+      { status: 403 }
     )
   }
 

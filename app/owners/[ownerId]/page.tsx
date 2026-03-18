@@ -145,13 +145,23 @@ export default function OwnerPage() {
     finally { setSendingIntake(false) }
   }
 
+  async function sendOptInSms() {
+    const res = await fetch(`/api/owners/${ownerId}/send-optin-sms`, { method: 'POST' })
+    return res.ok
+  }
+
   async function sendIntakeSms() {
     if (!owner?.phone) { setMessage('This owner does not have a phone number on file.'); return }
     setSendingIntakeSms(true); setMessage('')
     try {
       const res = await fetch(`/api/owners/${ownerId}/send-intake-sms`, { method: 'POST' })
       const data = await res.json()
-      setMessage(res.ok ? `Intake form link texted to ${owner.phone}.` : (data.error || 'Failed to send text.'))
+      if (!res.ok && data.needsConsent) {
+        const sent = await sendOptInSms()
+        setMessage(sent ? `SMS opt-in request sent to ${owner.phone}. Once they reply YES, you can text them forms.` : 'Failed to send opt-in request.')
+      } else {
+        setMessage(res.ok ? `Intake form link texted to ${owner.phone}.` : (data.error || 'Failed to send text.'))
+      }
     } catch { setMessage('Failed to send text.') }
     finally { setSendingIntakeSms(false) }
   }
@@ -173,7 +183,12 @@ export default function OwnerPage() {
     try {
       const res = await fetch(`/api/owners/${ownerId}/send-consent-sms`, { method: 'POST' })
       const data = await res.json()
-      setMessage(res.ok ? `Consent form link texted to ${owner.phone}.` : (data.error || 'Failed to send text.'))
+      if (!res.ok && data.needsConsent) {
+        const sent = await sendOptInSms()
+        setMessage(sent ? `SMS opt-in request sent to ${owner.phone}. Once they reply YES, you can text them forms.` : 'Failed to send opt-in request.')
+      } else {
+        setMessage(res.ok ? `Consent form link texted to ${owner.phone}.` : (data.error || 'Failed to send text.'))
+      }
     } catch { setMessage('Failed to send text.') }
     finally { setSendingConsentSms(false) }
   }
