@@ -214,9 +214,9 @@ export default function LandingPage() {
           {/* Real app screenshot */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="https://pyuarwwhmtoflyzwblbn.supabase.co/storage/v1/object/public/marketing/dashboard-screenshot.png"
+            src="https://pyuarwwhmtoflyzwblbn.supabase.co/storage/v1/object/public/marketing/dashboard-screenshot.png?v=2"
             alt="Stride dashboard showing client records, appointments, and patient management"
-            className="mx-auto rounded-2xl object-cover h-full w-full object-top"
+            className="mx-auto rounded-xl object-cover h-full w-full object-top"
             draggable={false}
           />
         </ContainerScroll>
