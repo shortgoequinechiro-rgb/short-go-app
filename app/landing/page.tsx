@@ -160,7 +160,7 @@ export default function LandingPage() {
       </nav>
 
       {/* ── Hero with Container Scroll ── */}
-      <section className="bg-gradient-to-b from-[#0a1628] via-[#0f2040] to-[#0a1628]">
+      <section className="bg-gradient-to-b from-[#0a1628] via-[#0f2040] to-[#0a1628] pb-24 md:pb-40">
         <ContainerScroll
           titleComponent={
             <div className="mt-20">
@@ -214,7 +214,7 @@ export default function LandingPage() {
           {/* Real app screenshot */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="https://pyuarwwhmtoflyzwblbn.supabase.co/storage/v1/object/public/marketing/dashboard-screenshot.png?v=2"
+            src="https://pyuarwwhmtoflyzwblbn.supabase.co/storage/v1/object/public/marketing/dashboard-screenshot.png?v=4"
             alt="Stride dashboard showing client records, appointments, and patient management"
             className="mx-auto rounded-xl object-cover h-full w-full object-top"
             draggable={false}
