@@ -71,40 +71,70 @@ function ProfileTab({ practitioner, onSaved }: { practitioner: Practitioner; onS
     const file = e.target.files?.[0]
     if (!file) return
     setLogoUploading(true); setError('')
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) { setError('Not authenticated.'); setLogoUploading(false); return }
-    const formData = new FormData()
-    formData.append('file', file)
-    const res = await fetch('/api/upload-logo', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${session.access_token}` },
-      body: formData,
-    })
-    if (res.ok) {
-      const data = await res.json()
-      setLogoUrl(data.logo_url)
-      onSaved({ ...practitioner, logo_url: data.logo_url })
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setError('Not authenticated.'); setLogoUploading(false); return }
+
+    const ext = file.name.split('.').pop() || 'png'
+    const filePath = `${user.id}/logo.${ext}`
+
+    // Upload directly to Supabase Storage (same pattern as horse photos)
+    const { error: uploadError } = await supabase.storage
+      .from('logos')
+      .upload(filePath, file, { contentType: file.type, upsert: true })
+
+    if (uploadError) {
+      console.error('Logo upload error:', uploadError)
+      setError(`Failed to upload logo: ${uploadError.message}`)
+      setLogoUploading(false)
+      return
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage.from('logos').getPublicUrl(filePath)
+    const publicUrl = urlData.publicUrl
+
+    // Update practitioners table
+    const { error: updateError } = await supabase
+      .from('practitioners')
+      .update({ logo_url: publicUrl, updated_at: new Date().toISOString() })
+      .eq('id', user.id)
+
+    if (updateError) {
+      console.error('Logo DB update error:', updateError)
+      setError(`Failed to save logo: ${updateError.message}`)
     } else {
-      const errData = await res.json().catch(() => ({}))
-      console.error('Logo upload failed:', res.status, errData)
-      setError(errData.error || 'Failed to upload logo. Please try again.')
+      setLogoUrl(publicUrl)
+      onSaved({ ...practitioner, logo_url: publicUrl })
     }
     setLogoUploading(false)
   }
 
   async function handleLogoRemove() {
     setLogoUploading(true); setError('')
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) { setError('Not authenticated.'); setLogoUploading(false); return }
-    const res = await fetch('/api/upload-logo', {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${session.access_token}` },
-    })
-    if (res.ok) {
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setError('Not authenticated.'); setLogoUploading(false); return }
+
+    // Delete from storage if we have a URL
+    if (logoUrl) {
+      const parts = logoUrl.split('/logos/')
+      if (parts.length === 2) {
+        await supabase.storage.from('logos').remove([parts[1]])
+      }
+    }
+
+    // Clear logo_url in database
+    const { error: updateError } = await supabase
+      .from('practitioners')
+      .update({ logo_url: null, updated_at: new Date().toISOString() })
+      .eq('id', user.id)
+
+    if (updateError) {
+      setError('Failed to remove logo.')
+    } else {
       setLogoUrl('')
       onSaved({ ...practitioner, logo_url: null })
-    } else {
-      setError('Failed to remove logo.')
     }
     setLogoUploading(false)
   }
