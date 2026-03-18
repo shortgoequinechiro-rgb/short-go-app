@@ -150,7 +150,7 @@ function generateIcs(appt: Appointment): string {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Short-Go Equine Chiropractic//EN',
+    'PRODID:-//Stride Equine Chiropractic//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'BEGIN:VEVENT',

@@ -1,5 +1,5 @@
 -- =====================================================
--- MIGRATION 001: Add multi-tenancy to short-go-app
+-- MIGRATION 001: Add multi-tenancy to stride-app
 -- Run this once in Supabase SQL Editor (postgres role)
 -- Drew's user ID: 7e8c5527-8235-4fbd-99f2-ad6faa73d9bd
 -- =====================================================

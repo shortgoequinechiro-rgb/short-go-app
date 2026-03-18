@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
 
-type Step = 'name' | 'practice' | 'done'
+type Step = 'name' | 'practice' | 'branding' | 'done'
 
 const ANIMALS = [
   { value: 'horses', label: 'Horses', emoji: '🐴', desc: 'Equine chiropractic & bodywork' },
@@ -19,6 +19,8 @@ export default function OnboardingPage() {
   const [practiceName, setPracticeName] = useState('')
   const [animalsServed, setAnimalsServed] = useState('both')
   const [location, setLocation] = useState('')
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [checkingAuth, setCheckingAuth] = useState(true)
@@ -35,6 +37,15 @@ export default function OnboardingPage() {
     }
     check()
   }, [router])
+
+  function handleLogoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setLogoFile(file)
+    const reader = new FileReader()
+    reader.onload = () => setLogoPreview(reader.result as string)
+    reader.readAsDataURL(file)
+  }
 
   async function handleFinish() {
     setError('')
@@ -63,6 +74,18 @@ export default function OnboardingPage() {
       setError(data.error || 'Something went wrong. Please try again.')
       setLoading(false)
       return
+    }
+
+    // Upload logo if one was selected
+    if (logoFile) {
+      const formData = new FormData()
+      formData.append('file', logoFile)
+      await fetch('/api/upload-logo', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: formData,
+      })
+      // Non-blocking — if logo upload fails, onboarding still succeeds
     }
 
     setStep('done')
@@ -106,7 +129,7 @@ export default function OnboardingPage() {
               <div className="mb-4 text-5xl">🎉</div>
               <h2 className="text-2xl font-bold text-slate-900">You&apos;re all set!</h2>
               <p className="mt-2 text-slate-500">
-                Welcome to Short-Go. Taking you to your practice dashboard…
+                Welcome to Stride. Taking you to your practice dashboard…
               </p>
               <div className="mt-6 flex justify-center">
                 <div className="h-1 w-48 rounded-full bg-slate-100 overflow-hidden">
@@ -119,10 +142,10 @@ export default function OnboardingPage() {
           {/* Step 1: Your name */}
           {step === 'name' && (
             <div className="rounded-3xl bg-white/95 p-8 shadow-2xl backdrop-blur-sm">
-              <ProgressDots current={0} total={2} />
+              <ProgressDots current={0} total={3} />
 
               <div className="mb-8">
-                <h2 className="text-2xl font-bold text-slate-900">Welcome to Short-Go</h2>
+                <h2 className="text-2xl font-bold text-slate-900">Welcome to Stride</h2>
                 <p className="mt-2 text-slate-500">
                   Let&apos;s get your practice set up. This takes about 60 seconds.
                 </p>
@@ -158,7 +181,7 @@ export default function OnboardingPage() {
           {/* Step 2: Practice details */}
           {step === 'practice' && (
             <div className="rounded-3xl bg-white/95 p-8 shadow-2xl backdrop-blur-sm">
-              <ProgressDots current={1} total={2} />
+              <ProgressDots current={1} total={3} />
 
               <div className="mb-8">
                 <h2 className="text-2xl font-bold text-slate-900">About your practice</h2>
@@ -229,8 +252,78 @@ export default function OnboardingPage() {
                     ← Back
                   </button>
                   <button
+                    onClick={() => setStep('branding')}
+                    disabled={!practiceName.trim()}
+                    className="flex-1 rounded-xl bg-slate-900 py-3 text-sm font-semibold text-white transition hover:bg-[#162d55] disabled:opacity-40"
+                  >
+                    Continue →
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          {/* Step 3: Branding (optional logo) */}
+          {step === 'branding' && (
+            <div className="rounded-3xl bg-white/95 p-8 shadow-2xl backdrop-blur-sm">
+              <ProgressDots current={2} total={3} />
+
+              <div className="mb-8">
+                <h2 className="text-2xl font-bold text-slate-900">Your practice branding</h2>
+                <p className="mt-2 text-slate-500">
+                  Upload your practice logo to personalize client-facing forms and emails. You can always do this later in Settings.
+                </p>
+              </div>
+
+              <div className="grid gap-5">
+                {/* Logo upload */}
+                <div className="flex flex-col items-center gap-4">
+                  <label
+                    htmlFor="logo-upload"
+                    className="group flex h-36 w-36 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 transition hover:border-slate-500 hover:bg-slate-100 overflow-hidden"
+                  >
+                    {logoPreview ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={logoPreview} alt="Logo preview" className="h-full w-full object-contain p-2" />
+                    ) : (
+                      <>
+                        <span className="text-3xl text-slate-400 group-hover:text-slate-600 transition">📷</span>
+                        <span className="mt-2 text-xs text-slate-400 group-hover:text-slate-600 transition">Upload logo</span>
+                      </>
+                    )}
+                  </label>
+                  <input
+                    id="logo-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoSelect}
+                    className="hidden"
+                  />
+                  {logoPreview && (
+                    <button
+                      type="button"
+                      onClick={() => { setLogoFile(null); setLogoPreview(null) }}
+                      className="text-xs text-slate-400 hover:text-red-500 transition"
+                    >
+                      Remove
+                    </button>
+                  )}
+                  <p className="text-xs text-slate-400 text-center max-w-xs">
+                    PNG, JPG, or SVG. This will appear on intake forms, consent forms, and emails sent to your clients.
+                  </p>
+                </div>
+
+                {error && <p className="text-sm text-red-500">{error}</p>}
+
+                <div className="flex gap-3 mt-2">
+                  <button
+                    onClick={() => setStep('practice')}
+                    className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+                  >
+                    ← Back
+                  </button>
+                  <button
                     onClick={handleFinish}
-                    disabled={loading || !practiceName.trim()}
+                    disabled={loading}
                     className="flex-1 rounded-xl bg-slate-900 py-3 text-sm font-semibold text-white transition hover:bg-[#162d55] disabled:opacity-40"
                   >
                     {loading ? 'Setting up your practice…' : 'Launch my practice →'}
@@ -239,6 +332,7 @@ export default function OnboardingPage() {
               </div>
             </div>
           )}
+
         </div>
       </div>
     </main>

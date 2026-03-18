@@ -17,7 +17,7 @@ export async function POST(
 
   const resendApiKey = process.env.RESEND_API_KEY
   const fromEmail = process.env.FROM_EMAIL
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://short-go-app.vercel.app'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://stride-app.vercel.app'
 
   if (!resendApiKey) {
     return NextResponse.json({ error: 'Missing RESEND_API_KEY' }, { status: 500 })
@@ -30,12 +30,22 @@ export async function POST(
 
   const { data: owner, error } = await supabase
     .from('owners')
-    .select('id, full_name, email')
+    .select('id, full_name, email, practitioner_id')
     .eq('id', ownerId)
     .single()
 
   if (error || !owner) {
     return NextResponse.json({ error: 'Owner not found' }, { status: 404 })
+  }
+
+  let practitioner: any = null
+  if (owner.practitioner_id) {
+    const { data: prac } = await supabase
+      .from('practitioners')
+      .select('logo_url')
+      .eq('id', owner.practitioner_id)
+      .single()
+    practitioner = prac
   }
 
   if (!owner.email) {
@@ -53,12 +63,13 @@ export async function POST(
   const result = await resend.emails.send({
     from: fromEmail,
     to: owner.email,
-    subject: 'Please complete your intake form – Short-Go Equine Chiropractic',
+    subject: 'Please complete your intake form – Stride Equine Chiropractic',
     html: `
       <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; color: #1e293b;">
         <div style="background: #0f2040; padding: 24px 32px; border-radius: 12px 12px 0 0;">
+          ${practitioner?.logo_url ? `<img src="${practitioner.logo_url}" alt="Logo" style="max-height: 48px; margin-bottom: 8px; display: block;" />` : ''}
           <h1 style="color: white; margin: 0; font-size: 20px; font-weight: 700;">
-            Short-Go Equine Chiropractic
+            Stride Equine Chiropractic
           </h1>
         </div>
 
@@ -89,12 +100,12 @@ export async function POST(
 
           <p style="margin: 0; font-size: 13px; color: #94a3b8;">
             Dr. Andrew Leo D.C., M.S., cAVCA<br/>
-            Short-Go Equine Chiropractic
+            Stride Equine Chiropractic
           </p>
         </div>
       </div>
     `,
-    text: `Hi ${firstName},\n\nPlease fill out your intake form before your appointment:\n\n${intakeUrl}\n\nThank you,\nDr. Andrew Leo D.C., M.S., cAVCA\nShort-Go Equine Chiropractic`,
+    text: `Hi ${firstName},\n\nPlease fill out your intake form before your appointment:\n\n${intakeUrl}\n\nThank you,\nDr. Andrew Leo D.C., M.S., cAVCA\nStride Equine Chiropractic`,
   })
 
   if ((result as any)?.error) {

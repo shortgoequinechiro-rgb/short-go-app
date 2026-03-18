@@ -9,7 +9,7 @@ import path from 'path'
 const AGREEMENT_ITEMS = [
   {
     key: 'scope',
-    text: 'I understand that Short-Go Equine Chiropractic provides animal chiropractic care and that this service is complementary to, and not a replacement for, conventional veterinary care.',
+    text: 'I understand that Stride Equine Chiropractic provides animal chiropractic care and that this service is complementary to, and not a replacement for, conventional veterinary care.',
   },
   {
     key: 'risks',
@@ -17,7 +17,7 @@ const AGREEMENT_ITEMS = [
   },
   {
     key: 'records',
-    text: 'I authorize Short-Go Equine Chiropractic to create and retain health records for my animal(s) and to contact me regarding follow-up care and scheduling.',
+    text: 'I authorize Stride Equine Chiropractic to create and retain health records for my animal(s) and to contact me regarding follow-up care and scheduling.',
   },
   {
     key: 'photos',
@@ -236,10 +236,10 @@ export async function GET(
       const w = dims.width * scale
       const h = dims.height * scale
       page.drawImage(logoImage, { x: margin + 14, y: y - 14 - h, width: w, height: h })
-      drawText('Short-Go Equine Chiropractic', margin + 14 + w + 12, y - 18, 17, true,  colors.white)
+      drawText('Stride Equine Chiropractic', margin + 14 + w + 12, y - 18, 17, true,  colors.white)
       drawText('Client Consent & Service Agreement',  margin + 14 + w + 12, y - 36, 10, false, rgb(0.7, 0.75, 0.85))
     } else {
-      drawText('Short-Go Equine Chiropractic',       margin + 14, y - 20, 17, true,  colors.white)
+      drawText('Stride Equine Chiropractic',       margin + 14, y - 20, 17, true,  colors.white)
       drawText('Client Consent & Service Agreement', margin + 14, y - 38, 10, false, rgb(0.7, 0.75, 0.85))
     }
 
@@ -392,7 +392,7 @@ export async function GET(
 
     const footerY = margin - 8
     page.drawLine({ start: { x: margin, y: footerY + 18 }, end: { x: pageWidth - margin, y: footerY + 18 }, thickness: 0.5, color: colors.line })
-    drawText('Short-Go Equine Chiropractic  ·  Client Consent & Service Agreement', margin, footerY + 8, 8, false, colors.muted)
+    drawText('Stride Equine Chiropractic  ·  Client Consent & Service Agreement', margin, footerY + 8, 8, false, colors.muted)
     drawText(`Form Version ${consent.form_version || '1.0'}  ·  Signed ${new Date(consent.signed_at).toLocaleDateString()}`, pageWidth - margin - 180, footerY + 8, 8, false, colors.muted)
 
     // ── Serialize & return inline ──────────────────────────────────────────────

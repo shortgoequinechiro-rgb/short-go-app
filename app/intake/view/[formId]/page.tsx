@@ -172,7 +172,7 @@ export default function IntakeFormViewPage() {
         <div className="mb-6 rounded-3xl bg-white p-8 shadow-md text-center">
           <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-1">Submitted Intake Form</p>
           <h1 className="text-2xl font-bold text-slate-900">Equine Chiropractic Intake Form</h1>
-          <p className="mt-1 text-sm text-slate-500">Short-Go Equine Chiropractic · Dr. Andrew Leo, D.C. c.AVCA</p>
+          <p className="mt-1 text-sm text-slate-500">Stride Equine Chiropractic · Dr. Andrew Leo, D.C. c.AVCA</p>
           <div className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-emerald-50 border border-emerald-200 px-4 py-2">
             <span className="text-emerald-600 font-bold text-sm">✓</span>
             <span className="text-sm font-semibold text-emerald-700">
@@ -258,7 +258,7 @@ export default function IntakeFormViewPage() {
         </div>
 
         <p className="mt-8 pb-8 text-center text-xs text-slate-400">
-          Short-Go Equine Chiropractic · Dr. Andrew Leo, D.C. c.AVCA, Animal Chiropractor
+          Stride Equine Chiropractic · Dr. Andrew Leo, D.C. c.AVCA, Animal Chiropractor
         </p>
       </div>
     </div>

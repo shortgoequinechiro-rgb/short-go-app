@@ -15,6 +15,7 @@ type Practitioner = {
   practice_name: string | null
   animals_served: string | null
   location: string | null
+  logo_url: string | null
   subscription_status: string
   trial_ends_at: string | null
   stripe_customer_id: string | null
@@ -60,9 +61,51 @@ function ProfileTab({ practitioner, onSaved }: { practitioner: Practitioner; onS
   const [practiceName,  setPracticeName]  = useState(practitioner.practice_name ?? '')
   const [animalsServed, setAnimalsServed] = useState(practitioner.animals_served ?? 'both')
   const [location,      setLocation]      = useState(practitioner.location ?? '')
+  const [logoUrl,       setLogoUrl]       = useState(practitioner.logo_url ?? '')
+  const [logoUploading, setLogoUploading] = useState(false)
   const [saving,  setSaving]  = useState(false)
   const [saved,   setSaved]   = useState(false)
   const [error,   setError]   = useState('')
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setLogoUploading(true); setError('')
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { setError('Not authenticated.'); setLogoUploading(false); return }
+    const formData = new FormData()
+    formData.append('file', file)
+    const res = await fetch('/api/upload-logo', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${session.access_token}` },
+      body: formData,
+    })
+    if (res.ok) {
+      const data = await res.json()
+      setLogoUrl(data.logo_url)
+      onSaved({ ...practitioner, logo_url: data.logo_url })
+    } else {
+      setError('Failed to upload logo. Please try again.')
+    }
+    setLogoUploading(false)
+  }
+
+  async function handleLogoRemove() {
+    setLogoUploading(true); setError('')
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { setError('Not authenticated.'); setLogoUploading(false); return }
+    const res = await fetch('/api/upload-logo', {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
+    if (res.ok) {
+      setLogoUrl('')
+      onSaved({ ...practitioner, logo_url: null })
+    } else {
+      setError('Failed to remove logo.')
+    }
+    setLogoUploading(false)
+  }
 
   const isDirty =
     fullName      !== (practitioner.full_name      ?? '') ||
@@ -96,6 +139,48 @@ function ProfileTab({ practitioner, onSaved }: { practitioner: Practitioner; onS
         <p className="text-sm text-blue-300 mt-0.5">Update your practice info shown throughout the app.</p>
       </div>
 
+      {/* Practice Logo */}
+      <div>
+        <label className="block text-xs font-semibold uppercase tracking-wider text-blue-400 mb-3">
+          Practice Logo
+        </label>
+        <div className="flex items-center gap-5">
+          <label
+            htmlFor="logo-upload-settings"
+            className="group flex h-20 w-20 cursor-pointer items-center justify-center rounded-xl border border-[#1a3358] bg-[#081120] transition hover:border-[#c9a227] overflow-hidden shrink-0"
+          >
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoUrl} alt="Practice logo" className="h-full w-full object-contain p-1.5" />
+            ) : (
+              <span className="text-2xl text-white/20 group-hover:text-white/40 transition">📷</span>
+            )}
+          </label>
+          <input
+            id="logo-upload-settings"
+            type="file"
+            accept="image/*"
+            onChange={handleLogoUpload}
+            className="hidden"
+          />
+          <div className="space-y-2">
+            <p className="text-xs text-blue-200/60">
+              {logoUrl ? 'Your logo appears on client intake forms, consent forms, and emails.' : 'Upload a logo to personalize client-facing forms and emails.'}
+            </p>
+            <div className="flex gap-2">
+              <label htmlFor="logo-upload-settings" className="cursor-pointer text-xs font-medium text-[#c9a227] hover:text-[#b89020] transition">
+                {logoUploading ? 'Uploading…' : logoUrl ? 'Replace' : 'Upload'}
+              </label>
+              {logoUrl && (
+                <button onClick={handleLogoRemove} disabled={logoUploading} className="text-xs text-red-400 hover:text-red-300 transition">
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="grid gap-5 sm:grid-cols-2">
         {/* Full name */}
         <div>
@@ -120,7 +205,7 @@ function ProfileTab({ practitioner, onSaved }: { practitioner: Practitioner; onS
             type="text"
             value={practiceName}
             onChange={e => { setPracticeName(e.target.value); setSaved(false) }}
-            placeholder="Short-Go Equine Chiropractic"
+            placeholder="Stride Equine Chiropractic"
             className="w-full rounded-xl border border-[#1a3358] bg-[#081120] px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/40 transition"
           />
         </div>
@@ -326,7 +411,7 @@ function BillingTab({ practitioner }: { practitioner: Practitioner }) {
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-bold text-white">Billing &amp; Subscription</h2>
-        <p className="text-sm text-blue-300 mt-0.5">Manage your Short-Go subscription and payment method.</p>
+        <p className="text-sm text-blue-300 mt-0.5">Manage your Stride subscription and payment method.</p>
       </div>
 
       {/* Plan card */}
@@ -334,7 +419,7 @@ function BillingTab({ practitioner }: { practitioner: Practitioner }) {
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-blue-400 mb-1">Current Plan</p>
-            <p className="text-xl font-bold text-white">Short-Go Pro</p>
+            <p className="text-xl font-bold text-white">Stride Pro</p>
             <p className="text-sm text-blue-300 mt-0.5">$59 / month</p>
           </div>
           <StatusBadge status={status} />

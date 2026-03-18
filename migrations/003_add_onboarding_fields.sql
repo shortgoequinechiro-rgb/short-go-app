@@ -16,7 +16,7 @@ ALTER TABLE practitioners
 UPDATE practitioners
 SET
   onboarding_complete = true,
-  practice_name       = 'Short-Go Equine Chiropractic',
+  practice_name       = 'Stride Equine Chiropractic',
   full_name           = 'Dr. Andrew Leo',
   animals_served      = 'both',
   updated_at          = now()
