@@ -89,7 +89,7 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-gold.png" alt="Stride" className="h-10 w-10" />
+            <img src="/logo-gold.png" alt="Stride" className="h-14 w-14" />
             <div className="flex flex-col leading-none">
               <span className="text-xl font-extrabold text-white tracking-tight" style={{ fontFamily: "'Geist', system-ui, sans-serif" }}>
                 Stride
@@ -142,7 +142,7 @@ export default function LandingPage() {
             <img
               src="/logo-gold.png"
               alt="Stride"
-              className="h-20 w-20 sm:h-24 sm:w-24 drop-shadow-2xl"
+              className="h-60 w-60 sm:h-72 sm:w-72 drop-shadow-2xl"
             />
             <div>
               <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl" style={{ fontFamily: "'Geist', system-ui, sans-serif" }}>
@@ -388,7 +388,7 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 text-sm text-blue-200/50 sm:flex-row">
           <div className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-gold.png" alt="Stride" className="h-8 w-8 opacity-70" />
+            <img src="/logo-gold.png" alt="Stride" className="h-10 w-10 opacity-70" />
             <div className="flex flex-col leading-tight">
               <span className="font-bold text-blue-200/70 text-sm">Stride</span>
               <span className="text-[10px] text-blue-200/40">Equine &amp; Canine Chiropractic</span>
