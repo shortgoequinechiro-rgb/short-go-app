@@ -211,63 +211,14 @@ export default function LandingPage() {
             </div>
           }
         >
-          {/* App screenshot mockup */}
-          <div className="h-full w-full bg-gradient-to-br from-[#0f2040] to-[#162d55] rounded-xl flex flex-col items-center justify-center relative overflow-hidden">
-            {/* Simulated dashboard UI */}
-            <div className="absolute inset-0 p-4 md:p-8">
-              {/* Top bar */}
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-[#c9a227]/20 flex items-center justify-center">
-                    <Image src="/stride-logo-gold.png" alt="" width={20} height={20} />
-                  </div>
-                  <span className="text-white/80 font-semibold text-sm hidden md:block">STRIDE</span>
-                </div>
-                <div className="flex gap-2">
-                  <div className="px-3 py-1.5 rounded-lg bg-white/5 text-white/40 text-xs">Scheduler</div>
-                  <div className="px-3 py-1.5 rounded-lg bg-white/5 text-white/40 text-xs">Account</div>
-                </div>
-              </div>
-
-              {/* Main content area */}
-              <div className="bg-white/[0.03] rounded-2xl p-4 md:p-6 border border-white/5">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-white/90 font-bold text-base md:text-lg">Client Dashboard</h3>
-                  <div className="flex gap-2">
-                    <div className="px-3 py-1.5 rounded-lg bg-[#c9a227]/10 text-[#c9a227] text-xs font-medium">+ Add Owner</div>
-                    <div className="px-3 py-1.5 rounded-lg bg-white/5 text-white/40 text-xs">+ Add Patient</div>
-                  </div>
-                </div>
-
-                {/* Today's appointments */}
-                <div className="bg-white/[0.02] rounded-xl p-4 border border-white/5 mb-4">
-                  <p className="text-white/60 text-xs font-medium mb-3">Today&apos;s Appointments</p>
-                  <div className="space-y-2">
-                    {["Thunder — 2:00 PM — Barn Visit", "Bella — 4:30 PM — Office"].map((apt, i) => (
-                      <div key={i} className="flex items-center gap-3 bg-white/[0.03] rounded-lg px-3 py-2">
-                        <div className="w-2 h-2 rounded-full bg-[#c9a227]" />
-                        <span className="text-white/50 text-xs">{apt}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Stats row */}
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { label: "Patients", value: "47" },
-                    { label: "Visits", value: "312" },
-                    { label: "This Month", value: "28" },
-                  ].map((stat, i) => (
-                    <div key={i} className="bg-white/[0.02] rounded-xl p-3 border border-white/5 text-center">
-                      <p className="text-[#c9a227] text-lg md:text-2xl font-bold">{stat.value}</p>
-                      <p className="text-white/30 text-[10px] md:text-xs mt-1">{stat.label}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* Real app screenshot */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="https://pyuarwwhmtoflyzwblbn.supabase.co/storage/v1/object/public/marketing/dashboard-screenshot.png"
+            alt="Stride dashboard showing client records, appointments, and patient management"
+            className="mx-auto rounded-2xl object-cover h-full w-full object-top"
+            draggable={false}
+          />
         </ContainerScroll>
       </section>
 
