@@ -52,7 +52,16 @@ export async function POST(req: Request) {
       })
 
     if (uploadError) {
-      console.error('Storage upload error:', uploadError)
+      console.error('Storage upload error:', uploadError.message, uploadError)
+
+      // If the bucket doesn't exist, provide a clear message
+      if (uploadError.message?.includes('not found') || uploadError.message?.includes('Bucket')) {
+        return NextResponse.json(
+          { error: 'Logo storage is not configured. Please run migration 010_create_logos_bucket.sql.' },
+          { status: 500 }
+        )
+      }
+
       return NextResponse.json({ error: 'Failed to upload logo' }, { status: 500 })
     }
 
