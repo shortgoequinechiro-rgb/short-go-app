@@ -2288,7 +2288,18 @@ export default function HorseDetailPage() {
                       </Link>
                     )}
                   </div>
-                ) : null}
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {horse?.species !== 'canine' && (
+                      <Link
+                        href={`/anatomy?horseName=${encodeURIComponent(horse?.name || '')}`}
+                        className="rounded-xl border border-[#0f2040] bg-[#0f2040] px-4 py-2 text-sm text-white hover:bg-[#162d55] transition-colors"
+                      >
+                        Open Anatomy Viewer
+                      </Link>
+                    )}
+                  </div>
+                )}
               </div>
 
               {horse?.species !== 'canine' && editingVisitId && activeVisitAnatomyCount > 0 ? (
