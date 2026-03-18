@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(
 
 export async function POST(req: Request) {
   try {
-    const { authorization } = req.headers
+    const authorization = req.headers.get('authorization')
 
     if (!authorization) {
       return NextResponse.json({ error: 'No authorization header' }, { status: 401 })
@@ -85,7 +85,7 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const { authorization } = req.headers
+    const authorization = req.headers.get('authorization')
 
     if (!authorization) {
       return NextResponse.json({ error: 'No authorization header' }, { status: 401 })
