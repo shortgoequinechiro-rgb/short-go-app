@@ -301,12 +301,14 @@ export default function LandingPage() {
 
             <SlideIn direction="right" delay={0.2}>
               <div className="relative">
-                <div className="aspect-square rounded-3xl bg-gradient-to-br from-[#162d55] to-[#0f2040] border border-white/5 flex items-center justify-center overflow-hidden">
-                  <div className="text-center p-8">
-                    <Bone className="w-24 h-24 text-[#c9a227]/20 mx-auto mb-4" />
-                    <p className="text-white/20 text-sm">3D Anatomy Viewer</p>
-                    <p className="text-white/10 text-xs mt-1">Interactive model with annotation tools</p>
-                  </div>
+                <div className="rounded-3xl border border-white/10 overflow-hidden shadow-2xl">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="https://pyuarwwhmtoflyzwblbn.supabase.co/storage/v1/object/public/marketing/anatomy-screenshot.png?v=1"
+                    alt="Stride 3D Horse Anatomy Viewer with skeleton layer, annotation tools, and region details"
+                    className="w-full h-auto object-cover rounded-3xl"
+                    draggable={false}
+                  />
                 </div>
                 {/* Floating badges */}
                 <motion.div
