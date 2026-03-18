@@ -149,11 +149,11 @@ function ProfileTab({ practitioner, onSaved }: { practitioner: Practitioner; onS
         <div className="flex items-center gap-5">
           <label
             htmlFor="logo-upload-settings"
-            className="group flex h-20 w-20 cursor-pointer items-center justify-center rounded-xl border border-[#1a3358] bg-[#081120] transition hover:border-[#c9a227] overflow-hidden shrink-0"
+            className={`group flex h-20 w-20 cursor-pointer items-center justify-center rounded-xl border transition hover:border-[#c9a227] overflow-hidden shrink-0 ${logoUrl ? 'border-[#c9a227]/30 bg-white' : 'border-[#1a3358] bg-[#081120]'}`}
           >
             {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt="Practice logo" className="h-full w-full object-contain p-1.5" />
+              <img src={logoUrl} alt="Practice logo" className="h-full w-full object-contain p-2" />
             ) : (
               <span className="text-2xl text-white/20 group-hover:text-white/40 transition">📷</span>
             )}

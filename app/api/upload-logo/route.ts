@@ -66,9 +66,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Failed to upload logo' }, { status: 500 })
     }
 
-    // Get public URL
+    // Get public URL with cache-busting timestamp
     const { data } = supabaseAdmin.storage.from('logos').getPublicUrl(filePath)
-    const publicUrl = data.publicUrl
+    const publicUrl = `${data.publicUrl}?v=${Date.now()}`
 
     // Update practitioners table with logo_url via RPC (bypasses schema cache)
     const { error: updateError } = await supabaseAdmin
