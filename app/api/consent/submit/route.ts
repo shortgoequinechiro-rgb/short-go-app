@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
     signatureData: string | null
     horsesAcknowledged: string | null
     notes: string | null
+    smsConsent?: boolean
   }
 
   try {
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 })
   }
 
-  const { ownerId, signedName, signatureData, horsesAcknowledged, notes } = body
+  const { ownerId, signedName, signatureData, horsesAcknowledged, notes, smsConsent } = body
 
   if (!ownerId || !signedName) {
     return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 })
@@ -59,6 +60,14 @@ export async function POST(req: NextRequest) {
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  // If the client consented to SMS, update their opt-in status
+  if (smsConsent) {
+    await supabase
+      .from('owners')
+      .update({ sms_consent_status: 'opted_in' })
+      .eq('id', ownerId)
   }
 
   return NextResponse.json({ success: true, id: newConsent?.id })
