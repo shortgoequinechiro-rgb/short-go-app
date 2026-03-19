@@ -189,6 +189,10 @@ export async function GET(
             email,
             address
           )
+        ),
+        practitioners (
+          full_name,
+          practice_name
         )
       `)
       .eq('id', visitId)
@@ -259,6 +263,9 @@ export async function GET(
 
     const horse = visit.horses as any
     const owner = horse?.owners as any
+    const practitioner = visit.practitioners as any
+    const practiceName = practitioner?.practice_name || 'Your Care Provider'
+    const doctorName = practitioner?.full_name || 'Your practitioner'
 
     const colors = {
       text: rgb(0.14, 0.14, 0.14),
@@ -395,10 +402,10 @@ export async function GET(
           height: drawHeight,
         })
 
-        drawTextLine('Stride Equine Chiropractic', margin + drawWidth + 14, y - 2, 19, true, colors.dark)
+        drawTextLine(practiceName, margin + drawWidth + 14, y - 2, 19, true, colors.dark)
         drawTextLine('Equine Chiropractic Visit Report', margin + drawWidth + 14, y - 22, 11, false, colors.muted)
       } else {
-        drawTextLine('Stride Equine Chiropractic', margin, y - 2, 19, true, colors.dark)
+        drawTextLine(practiceName, margin, y - 2, 19, true, colors.dark)
         drawTextLine('Equine Chiropractic Visit Report', margin, y - 22, 11, false, colors.muted)
       }
 
@@ -716,9 +723,9 @@ export async function GET(
     })
 
     y -= 16
-    drawTextLine('Dr. Andrew Leo D.C., M.S., cAVCA', margin, y, 11, true, colors.text)
+    drawTextLine(doctorName, margin, y, 11, true, colors.text)
     y -= 14
-    drawTextLine('Stride Equine Chiropractic', margin, y, 10, false, colors.muted)
+    drawTextLine(practiceName, margin, y, 10, false, colors.muted)
 
     const pdfBytes = await pdfDoc.save()
     const fileName = `${horse?.name || 'horse'}-visit-${visit.visit_date || 'report'}.pdf`

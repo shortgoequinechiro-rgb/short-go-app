@@ -28,12 +28,22 @@ export async function POST(
 
   const { data: owner, error } = await supabase
     .from('owners')
-    .select('id, full_name, phone, sms_consent_status')
+    .select('id, full_name, phone, sms_consent_status, practitioner_id')
     .eq('id', ownerId)
     .single()
 
   if (error || !owner) {
     return NextResponse.json({ error: 'Owner not found.' }, { status: 404 })
+  }
+
+  let doctorName = 'Your practitioner'
+  if (owner.practitioner_id) {
+    const { data: prac } = await supabase
+      .from('practitioners')
+      .select('full_name')
+      .eq('id', owner.practitioner_id)
+      .single()
+    if (prac?.full_name) doctorName = prac.full_name
   }
 
   if (!owner.phone) {
@@ -62,7 +72,7 @@ export async function POST(
     const message = await client.messages.create({
       from: fromNumber,
       to: toNumber,
-      body: `Hi ${firstName}! Dr. Leo sent you a consent form to sign before your appointment. It only takes a minute: ${consentUrl}`,
+      body: `Hi ${firstName}! ${doctorName} sent you a consent form to sign before your appointment. It only takes a minute: ${consentUrl}`,
     })
 
     if (message.errorCode) {

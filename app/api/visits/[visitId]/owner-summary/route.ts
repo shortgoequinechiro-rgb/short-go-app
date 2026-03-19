@@ -23,7 +23,7 @@ const REGION_LABELS: Record<string, string> = {
 
 // ── PDF generation ────────────────────────────────────────────────────────────
 
-async function generateSummaryPDF(summaryText: string, horseName: string, visitDate: string, ownerName: string): Promise<Uint8Array> {
+async function generateSummaryPDF(summaryText: string, horseName: string, visitDate: string, ownerName: string, practiceName: string, doctorName: string): Promise<Uint8Array> {
   const doc = await PDFDocument.create()
   const font = await doc.embedFont(StandardFonts.Helvetica)
   const fontBold = await doc.embedFont(StandardFonts.HelveticaBold)
@@ -55,7 +55,7 @@ async function generateSummaryPDF(summaryText: string, horseName: string, visitD
 
   // ── Header bar ──
   page.drawRectangle({ x: 0, y: PAGE_H - 80, width: PAGE_W, height: 80, color: rgb(0.059, 0.090, 0.165) })
-  page.drawText('Stride Equine Chiropractic', { x: MARGIN, y: PAGE_H - 38, size: 16, font: fontBold, color: rgb(1, 1, 1) })
+  page.drawText(practiceName, { x: MARGIN, y: PAGE_H - 38, size: 16, font: fontBold, color: rgb(1, 1, 1) })
   page.drawText(`Visit Summary — ${horseName}`, { x: MARGIN, y: PAGE_H - 60, size: 11, font, color: rgb(0.58, 0.64, 0.75) })
   y = PAGE_H - 80 - 24
 
@@ -99,7 +99,7 @@ async function generateSummaryPDF(summaryText: string, horseName: string, visitD
 
   // ── Footer ──
   const footerY = MARGIN - 12
-  page.drawText('Dr. Andrew Leo D.C., M.S., cAVCA · Stride Equine Chiropractic', { x: MARGIN, y: footerY, size: 9, font, color: rgb(0.6, 0.65, 0.70) })
+  page.drawText(`${doctorName} · ${practiceName}`, { x: MARGIN, y: footerY, size: 9, font, color: rgb(0.6, 0.65, 0.70) })
 
   return doc.save()
 }
@@ -111,7 +111,7 @@ async function buildSummary(visitId: string) {
 
   const { data: visit, error: visitError } = await supabase
     .from('visits')
-    .select(`*, horses ( name, breed, age, discipline, owners ( full_name, email ) )`)
+    .select(`*, horses ( name, breed, age, discipline, owners ( full_name, email ) ), practitioners ( practice_name, full_name )`)
     .eq('id', visitId)
     .single()
 
@@ -119,6 +119,10 @@ async function buildSummary(visitId: string) {
 
   const horse = visit.horses as any
   const owner = horse?.owners as any
+  const practitioner = visit.practitioners as any
+
+  const practiceName = practitioner?.practice_name || 'Your Care Provider'
+  const doctorName = practitioner?.full_name || 'Your practitioner'
 
   const { data: anatomyRows } = await supabase
     .from('visit_anatomy_regions')
@@ -181,7 +185,7 @@ ${visit.follow_up ? `\nFollow-up recommendation: ${visit.follow_up}` : ''}
 
 Write the email body only (no subject line). Start with a warm greeting using the owner's name.
 Use plain language — avoid clinical jargon. Explain what was found, what was done, and what to watch for at home.
-End with follow-up recommendations and a warm sign-off from Dr. Andrew Leo.
+End with follow-up recommendations and a warm sign-off from ${doctorName}.
 `.trim()
 
   const openAiKey = process.env.OPENAI_API_KEY
@@ -200,7 +204,7 @@ End with follow-up recommendations and a warm sign-off from Dr. Andrew Leo.
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8f9fa;margin:0;padding:24px;">
   <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
     <div style="background:#0f172a;padding:28px 32px;">
-      <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;">Stride Equine Chiropractic</h1>
+      <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;">${practiceName}</h1>
       <p style="margin:6px 0 0;color:#94a3b8;font-size:13px;">Visit Summary — ${horse?.name || 'Your Horse'}</p>
     </div>
     <div style="padding:28px 32px;">${htmlParagraphs}</div>
@@ -212,7 +216,7 @@ End with follow-up recommendations and a warm sign-off from Dr. Andrew Leo.
       </div>
     </div>
     <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 32px;">
-      <p style="margin:0;color:#94a3b8;font-size:12px;">Dr. Andrew Leo D.C., M.S., cAVCA · Stride Equine Chiropractic</p>
+      <p style="margin:0;color:#94a3b8;font-size:12px;">${doctorName} · ${practiceName}</p>
       <p style="margin:4px 0 0;color:#cbd5e1;font-size:11px;">This is a plain-language summary for the horse owner. A full clinical report is available separately.</p>
     </div>
   </div>
@@ -229,6 +233,8 @@ End with follow-up recommendations and a warm sign-off from Dr. Andrew Leo.
     ownerName: owner?.full_name || '',
     horseName: horse?.name || 'Your Horse',
     visitDate: visit.visit_date || '',
+    practiceName,
+    doctorName,
   }
 }
 
@@ -240,8 +246,8 @@ export async function GET(
 ) {
   try {
     const { visitId } = await params
-    const { summaryText, subject, ownerEmail, ownerName } = await buildSummary(visitId)
-    return NextResponse.json({ summaryText, subject, ownerEmail, ownerName })
+    const { summaryText, subject, ownerEmail, ownerName, practiceName, doctorName } = await buildSummary(visitId)
+    return NextResponse.json({ summaryText, subject, ownerEmail, ownerName, practiceName, doctorName })
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || 'Failed to generate preview.' }, { status: 500 })
   }
@@ -261,14 +267,14 @@ export async function POST(
     if (!resendApiKey) return NextResponse.json({ error: 'Missing RESEND_API_KEY.' }, { status: 500 })
     if (!fromEmail)    return NextResponse.json({ error: 'Missing FROM_EMAIL.' }, { status: 500 })
 
-    const { summaryText, htmlBody, subject, ownerEmail, ownerName, horseName, visitDate } = await buildSummary(visitId)
+    const { summaryText, htmlBody, subject, ownerEmail, ownerName, horseName, visitDate, practiceName, doctorName } = await buildSummary(visitId)
 
     if (!ownerEmail) {
       return NextResponse.json({ error: 'Owner does not have an email address on file.' }, { status: 400 })
     }
 
     // Generate PDF summary attachment
-    const pdfBytes = await generateSummaryPDF(summaryText, horseName, visitDate, ownerName)
+    const pdfBytes = await generateSummaryPDF(summaryText, horseName, visitDate, ownerName, practiceName, doctorName)
     const pdfBase64 = Buffer.from(pdfBytes).toString('base64')
     const pdfFilename = `visit-summary-${horseName.replace(/\s+/g, '-').toLowerCase()}-${visitDate || 'recent'}.pdf`
 

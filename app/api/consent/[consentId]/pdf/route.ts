@@ -6,28 +6,30 @@ import path from 'path'
 
 // ── Agreement items (mirrors the consent form page) ───────────────────────────
 
-const AGREEMENT_ITEMS = [
-  {
-    key: 'scope',
-    text: 'I understand that Stride Equine Chiropractic provides animal chiropractic care and that this service is complementary to, and not a replacement for, conventional veterinary care.',
-  },
-  {
-    key: 'risks',
-    text: 'I acknowledge that, as with any hands-on therapy, there are inherent risks associated with chiropractic treatment, and I consent to care being provided under these conditions.',
-  },
-  {
-    key: 'records',
-    text: 'I authorize Stride Equine Chiropractic to create and retain health records for my animal(s) and to contact me regarding follow-up care and scheduling.',
-  },
-  {
-    key: 'photos',
-    text: 'I understand that clinical photographs and notes may be taken during sessions for the purpose of record-keeping and treatment planning.',
-  },
-  {
-    key: 'payment',
-    text: 'I agree to be responsible for all fees associated with care provided to my animal(s) at the time of service.',
-  },
-]
+function getAgreementItems(practiceName: string) {
+  return [
+    {
+      key: 'scope',
+      text: `I understand that ${practiceName} provides animal chiropractic care and that this service is complementary to, and not a replacement for, conventional veterinary care.`,
+    },
+    {
+      key: 'risks',
+      text: 'I acknowledge that, as with any hands-on therapy, there are inherent risks associated with chiropractic treatment, and I consent to care being provided under these conditions.',
+    },
+    {
+      key: 'records',
+      text: `I authorize ${practiceName} to create and retain health records for my animal(s) and to contact me regarding follow-up care and scheduling.`,
+    },
+    {
+      key: 'photos',
+      text: 'I understand that clinical photographs and notes may be taken during sessions for the purpose of record-keeping and treatment planning.',
+    },
+    {
+      key: 'payment',
+      text: 'I agree to be responsible for all fees associated with care provided to my animal(s) at the time of service.',
+    },
+  ]
+}
 
 // ── Supabase admin client ─────────────────────────────────────────────────────
 
@@ -108,11 +110,13 @@ export async function GET(
         horses_acknowledged,
         notes,
         signature_data,
+        owner_id,
         owners (
           full_name,
           phone,
           email,
-          address
+          address,
+          practitioner_id
         )
       `)
       .eq('id', consentId)
@@ -122,7 +126,20 @@ export async function GET(
       return NextResponse.json({ error: 'Consent form not found.' }, { status: 404 })
     }
 
-    const owner = (Array.isArray(consent.owners) ? consent.owners[0] : consent.owners) as { full_name: string; phone: string | null; email: string | null; address: string | null } | null
+    const owner = (Array.isArray(consent.owners) ? consent.owners[0] : consent.owners) as { full_name: string; phone: string | null; email: string | null; address: string | null; practitioner_id: string | null } | null
+
+    // Fetch practitioner info
+    let practiceName = 'Your Care Provider'
+    if (owner?.practitioner_id) {
+      const { data: prac } = await supabase
+        .from('practitioners')
+        .select('practice_name')
+        .eq('id', owner.practitioner_id)
+        .single()
+      if (prac?.practice_name) practiceName = prac.practice_name
+    }
+
+    const agreementItems = getAgreementItems(practiceName)
 
     // ── Build PDF ─────────────────────────────────────────────────────────────
 
@@ -236,10 +253,10 @@ export async function GET(
       const w = dims.width * scale
       const h = dims.height * scale
       page.drawImage(logoImage, { x: margin + 14, y: y - 14 - h, width: w, height: h })
-      drawText('Stride Equine Chiropractic', margin + 14 + w + 12, y - 18, 17, true,  colors.white)
+      drawText(practiceName, margin + 14 + w + 12, y - 18, 17, true,  colors.white)
       drawText('Client Consent & Service Agreement',  margin + 14 + w + 12, y - 36, 10, false, rgb(0.7, 0.75, 0.85))
     } else {
-      drawText('Stride Equine Chiropractic',       margin + 14, y - 20, 17, true,  colors.white)
+      drawText(practiceName,       margin + 14, y - 20, 17, true,  colors.white)
       drawText('Client Consent & Service Agreement', margin + 14, y - 38, 10, false, rgb(0.7, 0.75, 0.85))
     }
 
@@ -282,8 +299,8 @@ export async function GET(
 
     drawSectionTitle('Terms of Care — All Items Acknowledged')
 
-    for (let i = 0; i < AGREEMENT_ITEMS.length; i++) {
-      const item = AGREEMENT_ITEMS[i]
+    for (let i = 0; i < agreementItems.length; i++) {
+      const item = agreementItems[i]
       const lines = wrapText(item.text, 82)
       const rowHeight = Math.max(36, lines.length * 13 + 22)
       ensureSpace(rowHeight + 6)
@@ -392,7 +409,7 @@ export async function GET(
 
     const footerY = margin - 8
     page.drawLine({ start: { x: margin, y: footerY + 18 }, end: { x: pageWidth - margin, y: footerY + 18 }, thickness: 0.5, color: colors.line })
-    drawText('Stride Equine Chiropractic  ·  Client Consent & Service Agreement', margin, footerY + 8, 8, false, colors.muted)
+    drawText(`${practiceName}  ·  Client Consent & Service Agreement`, margin, footerY + 8, 8, false, colors.muted)
     drawText(`Form Version ${consent.form_version || '1.0'}  ·  Signed ${new Date(consent.signed_at).toLocaleDateString()}`, pageWidth - margin - 180, footerY + 8, 8, false, colors.muted)
 
     // ── Serialize & return inline ──────────────────────────────────────────────

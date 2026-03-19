@@ -109,7 +109,7 @@ function formatPhone(phone: string | null | undefined): string {
 const emptyVisitForm = {
   visitDate: '',
   visitLocation: '',
-  providerName: 'Dr. Andrew Leo',
+  providerName: '',
   reasonForVisit: '',
   quickNotes: '',
   subjective: '',
@@ -138,6 +138,7 @@ export default function HorseDetailPage() {
   const [checkingAuth, setCheckingAuth] = useState(true)
   const [userEmail, setUserEmail] = useState('')
   const [userId, setUserId] = useState('')
+  const [practitionerName, setPractitionerName] = useState('')
   const [message, setMessage] = useState('')
   const [activeTab, setActiveTab] = useState<'info' | 'visits' | 'photos' | 'records'>('info')
   const [pendingSpineId, setPendingSpineId] = useState<string | null>(null)
@@ -194,7 +195,7 @@ export default function HorseDetailPage() {
 
   const [visitDate, setVisitDate] = useState('')
   const [visitLocation, setVisitLocation] = useState('')
-  const [providerName, setProviderName] = useState('Dr. Andrew Leo')
+  const [providerName, setProviderName] = useState('')
   const [reasonForVisit, setReasonForVisit] = useState('')
   const [quickNotes, setQuickNotes] = useState('')
   const [subjective, setSubjective] = useState('')
@@ -250,6 +251,17 @@ export default function HorseDetailPage() {
 
     setUserEmail(user.email || '')
     setUserId(user.id)
+
+    // Fetch practitioner name
+    const { data: practitioner } = await supabase
+      .from('practitioners')
+      .select('full_name')
+      .eq('id', user.id)
+      .single()
+    if (practitioner?.full_name) {
+      setPractitionerName(practitioner.full_name)
+    }
+
     setCheckingAuth(false)
     return true
   }
@@ -673,7 +685,7 @@ export default function HorseDetailPage() {
     setPendingSpineId(null)
     setVisitDate(emptyVisitForm.visitDate)
     setVisitLocation(emptyVisitForm.visitLocation)
-    setProviderName(emptyVisitForm.providerName)
+    setProviderName(practitionerName)
     setReasonForVisit(emptyVisitForm.reasonForVisit)
     setQuickNotes(emptyVisitForm.quickNotes)
     setSubjective(emptyVisitForm.subjective)
@@ -695,7 +707,7 @@ export default function HorseDetailPage() {
     setEditingVisitId(visit.id)
     setVisitDate(visit.visit_date || '')
     setVisitLocation(visit.location || '')
-    setProviderName(visit.provider_name || 'Dr. Andrew Leo')
+    setProviderName(visit.provider_name || practitionerName)
     setReasonForVisit(visit.reason_for_visit || '')
     setSubjective(visit.subjective || '')
     setObjective(visit.objective || '')

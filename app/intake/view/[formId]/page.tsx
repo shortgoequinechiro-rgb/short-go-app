@@ -19,6 +19,7 @@ type IntakeFormFull = {
   consent_signed: boolean
   archived: boolean | null
   referral_source: string[] | null
+  practitioner_id: string | null
   animal_name: string
   animal_age: string | null
   animal_breed: string | null
@@ -44,6 +45,10 @@ type IntakeFormFull = {
     name: string
     species: string | null
   } | null
+  practitioners: {
+    practice_name: string | null
+    full_name: string | null
+  } | null
 }
 
 export default function IntakeFormViewPage() {
@@ -66,7 +71,8 @@ export default function IntakeFormViewPage() {
       .select(`
         *,
         owners ( full_name, phone, email, address ),
-        horses ( id, name, species )
+        horses ( id, name, species ),
+        practitioners ( practice_name, full_name )
       `)
       .eq('id', formId)
       .single()
@@ -172,7 +178,7 @@ export default function IntakeFormViewPage() {
         <div className="mb-6 rounded-3xl bg-white p-8 shadow-md text-center">
           <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-1">Submitted Intake Form</p>
           <h1 className="text-2xl font-bold text-slate-900">Equine Chiropractic Intake Form</h1>
-          <p className="mt-1 text-sm text-slate-500">Stride Equine Chiropractic · Dr. Andrew Leo, D.C. c.AVCA</p>
+          <p className="mt-1 text-sm text-slate-500">{form.practitioners?.practice_name || 'Practice'}{form.practitioners?.full_name ? ` · ${form.practitioners.full_name}` : ''}</p>
           <div className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-emerald-50 border border-emerald-200 px-4 py-2">
             <span className="text-emerald-600 font-bold text-sm">✓</span>
             <span className="text-sm font-semibold text-emerald-700">
@@ -227,7 +233,7 @@ export default function IntakeFormViewPage() {
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-relaxed text-slate-600 space-y-3">
               <p>
                 I, <strong>{form.signed_name || form.owners?.full_name || '—'}</strong>, hereby give my consent for{' '}
-                <strong>{form.animal_name}</strong> to receive chiropractic care from Dr. Andrew Leo, D.C. c.AVCA, Animal Chiropractor.
+                <strong>{form.animal_name}</strong> to receive chiropractic care from {form.practitioners?.full_name || 'the attending practitioner'}.
               </p>
               <p className="text-xs text-slate-400 italic">
                 Full consent text was presented and acknowledged at time of signing.
@@ -258,7 +264,7 @@ export default function IntakeFormViewPage() {
         </div>
 
         <p className="mt-8 pb-8 text-center text-xs text-slate-400">
-          Stride Equine Chiropractic · Dr. Andrew Leo, D.C. c.AVCA, Animal Chiropractor
+          {form.practitioners?.practice_name || 'Practice'}{form.practitioners?.full_name ? ` · ${form.practitioners.full_name}` : ''}
         </p>
       </div>
     </div>

@@ -6,13 +6,13 @@ import path from 'path'
 
 // ── Consent text (mirrors the intake form page) ────────────────────────────────
 
-function buildConsentText(ownerName: string, animalName: string): string[] {
+function buildConsentText(ownerName: string, animalName: string, doctorName: string): string[] {
   return [
-    `I, ${ownerName}, hereby give my consent for ${animalName} to receive chiropractic care from Dr. Andrew Leo, D.C. c.AVCA, Animal Chiropractor. I understand that chiropractic care involves the assessment and adjustment of the musculoskeletal system of animals to restore proper function and mobility.`,
+    `I, ${ownerName}, hereby give my consent for ${animalName} to receive chiropractic care from ${doctorName}. I understand that chiropractic care involves the assessment and adjustment of the musculoskeletal system of animals to restore proper function and mobility.`,
     `I acknowledge that chiropractic care is a complementary therapy and is not a substitute for traditional veterinary medical care. I understand that while chiropractic adjustments are generally safe and well-tolerated, there are inherent risks associated with any manual therapy, including the risk of injury or exacerbation of pre-existing conditions.`,
     `I agree to provide accurate and complete information about ${animalName}'s medical history, current health status, and any relevant veterinary treatments or procedures. I understand that this information will be used by the chiropractor to assess ${animalName}'s condition and develop an appropriate treatment plan.`,
     `I understand that the chiropractor may need to perform a physical examination and/or diagnostic tests to evaluate ${animalName}'s condition and determine the appropriate course of chiropractic care. I agree to comply with any recommendations or instructions provided by the chiropractor regarding ${animalName}'s care, including follow-up appointments and home care exercises.`,
-    `By signing below, I acknowledge that I have read and understood the information provided in this consent form, and I voluntarily consent to ${animalName} receiving chiropractic care from Dr. Andrew Leo, DC c.AVCA, Animal Chiropractor.`,
+    `By signing below, I acknowledge that I have read and understood the information provided in this consent form, and I voluntarily consent to ${animalName} receiving chiropractic care from ${doctorName}.`,
   ]
 }
 
@@ -79,8 +79,9 @@ export async function GET(
       .from('intake_forms')
       .select(`
         *,
-        owners ( full_name, phone, email, address ),
-        horses ( id, name, species )
+        owners ( full_name, phone, email, address, practitioner_id ),
+        horses ( id, name, species ),
+        practitioners ( practice_name, full_name )
       `)
       .eq('id', formId)
       .single()
@@ -89,9 +90,12 @@ export async function GET(
       return NextResponse.json({ error: 'Intake form not found.' }, { status: 404 })
     }
 
-    const owner = form.owners as { full_name: string; phone: string | null; email: string | null; address: string | null } | null
+    const owner = form.owners as { full_name: string; phone: string | null; email: string | null; address: string | null; practitioner_id: string | null } | null
+    const practitioner = form.practitioners as { practice_name: string | null; full_name: string | null } | null
     const ownerName = owner?.full_name || form.signed_name || 'Owner'
     const animalName = form.animal_name || 'Patient'
+    const practiceName = practitioner?.practice_name || 'Your Care Provider'
+    const doctorName = practitioner?.full_name || 'the attending practitioner'
 
     // ── PDF setup ─────────────────────────────────────────────────────────────
 
@@ -174,13 +178,13 @@ export async function GET(
       const d = logoImg.scale(1), sc = Math.min(44 / d.width, 44 / d.height)
       const lw = d.width * sc, lh = d.height * sc
       page.drawImage(logoImg, { x: M + 12, y: y - 12 - lh, width: lw, height: lh })
-      T('Stride Equine Chiropractic',       M + 14 + lw + 10, y - 18, 16, true,  C.white)
-      T('Equine Chiropractic Intake Form',    M + 14 + lw + 10, y - 36, 9.5, false, rgb(0.65, 0.72, 0.85))
-      T('Dr. Andrew Leo, D.C. c.AVCA',        M + 14 + lw + 10, y - 50, 9,   false, rgb(0.55, 0.62, 0.75))
+      T(practiceName,                         M + 14 + lw + 10, y - 18, 16, true,  C.white)
+      T('Chiropractic Intake Form',            M + 14 + lw + 10, y - 36, 9.5, false, rgb(0.65, 0.72, 0.85))
+      T(doctorName,                            M + 14 + lw + 10, y - 50, 9,   false, rgb(0.55, 0.62, 0.75))
     } else {
-      T('Stride Equine Chiropractic',   M + 14, y - 20, 16, true,  C.white)
-      T('Equine Chiropractic Intake Form',M + 14, y - 37, 9.5, false, rgb(0.65, 0.72, 0.85))
-      T('Dr. Andrew Leo, D.C. c.AVCA',   M + 14, y - 51, 9,   false, rgb(0.55, 0.62, 0.75))
+      T(practiceName,                    M + 14, y - 20, 16, true,  C.white)
+      T('Chiropractic Intake Form',      M + 14, y - 37, 9.5, false, rgb(0.65, 0.72, 0.85))
+      T(doctorName,                      M + 14, y - 51, 9,   false, rgb(0.55, 0.62, 0.75))
     }
 
     const submittedAt = new Date(form.submitted_at)
@@ -244,7 +248,7 @@ export async function GET(
 
     sectionTitle('Informed Consent')
 
-    const consentParagraphs = buildConsentText(ownerName, animalName)
+    const consentParagraphs = buildConsentText(ownerName, animalName, doctorName)
     for (const para of consentParagraphs) {
       const lines = wrapText(para, 84)
       space(lines.length * 12 + 12)
@@ -307,7 +311,7 @@ export async function GET(
       const pg = pdfDoc.getPage(i)
       const fy = M - 10
       pg.drawLine({ start: { x: M, y: fy + 16 }, end: { x: PW - M, y: fy + 16 }, thickness: 0.5, color: C.line })
-      pg.drawText('Stride Equine Chiropractic  ·  Intake Form', { x: M, y: fy + 6, size: 7.5, font, color: C.muted })
+      pg.drawText(`${practiceName}  ·  Intake Form`, { x: M, y: fy + 6, size: 7.5, font, color: C.muted })
       pg.drawText(`Page ${i + 1} of ${totalPages}`, { x: PW - M - 50, y: fy + 6, size: 7.5, font, color: C.muted })
     }
 
