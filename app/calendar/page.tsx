@@ -447,6 +447,7 @@ function QuickBookModal({
   horses,
   owners,
   locationSuggestions,
+  practitionerName,
   onClose,
   onSaved,
 }: {
@@ -455,6 +456,7 @@ function QuickBookModal({
   horses: HorseOption[]
   owners: { id: string; full_name: string }[]
   locationSuggestions: string[]
+  practitionerName: string
   onClose: () => void
   onSaved: () => void
 }) {
@@ -1490,6 +1492,7 @@ export default function CalendarPage() {
             horses={horses}
             owners={allOwners}
             locationSuggestions={locations}
+            practitionerName={practitionerName}
             onClose={() => setQuickBook(null)}
             onSaved={() => { loadWeek(); loadHorses(); loadOwners(); loadLocations() }}
           />
@@ -1906,6 +1909,7 @@ export default function CalendarPage() {
           horses={horses}
           owners={allOwners}
           locationSuggestions={locations}
+          practitionerName={practitionerName}
           onClose={() => setQuickBook(null)}
           onSaved={() => { loadWeek(); loadHorses(); loadOwners(); loadLocations() }}
         />
