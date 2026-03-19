@@ -84,6 +84,7 @@ export default function Home() {
   const [userEmail, setUserEmail] = useState('')
   const [userId, setUserId] = useState('')
   const [practitionerLogoUrl, setPractitionerLogoUrl] = useState<string | null>(null)
+  const [practitionerName, setPractitionerName] = useState('')
   const [message, setMessage] = useState('')
 
   const [owners, setOwners] = useState<Owner[]>([])
@@ -147,7 +148,7 @@ export default function Home() {
     location: '',
     reason: '',
     status: 'scheduled' as 'scheduled' | 'confirmed' | 'completed' | 'cancelled',
-    provider_name: 'Dr. Andrew Leo',
+    provider_name: '',
     notes: '',
   })
   const [selectedPatientIds, setSelectedPatientIds] = useState<string[]>([])
@@ -185,7 +186,7 @@ export default function Home() {
     setBookForm({
       owner_id: '', appointment_date: iso, appointment_time: '09:00',
       location: '', reason: '', status: 'scheduled',
-      provider_name: 'Dr. Andrew Leo', notes: '',
+      provider_name: practitionerName, notes: '',
     })
     setSelectedPatientIds([])
     setBookOwnerSearch('')
@@ -311,14 +312,17 @@ export default function Home() {
     setUserEmail(user.email || '')
     setUserId(user.id)
 
-    // Fetch practitioner logo
+    // Fetch practitioner data
     const { data: practitioner } = await supabase
       .from('practitioners')
-      .select('logo_url')
+      .select('logo_url, full_name')
       .eq('id', user.id)
       .single()
     if (practitioner?.logo_url) {
       setPractitionerLogoUrl(practitioner.logo_url)
+    }
+    if (practitioner?.full_name) {
+      setPractitionerName(practitioner.full_name)
     }
 
     setCheckingAuth(false)

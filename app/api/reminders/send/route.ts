@@ -183,7 +183,7 @@ export async function GET(req: NextRequest) {
       provider_name,
       owner_id,
       horse_id,
-      owners ( id, full_name, email, phone, sms_consent_status ),
+      owners ( id, full_name, email, phone, sms_consent_status, practitioner_id ),
       horses ( name, species, owners ( full_name, email, phone, sms_consent_status ) )
     `)
     .in('appointment_date', [tomorrow, dayAfter])
@@ -218,8 +218,24 @@ export async function GET(req: NextRequest) {
     const ownerFirstName = ownerName.split(' ')[0]
     const dateStr        = fmtDate(appt.appointment_date)
     const timeStr        = fmtTime(appt.appointment_time)
-    const providerName   = appt.provider_name ?? 'Dr. Andrew Leo D.C., M.S., cAVCA'
-    const practiceName   = 'Stride Equine Chiropractic'
+
+    // Fetch practitioner data if available
+    let practiceName = 'Your Care Provider'
+    let providerName = appt.provider_name ?? 'Your practitioner'
+
+    if (owner?.practitioner_id) {
+      const { data: practitioner } = await supabase
+        .from('practitioners')
+        .select('practice_name, full_name')
+        .eq('id', owner.practitioner_id)
+        .single()
+
+      if (practitioner) {
+        practiceName = practitioner.practice_name || practiceName
+        providerName = practitioner.full_name || providerName
+      }
+    }
+
     const appUrl         = process.env.NEXT_PUBLIC_APP_URL || 'https://short-go-app.vercel.app'
     const confirmUrl     = `${appUrl}/api/appointments/${appt.id}/confirm`
 

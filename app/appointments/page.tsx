@@ -54,7 +54,7 @@ CREATE TABLE appointments (
   reason               text,
   status               text DEFAULT 'scheduled'
                          CHECK (status IN ('scheduled','confirmed','completed','cancelled')),
-  provider_name        text DEFAULT 'Dr. Andrew Leo',
+  provider_name        text,
   notes                text,
   reminder_sent        boolean DEFAULT false,
   confirmation_sent    boolean DEFAULT false,
@@ -150,7 +150,7 @@ function generateIcs(appt: Appointment): string {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Stride Equine Chiropractic//EN',
+    'PRODID:-//Stride//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'BEGIN:VEVENT',
@@ -206,7 +206,7 @@ function emptyForm(date = ''): FormState {
     location: '',
     reason: '',
     status: 'scheduled',
-    provider_name: 'Dr. Andrew Leo',
+    provider_name: '',
     notes: '',
   }
 }
@@ -221,6 +221,7 @@ function AppointmentsContent() {
   const today = todayISO()
   const [checkingAuth, setCheckingAuth] = useState(true)
   const [userId, setUserId] = useState('')
+  const [practitionerName, setPractitionerName] = useState('')
   const [noTable, setNoTable] = useState(false)
 
   const [appointments, setAppointments] = useState<Appointment[]>([])
@@ -266,9 +267,20 @@ function AppointmentsContent() {
   // ── Auth ────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) { router.push('/login'); return }
       setUserId(user.id)
+
+      // Fetch practitioner name
+      const { data: practitioner } = await supabase
+        .from('practitioners')
+        .select('full_name')
+        .eq('id', user.id)
+        .single()
+      if (practitioner?.full_name) {
+        setPractitionerName(practitioner.full_name)
+      }
+
       setCheckingAuth(false)
     })
   }, [router])
@@ -465,7 +477,9 @@ function AppointmentsContent() {
 
   function openNewForm(date?: string) {
     setEditingId(null)
-    setForm(emptyForm(date || today))
+    const newForm = emptyForm(date || today)
+    newForm.provider_name = practitionerName
+    setForm(newForm)
     setOwnerSearch('')
     setShowOwnerSuggestions(false)
     setFormMsg('')
@@ -489,7 +503,7 @@ function AppointmentsContent() {
       location: appt.location || '',
       reason: appt.reason || '',
       status: appt.status,
-      provider_name: appt.provider_name || 'Dr. Andrew Leo',
+      provider_name: appt.provider_name || practitionerName || '',
       notes: appt.notes || '',
     })
     setFormMsg('')

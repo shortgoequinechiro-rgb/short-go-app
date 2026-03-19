@@ -548,7 +548,7 @@ function QuickBookModal({
         location:         form.location || null,
         notes:            form.notes || null,
         status:           'scheduled',
-        provider_name:    'Dr. Andrew Leo',
+        provider_name:    practitionerName || null,
         practitioner_id:  user?.id,
       }
     })
@@ -1039,6 +1039,7 @@ export default function CalendarPage() {
   const router = useRouter()
   const isMobile = useIsMobile()
   const [checkingAuth, setCheckingAuth] = useState(true)
+  const [practitionerName, setPractitionerName] = useState('')
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -1068,9 +1069,20 @@ export default function CalendarPage() {
   const [hoveredSlot, setHoveredSlot] = useState<{ colIdx: number; mins: number } | null>(null)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
       if (!data.session) router.push('/login')
-      else setCheckingAuth(false)
+      else {
+        // Fetch practitioner name
+        const { data: practitioner } = await supabase
+          .from('practitioners')
+          .select('full_name')
+          .eq('id', data.session.user.id)
+          .single()
+        if (practitioner?.full_name) {
+          setPractitionerName(practitioner.full_name)
+        }
+        setCheckingAuth(false)
+      }
     })
   }, [router])
 

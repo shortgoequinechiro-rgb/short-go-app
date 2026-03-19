@@ -18,7 +18,7 @@ function generateIcs(appt: {
   reason: string | null
   notes: string | null
   horses: { name: string; owners: { full_name: string } | null } | null
-}): string {
+}, practiceName: string): string {
   const uid = `appt-${appt.id}@shortgo.equine`
   const [y, m, d] = appt.appointment_date.split('-').map(Number)
   const pad = (n: number) => String(n).padStart(2, '0')
@@ -61,7 +61,7 @@ function generateIcs(appt: {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Stride Equine Chiropractic//EN',
+    `PRODID:-//${practiceName}//EN`,
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'BEGIN:VEVENT',
@@ -137,7 +137,7 @@ export async function POST(
     if (owner?.practitioner_id) {
       const { data: prac } = await supabase
         .from('practitioners')
-        .select('logo_url')
+        .select('logo_url, practice_name, full_name')
         .eq('id', owner.practitioner_id)
         .single()
       practitioner = prac
@@ -166,10 +166,12 @@ export async function POST(
       : `Reminder: ${horseName}'s appointment is ${dateStr}`
 
     const greeting = ownerName ? `Hi ${ownerName},\n\n` : 'Hello,\n\n'
+    const practiceName = practitioner?.practice_name || 'Your Care Provider'
+    const doctorName = practitioner?.full_name || 'Your practitioner'
 
     const body_text = isConfirmation
-      ? `${greeting}Your appointment for ${horseName} has been confirmed.\n\nDate: ${dateStr}${timeStr}${duration}${location}${reason}\n\nIf you need to reschedule or have any questions, please don't hesitate to reach out.\n\nThank you,\nDr. Andrew Leo D.C., M.S., cAVCA\nStride Equine Chiropractic`
-      : `${greeting}This is a friendly reminder that ${horseName}'s chiropractic appointment is coming up.\n\nDate: ${dateStr}${timeStr}${duration}${location}${reason}\n\nPlease confirm your appointment by visiting:\n${confirmUrl}\n\nWe look forward to seeing you!\n\nDr. Andrew Leo D.C., M.S., cAVCA\nStride Equine Chiropractic`
+      ? `${greeting}Your appointment for ${horseName} has been confirmed.\n\nDate: ${dateStr}${timeStr}${duration}${location}${reason}\n\nIf you need to reschedule or have any questions, please don't hesitate to reach out.\n\nThank you,\n${doctorName}\n${practiceName}`
+      : `${greeting}This is a friendly reminder that ${horseName}'s chiropractic appointment is coming up.\n\nDate: ${dateStr}${timeStr}${duration}${location}${reason}\n\nPlease confirm your appointment by visiting:\n${confirmUrl}\n\nWe look forward to seeing you!\n\n${doctorName}\n${practiceName}`
 
     // Confirm button block — only shown in reminder emails
     const confirmBlock = !isConfirmation ? `
@@ -189,7 +191,7 @@ export async function POST(
   <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
     <div style="background:#0f172a;padding:28px 32px;">
       ${practitioner?.logo_url ? `<img src="${practitioner.logo_url}" alt="Logo" style="max-height: 48px; margin-bottom: 8px; display: block;" />` : ''}
-      <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;">Stride Equine Chiropractic</h1>
+      <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;">${practiceName}</h1>
       <p style="margin:6px 0 0;color:#94a3b8;font-size:13px;">${isConfirmation ? 'Appointment Confirmation' : 'Appointment Reminder'}</p>
     </div>
     <div style="padding:28px 32px;">
@@ -221,7 +223,7 @@ export async function POST(
       </p>
     </div>
     <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 32px;">
-      <p style="margin:0;color:#94a3b8;font-size:12px;">Dr. Andrew Leo D.C., M.S., cAVCA · Stride Equine Chiropractic</p>
+      <p style="margin:0;color:#94a3b8;font-size:12px;">${doctorName} · ${practiceName}</p>
     </div>
   </div>
 </body>
@@ -241,7 +243,7 @@ export async function POST(
         reason: appt.reason,
         notes: appt.notes,
         horses: horse ? { name: horse.name, owners: owner ? { full_name: owner.full_name } : null } : null,
-      })),
+      }, practiceName)),
     }] : undefined
 
     const result = await resend.emails.send({

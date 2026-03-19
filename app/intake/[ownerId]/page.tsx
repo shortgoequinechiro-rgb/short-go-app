@@ -444,7 +444,7 @@ export default function IntakeFormPage() {
             </>
           )}
           <h1 className="text-3xl font-bold text-slate-900">Equine Chiropractic Intake Form</h1>
-          <p className="mt-2 text-sm text-slate-500">{practitioner?.practice_name || 'Stride Equine Chiropractic · Dr. Andrew Leo, D.C. c.AVCA'}</p>
+          <p className="mt-2 text-sm text-slate-500">{practitioner?.practice_name || 'Your Care Provider'}{practitioner?.full_name ? ` · ${practitioner.full_name}` : ''}</p>
         </div>
 
         <form onSubmit={handleSubmit} noValidate className="space-y-6">
@@ -541,8 +541,7 @@ export default function IntakeFormPage() {
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm leading-relaxed text-slate-700 space-y-4">
               <p>
                 I, <strong>{ownerFullName || "[Pet Owner's Name]"}</strong>, hereby give my consent for{' '}
-                <strong>{consentAnimalName}</strong> to receive chiropractic care from Dr. Andrew Leo, D.C. c.AVCA, Animal
-                Chiropractor. I understand that chiropractic care involves the assessment and adjustment of the
+                <strong>{consentAnimalName}</strong> to receive chiropractic care from {practitioner?.full_name || 'the attending practitioner'}. I understand that chiropractic care involves the assessment and adjustment of the
                 musculoskeletal system of animals to restore proper function and mobility.
               </p>
               <p>
@@ -571,8 +570,7 @@ export default function IntakeFormPage() {
               </p>
               <p>
                 By signing below, I acknowledge that I have read and understood the information provided in this
-                consent form, and I voluntarily consent to my animal(s) receiving chiropractic care from Dr. Andrew
-                Leo, DC c.AVCA, Animal Chiropractor.
+                consent form, and I voluntarily consent to my animal(s) receiving chiropractic care from {practitioner?.full_name || 'the attending practitioner'}.
               </p>
             </div>
 
@@ -628,7 +626,7 @@ export default function IntakeFormPage() {
           </button>
 
           <p className="pb-8 text-center text-xs text-slate-400">
-            Stride Equine Chiropractic · Dr. Andrew Leo, D.C. c.AVCA, Animal Chiropractor
+            {practitioner?.practice_name || 'Your Care Provider'}{practitioner?.full_name ? ` · ${practitioner.full_name}` : ''}
           </p>
         </form>
       </div>

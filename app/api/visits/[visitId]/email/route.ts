@@ -159,6 +159,25 @@ async function buildVisitPdf(visitId: string) {
     throw new Error('Visit not found.')
   }
 
+  // Fetch practitioner data for dynamic practice name and doctor name
+  let practiceName = 'Your Care Provider'
+  let doctorName = 'Your practitioner'
+
+  if (visit.practitioner_id) {
+    const { data: practitioner, error: practitionerError } = await supabase
+      .from('practitioners')
+      .select('practice_name, full_name')
+      .eq('id', visit.practitioner_id)
+      .single()
+
+    if (practitionerError) {
+      console.error('Error fetching practitioner:', practitionerError)
+    } else if (practitioner) {
+      practiceName = practitioner.practice_name || 'Your Care Provider'
+      doctorName = practitioner.full_name || 'Your practitioner'
+    }
+  }
+
   const { data: anatomyRows, error: anatomyError } = await supabase
     .from('visit_anatomy_regions')
     .select('region_key, notes')
@@ -332,10 +351,10 @@ async function buildVisitPdf(visitId: string) {
         height: drawHeight,
       })
 
-      drawTextLine('Stride Equine Chiropractic', margin + drawWidth + 14, y - 2, 19, true, colors.dark)
+      drawTextLine(practiceName, margin + drawWidth + 14, y - 2, 19, true, colors.dark)
       drawTextLine('Equine Chiropractic Visit Report', margin + drawWidth + 14, y - 22, 11, false, colors.muted)
     } else {
-      drawTextLine('Stride Equine Chiropractic', margin, y - 2, 19, true, colors.dark)
+      drawTextLine(practiceName, margin, y - 2, 19, true, colors.dark)
       drawTextLine('Equine Chiropractic Visit Report', margin, y - 22, 11, false, colors.muted)
     }
 
@@ -372,7 +391,7 @@ async function buildVisitPdf(visitId: string) {
     const line3Y = y - 72
 
     drawTextLine(`Visit Date: ${visit.visit_date || '—'}`, leftX, line1Y, 10, true)
-    drawTextLine(`Provider: ${visit.provider_name || 'Dr. Andrew Leo'}`, leftX, line2Y, 10, false)
+    drawTextLine(`Provider: ${visit.provider_name || doctorName}`, leftX, line2Y, 10, false)
     drawTextLine(`Follow Up: ${visit.follow_up || '—'}`, leftX, line3Y, 10, false)
 
     drawTextLine(`Reason: ${visit.reason_for_visit || '—'}`, rightX, line1Y, 10, true)
@@ -556,9 +575,9 @@ async function buildVisitPdf(visitId: string) {
   })
 
   y -= 16
-  drawTextLine('Dr. Andrew Leo D.C., M.S., cAVCA', margin, y, 11, true, colors.text)
+  drawTextLine(doctorName, margin, y, 11, true, colors.text)
   y -= 14
-  drawTextLine('Stride Equine Chiropractic', margin, y, 10, false, colors.muted)
+  drawTextLine(practiceName, margin, y, 10, false, colors.muted)
 
   const pdfBytes = await pdfDoc.save()
   const fileName = `${horse?.name || 'horse'}-visit-${visit.visit_date || 'report'}.pdf`
@@ -569,6 +588,8 @@ async function buildVisitPdf(visitId: string) {
     horse,
     owner,
     fileName,
+    practiceName,
+    doctorName,
   }
 }
 
@@ -597,7 +618,7 @@ export async function POST(
     }
 
     const resend = new Resend(resendApiKey)
-    const { pdfBytes, horse, owner, visit, fileName } = await buildVisitPdf(visitId)
+    const { pdfBytes, horse, owner, visit, fileName, practiceName, doctorName } = await buildVisitPdf(visitId)
 
     if (!owner?.email) {
       return NextResponse.json(
@@ -615,8 +636,8 @@ export async function POST(
 Attached is your visit report for ${horse?.name || 'your horse'} on ${visit.visit_date || 'your recent visit'}.
 
 Thank you,
-Dr. Andrew Leo D.C., M.S., cAVCA
-Stride Equine Chiropractic`,
+${doctorName}
+${practiceName}`,
       attachments: [
         {
           filename: fileName,
