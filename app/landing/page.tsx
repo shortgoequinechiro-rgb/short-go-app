@@ -380,7 +380,10 @@ export default function LandingPage() {
               reminders via email or SMS, and let clients confirm with a single tap.
             </p>
           </FadeIn>
+        </div>
 
+        {/* Full-width image — breaks out of the 6xl container for more impact */}
+        <div className="max-w-[90rem] mx-auto px-4 md:px-8">
           <FadeIn delay={0.15}>
             <div className="rounded-3xl border border-white/10 overflow-hidden shadow-2xl">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -392,7 +395,9 @@ export default function LandingPage() {
               />
             </div>
           </FadeIn>
+        </div>
 
+        <div className="max-w-6xl mx-auto px-6">
           <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-6 mt-12">
             {[
               { icon: CalendarDays, text: "Full calendar view with day, week, and month layouts" },
