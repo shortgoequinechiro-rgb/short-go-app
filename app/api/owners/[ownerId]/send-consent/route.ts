@@ -39,11 +39,14 @@ export async function POST(
   if (owner.practitioner_id) {
     const { data: prac } = await supabase
       .from('practitioners')
-      .select('logo_url')
+      .select('logo_url, practice_name, full_name')
       .eq('id', owner.practitioner_id)
       .single()
     practitioner = prac
   }
+
+  const practiceName = practitioner?.practice_name || 'Your Care Provider'
+  const doctorName = practitioner?.full_name || 'Your practitioner'
 
   if (!owner.email) {
     return NextResponse.json(
@@ -60,17 +63,17 @@ export async function POST(
   const { error: emailError } = await resend.emails.send({
     from: fromEmail,
     to: owner.email,
-    subject: 'Consent Form – Stride Equine Chiropractic',
+    subject: `Consent Form – ${practiceName}`,
     html: `
       <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:16px;color:#1e293b">
         <div style="background:#0f2040;padding:24px 32px;border-radius:12px 12px 0 0;text-align:center">
           ${practitioner?.logo_url ? `<img src="${practitioner.logo_url}" alt="Logo" style="max-height: 48px; margin-bottom: 8px; display: inline-block;" />` : ''}
-          <div style="color:white;font-size:16px;font-weight:700">Stride Equine Chiropractic</div>
+          <div style="color:white;font-size:16px;font-weight:700">${practiceName}</div>
         </div>
         <div style="background:#f8fafc;padding:32px;border-radius:0 0 12px 12px;border:1px solid #e2e8f0;border-top:none">
           <h2 style="margin:0 0 8px;color:#1e293b">Hi ${firstName},</h2>
         <p style="margin:0 0 24px;color:#475569">
-          Dr. Leo has sent you a consent form to review and sign before your appointment.
+          ${doctorName} has sent you a consent form to review and sign before your appointment.
           It only takes a minute to complete.
         </p>
         <a href="${consentUrl}"
@@ -79,7 +82,7 @@ export async function POST(
           Review &amp; Sign Consent Form →
         </a>
           <p style="margin:32px 0 0;font-size:12px;color:#94a3b8">
-            Stride Equine Chiropractic · Dr. Andrew Leo, D.C. c.AVCA
+            ${practiceName} · ${doctorName}
           </p>
         </div>
       </div>
