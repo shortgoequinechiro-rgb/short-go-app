@@ -76,6 +76,10 @@ function getAgreementItems(practiceName: string) {
       key: 'payment',
       text: 'I agree to be responsible for all fees associated with care provided to my animal(s) at the time of service.',
     },
+    {
+      key: 'sms',
+      text: `I consent to receive text messages from ${practiceName} regarding appointment reminders, scheduling, intake forms, and consent forms. Message and data rates may apply. I understand I can opt out at any time by replying STOP.`,
+    },
   ]
 }
 
@@ -260,6 +264,7 @@ export default function ConsentFormPage() {
           signatureData,
           horsesAcknowledged,
           notes: formNotes.trim() || null,
+          smsConsent: true,
         }),
       })
 
