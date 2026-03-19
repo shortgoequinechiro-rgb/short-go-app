@@ -22,6 +22,7 @@ type Owner = {
 type Practitioner = {
   id: string
   practice_name: string
+  full_name: string | null
   logo_url: string | null
 }
 
