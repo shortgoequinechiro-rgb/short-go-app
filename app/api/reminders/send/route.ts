@@ -220,7 +220,7 @@ export async function GET(req: NextRequest) {
     const timeStr        = fmtTime(appt.appointment_time)
     const providerName   = appt.provider_name ?? 'Dr. Andrew Leo D.C., M.S., cAVCA'
     const practiceName   = 'Stride Equine Chiropractic'
-    const appUrl         = process.env.NEXT_PUBLIC_APP_URL || 'https://stride-app.vercel.app'
+    const appUrl         = process.env.NEXT_PUBLIC_APP_URL || 'https://short-go-app.vercel.app'
     const confirmUrl     = `${appUrl}/api/appointments/${appt.id}/confirm`
 
     const result: { id: string; email?: string; sms?: string; error?: string } = { id: appt.id }

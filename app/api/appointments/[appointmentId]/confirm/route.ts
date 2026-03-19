@@ -20,7 +20,7 @@ export async function GET(
   { params }: { params: Promise<{ appointmentId: string }> }
 ) {
   const { appointmentId } = await params
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://stride-app.vercel.app'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://short-go-app.vercel.app'
 
   const supabase = getAdminSupabase()
 

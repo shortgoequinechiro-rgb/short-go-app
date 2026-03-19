@@ -17,7 +17,7 @@ export async function POST(
 
   const resendKey = process.env.RESEND_API_KEY
   const fromEmail = process.env.FROM_EMAIL || 'Stride Equine Chiropractic <info@mail.stridechiro.com>'
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://stride-app.vercel.app'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://short-go-app.vercel.app'
 
   if (!resendKey) {
     return NextResponse.json({ error: 'Email service is not configured.' }, { status: 500 })
