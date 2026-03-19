@@ -158,7 +158,7 @@ export async function POST(
     const duration = appt.duration_minutes ? `\nDuration: ${appt.duration_minutes} minutes` : ''
 
     const isConfirmation = type === 'confirmation'
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://stride-app.vercel.app'
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://short-go-app.vercel.app'
     const confirmUrl = `${appUrl}/api/appointments/${appointmentId}/confirm`
 
     const subject = isConfirmation

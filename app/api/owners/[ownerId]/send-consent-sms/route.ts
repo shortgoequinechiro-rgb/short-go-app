@@ -18,7 +18,7 @@ export async function POST(
   const accountSid = process.env.TWILIO_ACCOUNT_SID
   const authToken = process.env.TWILIO_AUTH_TOKEN
   const fromNumber = process.env.TWILIO_PHONE_NUMBER
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://stride-app.vercel.app'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://short-go-app.vercel.app'
 
   if (!accountSid || !authToken || !fromNumber) {
     return NextResponse.json({ error: 'Twilio is not configured.' }, { status: 500 })

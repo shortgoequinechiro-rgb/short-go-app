@@ -17,7 +17,7 @@ export async function POST(
 
   const resendApiKey = process.env.RESEND_API_KEY
   const fromEmail = process.env.FROM_EMAIL
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://stride-app.vercel.app'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://short-go-app.vercel.app'
 
   if (!resendApiKey) {
     return NextResponse.json({ error: 'Missing RESEND_API_KEY' }, { status: 500 })
