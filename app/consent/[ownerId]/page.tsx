@@ -54,28 +54,30 @@ CREATE INDEX ON consent_forms (owner_id, signed_at DESC);
 
 // ── Agreement items ───────────────────────────────────────────────────────────
 
-const AGREEMENT_ITEMS = [
-  {
-    key: 'scope',
-    text: 'I understand that Stride Equine Chiropractic provides animal chiropractic care and that this service is complementary to, and not a replacement for, conventional veterinary care.',
-  },
-  {
-    key: 'risks',
-    text: 'I acknowledge that, as with any hands-on therapy, there are inherent risks associated with chiropractic treatment, and I consent to care being provided under these conditions.',
-  },
-  {
-    key: 'records',
-    text: 'I authorize Stride Equine Chiropractic to create and retain health records for my animal(s) and to contact me regarding follow-up care and scheduling.',
-  },
-  {
-    key: 'photos',
-    text: 'I understand that clinical photographs and notes may be taken during sessions for the purpose of record-keeping and treatment planning.',
-  },
-  {
-    key: 'payment',
-    text: 'I agree to be responsible for all fees associated with care provided to my animal(s) at the time of service.',
-  },
-]
+function getAgreementItems(practiceName: string) {
+  return [
+    {
+      key: 'scope',
+      text: `I understand that ${practiceName} provides animal chiropractic care and that this service is complementary to, and not a replacement for, conventional veterinary care.`,
+    },
+    {
+      key: 'risks',
+      text: 'I acknowledge that, as with any hands-on therapy, there are inherent risks associated with chiropractic treatment, and I consent to care being provided under these conditions.',
+    },
+    {
+      key: 'records',
+      text: `I authorize ${practiceName} to create and retain health records for my animal(s) and to contact me regarding follow-up care and scheduling.`,
+    },
+    {
+      key: 'photos',
+      text: 'I understand that clinical photographs and notes may be taken during sessions for the purpose of record-keeping and treatment planning.',
+    },
+    {
+      key: 'payment',
+      text: 'I agree to be responsible for all fees associated with care provided to my animal(s) at the time of service.',
+    },
+  ]
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -118,8 +120,11 @@ export default function ConsentFormPage() {
   const isDrawingRef = useRef(false)
   const [hasSigned, setHasSigned] = useState(false)
 
+  const practiceName = practitioner?.practice_name || 'Your Care Provider'
+  const agreementItems = getAgreementItems(practiceName)
+
   const allChecked =
-    AGREEMENT_ITEMS.every((item) => checkedItems[item.key]) && hasSigned
+    agreementItems.every((item) => checkedItems[item.key]) && hasSigned
 
   // ── Load data ───────────────────────────────────────────────────────────────
 
@@ -425,7 +430,7 @@ export default function ConsentFormPage() {
                   <img src={practitioner.logo_url} alt="Practice Logo" className="mx-auto mb-4 max-h-16 object-contain" />
                 </>
               )}
-              <h2 className="text-xl font-bold text-white">{practitioner?.practice_name || 'Stride Equine Chiropractic'}</h2>
+              <h2 className="text-xl font-bold text-white">{practiceName}</h2>
               <p className="mt-1 text-sm text-slate-400">Client Consent & Service Agreement</p>
               <p className="mt-2 text-xs text-slate-500">Version 1.0 · {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
             </div>
@@ -472,7 +477,7 @@ export default function ConsentFormPage() {
               <p className="mt-1 text-sm text-slate-500">Please read and acknowledge each item below.</p>
 
               <div className="mt-4 space-y-4">
-                {AGREEMENT_ITEMS.map((item, idx) => {
+                {agreementItems.map((item, idx) => {
                   const checked = !!checkedItems[item.key]
                   return (
                     <label
@@ -579,7 +584,7 @@ export default function ConsentFormPage() {
 
             {!allChecked && (
               <p className="text-center text-xs text-slate-400">
-                {AGREEMENT_ITEMS.filter((i) => !checkedItems[i.key]).length} item{AGREEMENT_ITEMS.filter((i) => !checkedItems[i.key]).length !== 1 ? 's' : ''} remaining
+                {agreementItems.filter((i) => !checkedItems[i.key]).length} item{agreementItems.filter((i) => !checkedItems[i.key]).length !== 1 ? 's' : ''} remaining
                 {!hasSigned ? ' · Signature required' : ''}
               </p>
             )}
