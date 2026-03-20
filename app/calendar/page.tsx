@@ -207,7 +207,7 @@ function ApptPopup({
   onDeleteAppt: (id: string) => void
 }) {
   const ownerName   = appt.owners?.full_name ?? appt.horses?.owners?.full_name ?? 'Unknown Owner'
-  const patientName = appt.horses?.name ?? 'No patient'
+  const patientName = appt.horses?.name ?? ''
   const species     = appt.horses?.species ?? null
 
   const [notes, setNotes]       = useState(appt.notes ?? '')
@@ -509,8 +509,8 @@ function QuickBookModal({
     ? horses.filter(h => h.owner_id === selectedOwnerId)
     : []
 
-  // Duration auto-calculated: 15 min per patient (minimum 15)
-  const totalDuration = Math.max(15, selectedPatientIds.length * 15)
+  // Duration auto-calculated: 15 min per patient (default 15 if no patients selected)
+  const totalDuration = selectedPatientIds.length > 0 ? selectedPatientIds.length * 15 : 15
 
   const filteredLocations = form.location.length > 0
     ? locationSuggestions.filter(l =>
@@ -528,23 +528,41 @@ function QuickBookModal({
   async function handleSave() {
     if (!form.date || !form.time) { setErr('Date and time are required.'); return }
     if (!selectedOwnerId) { setErr('Select an owner.'); return }
-    if (selectedPatientIds.length === 0) { setErr('Select at least one patient.'); return }
     setSaving(true)
     setErr(null)
     const { data: { user } } = await supabase.auth.getUser()
 
-    // Create one 15-min appointment per patient, staggered by 15 min each
-    const [startH, startM] = form.time.split(':').map(Number)
-    const records = selectedPatientIds.map((horseId, i) => {
-      const totalMins = startH * 60 + startM + i * 15
-      const h = Math.floor(totalMins / 60) % 24
-      const m = totalMins % 60
-      const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-      return {
-        horse_id:         horseId,
+    let records: Record<string, unknown>[]
+
+    if (selectedPatientIds.length > 0) {
+      // Create one 15-min appointment per patient, staggered by 15 min each
+      const [startH, startM] = form.time.split(':').map(Number)
+      records = selectedPatientIds.map((horseId, i) => {
+        const totalMins = startH * 60 + startM + i * 15
+        const h = Math.floor(totalMins / 60) % 24
+        const m = totalMins % 60
+        const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+        return {
+          horse_id:         horseId,
+          owner_id:         selectedOwnerId,
+          appointment_date: form.date,
+          appointment_time: timeStr,
+          duration_minutes: 15,
+          reason:           form.reason || null,
+          location:         form.location || null,
+          notes:            form.notes || null,
+          status:           'scheduled',
+          provider_name:    practitionerName || null,
+          practitioner_id:  user?.id,
+        }
+      })
+    } else {
+      // No patients selected — book for owner only (animal TBD)
+      records = [{
+        horse_id:         null,
         owner_id:         selectedOwnerId,
         appointment_date: form.date,
-        appointment_time: timeStr,
+        appointment_time: form.time,
         duration_minutes: 15,
         reason:           form.reason || null,
         location:         form.location || null,
@@ -552,8 +570,8 @@ function QuickBookModal({
         status:           'scheduled',
         provider_name:    practitionerName || null,
         practitioner_id:  user?.id,
-      }
-    })
+      }]
+    }
 
     const { error } = await supabase.from('appointments').insert(records)
     setSaving(false)
@@ -582,9 +600,7 @@ function QuickBookModal({
             <p className="text-xs text-blue-300 mt-0.5">
               {new Date(form.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
               {' · '}{formatTime12(form.time)}
-              {selectedPatientIds.length > 0 && (
-                <span className="ml-1 text-[#c9a227]">· {totalDuration} min total</span>
-              )}
+              <span className="ml-1 text-[#c9a227]">· {totalDuration} min{selectedPatientIds.length > 1 ? ' total' : ''}</span>
             </p>
           </div>
           <button onClick={onClose} className="text-white/50 hover:text-white text-2xl leading-none">×</button>
@@ -662,7 +678,7 @@ function QuickBookModal({
           {selectedOwnerId && (
             <div>
               <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">
-                Patients
+                Patients <span className="normal-case font-normal text-blue-400/60">(optional)</span>
                 {selectedPatientIds.length > 0 && (
                   <span className="ml-2 normal-case font-normal text-[#c9a227]">
                     {selectedPatientIds.length} selected · {totalDuration} min
@@ -693,7 +709,7 @@ function QuickBookModal({
               )}
 
               {ownerPatients.length === 0 ? (
-                <p className="text-xs text-blue-300 italic">No patients found for this owner.</p>
+                <p className="text-xs text-blue-300 italic">No patients on file yet — you can still book without one.</p>
               ) : (
                 <div className="relative" ref={patientDropdownRef}>
                   <button
@@ -878,10 +894,10 @@ function EditApptModal({
           <div>
             <h3 className="font-bold text-white text-base">✏️ Edit Appointment</h3>
             <p className="text-xs text-blue-300 mt-0.5">
-              {appt.horses?.name ?? 'Unknown patient'}
-              {(appt.owners?.full_name ?? appt.horses?.owners?.full_name) && (
-                <> · {appt.owners?.full_name ?? appt.horses?.owners?.full_name}</>
-              )}
+              {appt.horses?.name
+                ? <>{appt.horses.name} · {appt.owners?.full_name ?? appt.horses?.owners?.full_name ?? ''}</>
+                : appt.owners?.full_name ?? 'Appointment'
+              }
             </p>
           </div>
           <button onClick={onClose} className="text-white/50 hover:text-white text-2xl leading-none">×</button>
@@ -1415,7 +1431,7 @@ export default function CalendarPage() {
             <div className="space-y-3">
               {mobileDayAppts.map(appt => {
                 const ownerName   = appt.owners?.full_name ?? appt.horses?.owners?.full_name ?? 'Unknown Owner'
-                const patientName = appt.horses?.name ?? 'No patient'
+                const patientName = appt.horses?.name ?? ''
                 const species     = appt.horses?.species
                 return (
                   <button
