@@ -34,6 +34,12 @@ export default function BillingGate({ children }: { children: React.ReactNode })
     checked.current = true
 
     async function checkAccess() {
+      // When offline, skip billing checks entirely — let the user work with cached data
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        setReady(true)
+        return
+      }
+
       // Get current user
       const { data: { user } } = await supabase.auth.getUser()
 

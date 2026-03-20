@@ -4,6 +4,13 @@ import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../lib/supabase'
+import {
+  offlineDb,
+  cacheAppointments,
+  getCachedAppointments,
+  getCachedOwners,
+  getCachedHorses,
+} from '../lib/offlineDb'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -573,6 +580,35 @@ function QuickBookModal({
       }]
     }
 
+    if (!navigator.onLine) {
+      // Queue all records to Dexie
+      try {
+        for (const rec of records) {
+          await offlineDb.pendingAppointments.add({
+            localId: crypto.randomUUID(),
+            horseId: (rec.horse_id as string) || null,
+            ownerId: rec.owner_id as string,
+            appointmentDate: rec.appointment_date as string,
+            appointmentTime: (rec.appointment_time as string) || null,
+            durationMinutes: rec.duration_minutes as number,
+            location: (rec.location as string) || null,
+            reason: (rec.reason as string) || null,
+            status: 'scheduled',
+            providerName: (rec.provider_name as string) || null,
+            notes: (rec.notes as string) || null,
+            createdAt: new Date().toISOString(),
+          })
+        }
+        setSaving(false)
+        onSaved()
+        onClose()
+      } catch {
+        setSaving(false)
+        setErr('Failed to save offline.')
+      }
+      return
+    }
+
     const { error } = await supabase.from('appointments').insert(records)
     setSaving(false)
     if (error) { setErr(error.message); return }
@@ -1057,6 +1093,7 @@ export default function CalendarPage() {
   const router = useRouter()
   const isMobile = useIsMobile()
   const [checkingAuth, setCheckingAuth] = useState(true)
+  const [currentUserId, setCurrentUserId] = useState('')
   const [practitionerName, setPractitionerName] = useState('')
 
   const today = new Date()
@@ -1088,9 +1125,10 @@ export default function CalendarPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
-      if (!data.session) router.push('/login')
-      else {
-        // Fetch practitioner name
+      if (!data.session) { router.push('/login'); return }
+      setCurrentUserId(data.session.user.id)
+      // Fetch practitioner name (skip when offline)
+      if (navigator.onLine) {
         const { data: practitioner } = await supabase
           .from('practitioners')
           .select('full_name')
@@ -1099,8 +1137,8 @@ export default function CalendarPage() {
         if (practitioner?.full_name) {
           setPractitionerName(practitioner.full_name)
         }
-        setCheckingAuth(false)
       }
+      setCheckingAuth(false)
     })
   }, [router])
 
@@ -1137,7 +1175,14 @@ export default function CalendarPage() {
       .select('id, name, species, owner_id, owners(full_name)')
       .eq('archived', false)
       .order('name', { ascending: true })
-    if (data) setHorses(data as unknown as HorseOption[])
+    if (data) {
+      setHorses(data as unknown as HorseOption[])
+    } else if (currentUserId) {
+      try {
+        const cached = await getCachedHorses(currentUserId)
+        setHorses(cached.map(h => ({ ...h, owners: null })) as unknown as HorseOption[])
+      } catch { /* ignore */ }
+    }
   }
 
   async function loadOwners() {
@@ -1145,7 +1190,14 @@ export default function CalendarPage() {
       .from('owners')
       .select('id, full_name')
       .order('full_name', { ascending: true })
-    if (data) setAllOwners(data)
+    if (data) {
+      setAllOwners(data)
+    } else if (currentUserId) {
+      try {
+        const cached = await getCachedOwners(currentUserId)
+        setAllOwners(cached.map(o => ({ id: o.id, full_name: o.full_name })))
+      } catch { /* ignore */ }
+    }
   }
 
   async function loadLocations() {
@@ -1187,7 +1239,36 @@ export default function CalendarPage() {
         .order('start_time', { ascending: true }),
     ])
 
-    if (!apptResult.error && apptResult.data) setAppointments(apptResult.data as unknown as Appointment[])
+    if (!apptResult.error && apptResult.data) {
+      setAppointments(apptResult.data as unknown as Appointment[])
+      // Cache for offline
+      try {
+        await cacheAppointments(apptResult.data.map((a: Record<string, unknown>) => ({
+          id: a.id as string, horse_id: (a.horse_id as string) || null,
+          owner_id: (a.owner_id as string) || null,
+          appointment_date: a.appointment_date as string,
+          appointment_time: (a.appointment_time as string) || null,
+          duration_minutes: (a.duration_minutes as number) || null,
+          location: (a.location as string) || null,
+          reason: (a.reason as string) || null, status: a.status as string,
+          provider_name: (a.provider_name as string) || null,
+          notes: (a.notes as string) || null,
+          practitioner_id: currentUserId, cachedAt: Date.now(),
+        })))
+      } catch { /* ignore */ }
+    } else if (currentUserId) {
+      // Offline fallback for appointments
+      try {
+        const cached = await getCachedAppointments(currentUserId)
+        const weekStartISO = toISO(weekStart)
+        const weekEndISO = toISO(weekEnd)
+        const filtered = cached
+          .filter(a => a.appointment_date >= weekStartISO && a.appointment_date <= weekEndISO)
+          .map(a => ({ ...a, horses: null, owners: null })) as unknown as Appointment[]
+        setAppointments(filtered)
+      } catch { /* ignore */ }
+    }
+
     if (!blockResult.error && blockResult.data) setBlockedTimes(blockResult.data as BlockedTime[])
     setLoading(false)
   }

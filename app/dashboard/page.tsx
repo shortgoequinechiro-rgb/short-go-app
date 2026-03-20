@@ -5,6 +5,17 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import {
+  offlineDb,
+  cacheOwners,
+  cacheHorses,
+  cacheVisits,
+  cacheAppointments,
+  getCachedOwners,
+  getCachedHorses,
+  getCachedVisitsByPractitioner,
+  getCachedAppointments,
+} from '../lib/offlineDb'
 
 type Owner = {
   id: string
@@ -95,6 +106,8 @@ export default function Home() {
   const [horsePhotoUrls, setHorsePhotoUrls] = useState<Record<string, string>>({})
   const [recentVisits, setRecentVisits] = useState<Visit[]>([])
   const [todayAppointments, setTodayAppointments] = useState<TodayAppointment[]>([])
+
+  const [usingCachedData, setUsingCachedData] = useState(false)
 
   const findRecordsRef = useRef<HTMLDivElement>(null)
 
@@ -219,6 +232,40 @@ export default function Home() {
       setBookFormMsg('Owner and date are required.'); return
     }
     setBookSaving(true); setBookFormMsg('')
+
+    const notesValue = selectedPatientIds.length > 1
+      ? [
+          `Patients: ${selectedPatientIds.map(id => horses.find(h => h.id === id)?.name || 'Unknown').join(', ')}`,
+          bookForm.notes,
+        ].filter(Boolean).join('\n')
+      : bookForm.notes || null
+
+    if (!navigator.onLine) {
+      try {
+        await offlineDb.pendingAppointments.add({
+          localId: crypto.randomUUID(),
+          horseId: selectedPatientIds.length === 1 ? selectedPatientIds[0] : null,
+          ownerId: bookForm.owner_id,
+          appointmentDate: bookForm.appointment_date,
+          appointmentTime: bookForm.appointment_time || null,
+          durationMinutes: bookDuration,
+          location: bookForm.location || null,
+          reason: bookForm.reason || null,
+          status: bookForm.status,
+          providerName: bookForm.provider_name || null,
+          notes: notesValue,
+          createdAt: new Date().toISOString(),
+        })
+        setBookSaving(false)
+        setBookFormMsg('Appointment saved offline — will sync when back online.')
+        setTimeout(() => { setShowBookModal(false) }, 1500)
+      } catch {
+        setBookSaving(false)
+        setBookFormMsg('Failed to save offline.')
+      }
+      return
+    }
+
     const { error } = await supabase.from('appointments').insert({
       horse_id: selectedPatientIds.length === 1 ? selectedPatientIds[0] : null,
       owner_id: bookForm.owner_id,
@@ -229,12 +276,7 @@ export default function Home() {
       reason: bookForm.reason || null,
       status: bookForm.status,
       provider_name: bookForm.provider_name || null,
-      notes: selectedPatientIds.length > 1
-        ? [
-            `Patients: ${selectedPatientIds.map(id => horses.find(h => h.id === id)?.name || 'Unknown').join(', ')}`,
-            bookForm.notes,
-          ].filter(Boolean).join('\n')
-        : bookForm.notes || null,
+      notes: notesValue,
       practitioner_id: userId,
     })
     setBookSaving(false)
@@ -297,33 +339,56 @@ export default function Home() {
   }
 
   async function checkUser() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
 
-    if (!user) {
+      if (!user) {
+        // When offline, try to get session from cache (Supabase stores tokens locally)
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          setUserEmail(session.user.email || '')
+          setUserId(session.user.id)
+          setCheckingAuth(false)
+          return true
+        }
+        router.push('/login')
+        return false
+      }
+
+      setUserEmail(user.email || '')
+      setUserId(user.id)
+
+      // Fetch practitioner data (skip when offline — non-critical)
+      if (navigator.onLine) {
+        const { data: practitioner } = await supabase
+          .from('practitioners')
+          .select('logo_url, full_name')
+          .eq('id', user.id)
+          .single()
+        if (practitioner?.logo_url) {
+          setPractitionerLogoUrl(practitioner.logo_url)
+        }
+        if (practitioner?.full_name) {
+          setPractitionerName(practitioner.full_name)
+        }
+      }
+
+      setCheckingAuth(false)
+      return true
+    } catch {
+      // Network error — try local session
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        setUserEmail(session.user.email || '')
+        setUserId(session.user.id)
+        setCheckingAuth(false)
+        return true
+      }
       router.push('/login')
       return false
     }
-
-    setUserEmail(user.email || '')
-    setUserId(user.id)
-
-    // Fetch practitioner data
-    const { data: practitioner } = await supabase
-      .from('practitioners')
-      .select('logo_url, full_name')
-      .eq('id', user.id)
-      .single()
-    if (practitioner?.logo_url) {
-      setPractitionerLogoUrl(practitioner.logo_url)
-    }
-    if (practitioner?.full_name) {
-      setPractitionerName(practitioner.full_name)
-    }
-
-    setCheckingAuth(false)
-    return true
   }
 
   async function loadOwners() {
@@ -334,12 +399,33 @@ export default function Home() {
       .order('full_name', { ascending: true })
 
     if (error) {
+      // Offline fallback: try Dexie cache
+      if (userId) {
+        try {
+          const cached = await getCachedOwners(userId)
+          if (cached.length > 0) {
+            const mapped = cached.map(c => ({ ...c, created_at: '' })) as unknown as Owner[]
+            setOwners(mapped)
+            setUsingCachedData(true)
+            if (!selectedOwnerIdForAdd && mapped.length > 0) setSelectedOwnerIdForAdd(mapped[0].id)
+            return
+          }
+        } catch { /* ignore cache errors */ }
+      }
       setMessage(`Error loading owners: ${error.message}`)
       return
     }
 
     const ownerData = (data || []) as Owner[]
     setOwners(ownerData)
+
+    // Cache for offline use
+    try {
+      await cacheOwners(ownerData.map(o => ({
+        id: o.id, full_name: o.full_name, phone: o.phone, email: o.email,
+        address: o.address, archived: o.archived, practitioner_id: userId, cachedAt: Date.now(),
+      })))
+    } catch { /* ignore cache write errors */ }
 
     if (!selectedOwnerIdForAdd && ownerData.length > 0) {
       setSelectedOwnerIdForAdd(ownerData[0].id)
@@ -361,6 +447,18 @@ export default function Home() {
       .order('name', { ascending: true })
 
     if (error) {
+      // Offline fallback
+      if (userId) {
+        try {
+          const cached = await getCachedHorses(userId)
+          if (cached.length > 0) {
+            const mapped = cached.map(c => ({ ...c, created_at: '', owners: null })) as unknown as Horse[]
+            setHorses(mapped)
+            setUsingCachedData(true)
+            return
+          }
+        } catch { /* ignore */ }
+      }
       setMessage(`Error loading horses: ${error.message}`)
       return
     }
@@ -368,18 +466,29 @@ export default function Home() {
     const horseList = (data || []) as Horse[]
     setHorses(horseList)
 
+    // Cache for offline use
+    try {
+      await cacheHorses(horseList.map(h => ({
+        id: h.id, owner_id: h.owner_id, name: h.name, breed: h.breed, age: h.age,
+        sex: h.sex, species: h.species, discipline: h.discipline, barn_location: h.barn_location,
+        archived: h.archived, practitioner_id: userId, cachedAt: Date.now(),
+      })))
+    } catch { /* ignore */ }
+
     // Generate signed URLs for horses that have a profile photo (7-day expiry)
     const urlMap: Record<string, string> = {}
-    await Promise.all(
-      horseList
-        .filter(h => h.profile_photo_path)
-        .map(async (h) => {
-          const { data: signedData } = await supabase.storage
-            .from('horse-photos')
-            .createSignedUrl(h.profile_photo_path!, 604800)
-          if (signedData?.signedUrl) urlMap[h.id] = signedData.signedUrl
-        })
-    )
+    if (navigator.onLine) {
+      await Promise.all(
+        horseList
+          .filter(h => h.profile_photo_path)
+          .map(async (h) => {
+            const { data: signedData } = await supabase.storage
+              .from('horse-photos')
+              .createSignedUrl(h.profile_photo_path!, 604800)
+            if (signedData?.signedUrl) urlMap[h.id] = signedData.signedUrl
+          })
+      )
+    }
     setHorsePhotoUrls(urlMap)
   }
 
@@ -427,9 +536,35 @@ export default function Home() {
       .order('visit_date', { ascending: false })
       .limit(100)
 
-    if (error) return
+    if (error) {
+      // Offline fallback
+      if (userId) {
+        try {
+          const cached = await getCachedVisitsByPractitioner(userId)
+          if (cached.length > 0) {
+            const mapped = cached.map(v => ({ ...v, horses: null })) as unknown as Visit[]
+            const counts: Record<string, number> = {}
+            for (const v of mapped) { counts[v.horse_id] = (counts[v.horse_id] || 0) + 1 }
+            setVisitCountsByHorse(counts)
+            setRecentVisits(mapped.slice(0, 15))
+            setUsingCachedData(true)
+          }
+        } catch { /* ignore */ }
+      }
+      return
+    }
 
     const visitData = (data || []) as unknown as Visit[]
+
+    // Cache visits for offline use
+    try {
+      await cacheVisits(visitData.map(v => ({
+        id: v.id, horse_id: v.horse_id, visit_date: v.visit_date,
+        reason_for_visit: v.reason_for_visit, subjective: null, objective: null,
+        assessment: null, plan: null, quick_notes: null,
+        practitioner_id: userId, cachedAt: Date.now(),
+      })))
+    } catch { /* ignore */ }
 
     const counts: Record<string, number> = {}
     for (const visit of visitData) {
@@ -466,7 +601,37 @@ export default function Home() {
       .neq('status', 'cancelled')
       .order('appointment_time', { ascending: true })
 
-    if (!error) setTodayAppointments((data || []) as unknown as TodayAppointment[])
+    if (error) {
+      // Offline fallback
+      if (userId) {
+        try {
+          const cached = await getCachedAppointments(userId)
+          const todayAppts = cached
+            .filter(a => a.appointment_date === iso && a.status !== 'cancelled')
+            .sort((a, b) => (a.appointment_time || '').localeCompare(b.appointment_time || ''))
+            .map(a => ({ ...a, owners: null, horses: null })) as unknown as TodayAppointment[]
+          setTodayAppointments(todayAppts)
+          setUsingCachedData(true)
+        } catch { /* ignore */ }
+      }
+      return
+    }
+
+    setTodayAppointments((data || []) as unknown as TodayAppointment[])
+
+    // Cache appointments for offline
+    if (data) {
+      try {
+        await cacheAppointments(data.map((a: Record<string, unknown>) => ({
+          id: a.id as string, horse_id: (a.horse_id as string) || null, owner_id: (a.owner_id as string) || null,
+          appointment_date: a.appointment_date as string, appointment_time: (a.appointment_time as string) || null,
+          duration_minutes: (a.duration_minutes as number) || null, location: (a.location as string) || null,
+          reason: (a.reason as string) || null, status: a.status as string,
+          provider_name: (a.provider_name as string) || null, notes: (a.notes as string) || null,
+          practitioner_id: userId, cachedAt: Date.now(),
+        })))
+      } catch { /* ignore */ }
+    }
   }
 
   async function loadFormStatuses() {
@@ -530,6 +695,23 @@ export default function Home() {
       return
     }
 
+    if (!navigator.onLine) {
+      // Queue owner creation for later sync
+      const localId = crypto.randomUUID()
+      try {
+        await offlineDb.cachedOwners.put({
+          id: localId, full_name: fullName, phone: phone || null,
+          email: email || null, address: address || null,
+          archived: false, practitioner_id: userId, cachedAt: Date.now(),
+        })
+        setMessage('Owner saved offline — will sync when back online.')
+        setFullName(''); setPhone(''); setEmail(''); setAddress('')
+        setShowAddOwnerModal(false)
+        await loadOwners()
+      } catch { setMessage('Failed to save offline.') }
+      return
+    }
+
     const { error } = await supabase.from('owners').insert([
       {
         full_name: fullName,
@@ -565,6 +747,35 @@ export default function Home() {
 
     if (!horseName.trim()) {
       setMessage('Patient name is required.')
+      return
+    }
+
+    if (!navigator.onLine) {
+      const localId = crypto.randomUUID()
+      try {
+        await offlineDb.pendingHorses.add({
+          localId,
+          ownerId: selectedOwnerIdForAdd,
+          name: horseName,
+          breed: horseBreed || null,
+          age: horseAge || null,
+          sex: horseGender || null,
+          species: addSpecies,
+          archived: false,
+          createdAt: new Date().toISOString(),
+        })
+        // Also add to local cache so it shows up immediately
+        await offlineDb.cachedHorses.put({
+          id: localId, owner_id: selectedOwnerIdForAdd, name: horseName,
+          breed: horseBreed || null, age: horseAge || null, sex: horseGender || null,
+          species: addSpecies, discipline: horseDiscipline || null, barn_location: null,
+          archived: false, practitioner_id: userId, cachedAt: Date.now(),
+        })
+        setMessage('Patient saved offline — will sync when back online.')
+        setHorseName(''); setHorseBreed(''); setHorseDiscipline(''); setHorseAge(''); setHorseGender('')
+        setAddSpecies('equine'); setShowAddPatientModal(false)
+        await loadHorses()
+      } catch { setMessage('Failed to save offline.') }
       return
     }
 

@@ -5,6 +5,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import { supabase } from '../lib/supabase'
+import {
+  offlineDb,
+  cacheAppointments,
+  getCachedAppointments,
+  getCachedHorses,
+  getCachedOwners,
+} from '../lib/offlineDb'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -338,10 +345,38 @@ function AppointmentsContent() {
 
     if (error) {
       if (error.code === '42P01') { setNoTable(true); return }
+      // Offline fallback
+      if (userId) {
+        try {
+          const cached = await getCachedAppointments(userId)
+          setAppointments(cached.map(a => ({
+            ...a, horses: null, owners: null, reminder_sent: false,
+            confirmation_sent: false, visit_id: null,
+          })) as unknown as Appointment[])
+        } catch { /* ignore */ }
+      }
       return
     }
 
     setAppointments((data || []) as unknown as Appointment[])
+
+    // Cache for offline
+    if (data) {
+      try {
+        await cacheAppointments(data.map((a: Record<string, unknown>) => ({
+          id: a.id as string, horse_id: (a.horse_id as string) || null,
+          owner_id: (a.owner_id as string) || null,
+          appointment_date: a.appointment_date as string,
+          appointment_time: (a.appointment_time as string) || null,
+          duration_minutes: (a.duration_minutes as number) || null,
+          location: (a.location as string) || null,
+          reason: (a.reason as string) || null, status: a.status as string,
+          provider_name: (a.provider_name as string) || null,
+          notes: (a.notes as string) || null,
+          practitioner_id: userId, cachedAt: Date.now(),
+        })))
+      } catch { /* ignore */ }
+    }
   }
 
   async function loadHorses() {
@@ -350,7 +385,14 @@ function AppointmentsContent() {
       .select('id, name, owner_id, species, owners(full_name)')
       .eq('archived', false)
       .order('name')
-    setHorses((data || []) as unknown as Horse[])
+    if (data) {
+      setHorses(data as unknown as Horse[])
+    } else if (userId) {
+      try {
+        const cached = await getCachedHorses(userId)
+        setHorses(cached.map(h => ({ ...h, owners: null })) as unknown as Horse[])
+      } catch { /* ignore */ }
+    }
   }
 
   async function loadOwners() {
@@ -359,7 +401,14 @@ function AppointmentsContent() {
       .select('id, full_name, email, phone')
       .eq('archived', false)
       .order('full_name')
-    setOwners((data || []) as Owner[])
+    if (data) {
+      setOwners(data as Owner[])
+    } else if (userId) {
+      try {
+        const cached = await getCachedOwners(userId)
+        setOwners(cached.map(o => ({ ...o })) as unknown as Owner[])
+      } catch { /* ignore */ }
+    }
   }
 
   useEffect(() => {
@@ -530,6 +579,33 @@ function AppointmentsContent() {
       provider_name: form.provider_name || null,
       notes: form.notes || null,
       practitioner_id: userId,
+    }
+
+    if (!navigator.onLine && !editingId) {
+      // Queue new appointment offline
+      try {
+        await offlineDb.pendingAppointments.add({
+          localId: crypto.randomUUID(),
+          horseId: null,
+          ownerId: form.owner_id,
+          appointmentDate: form.appointment_date,
+          appointmentTime: form.appointment_time || null,
+          durationMinutes: form.duration_minutes,
+          location: form.location || null,
+          reason: form.reason || null,
+          status: form.status,
+          providerName: form.provider_name || null,
+          notes: form.notes || null,
+          createdAt: new Date().toISOString(),
+        })
+        setSaving(false)
+        setFormMsg('Saved offline — will sync when back online.')
+        setTimeout(() => { setShowForm(false); setEditingId(null) }, 1500)
+      } catch {
+        setSaving(false)
+        setFormMsg('Failed to save offline.')
+      }
+      return
     }
 
     let error
