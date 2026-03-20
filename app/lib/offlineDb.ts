@@ -230,6 +230,50 @@ export async function getCachedAppointments(practitionerId: string): Promise<Cac
     .toArray()
 }
 
+// ── Additional read helpers ──────────────────────────────────────────────────
+
+export async function getCachedHorsesByOwner(ownerId: string): Promise<CachedHorse[]> {
+  const cutoff = Date.now() - CACHE_TTL
+  return offlineDb.cachedHorses
+    .where('owner_id').equals(ownerId)
+    .and(h => h.cachedAt > cutoff)
+    .toArray()
+}
+
+export async function getCachedHorseById(horseId: string): Promise<CachedHorse | undefined> {
+  return offlineDb.cachedHorses.get(horseId)
+}
+
+export async function getCachedOwnerById(ownerId: string): Promise<CachedOwner | undefined> {
+  return offlineDb.cachedOwners.get(ownerId)
+}
+
+export async function getCachedVisitsByPractitioner(practitionerId: string): Promise<CachedVisit[]> {
+  const cutoff = Date.now() - CACHE_TTL
+  return offlineDb.cachedVisits
+    .where('practitioner_id').equals(practitionerId)
+    .and(v => v.cachedAt > cutoff)
+    .toArray()
+}
+
+// ── Offline-aware fetch wrapper ─────────────────────────────────────────────
+// Tries to run an online fetcher; on failure (or if offline) runs the fallback.
+
+export async function fetchWithOfflineFallback<T>(
+  onlineFetcher: () => Promise<T>,
+  offlineFallback: () => Promise<T>,
+): Promise<{ data: T; fromCache: boolean }> {
+  if (!navigator.onLine) {
+    return { data: await offlineFallback(), fromCache: true }
+  }
+  try {
+    const data = await onlineFetcher()
+    return { data, fromCache: false }
+  } catch {
+    return { data: await offlineFallback(), fromCache: true }
+  }
+}
+
 // ── Sync pending data to Supabase ───────────────────────────────────────────
 
 export async function syncPendingData(supabase: SupabaseClient) {

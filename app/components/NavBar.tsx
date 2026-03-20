@@ -16,6 +16,10 @@ export default function NavBar() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setUserEmail(data.session?.user?.email ?? null)
+    }).catch(() => {
+      // Offline — try to get cached session
+      // Supabase stores session in localStorage so getSession() should still work,
+      // but if it throws, just leave email null (NavBar won't render)
     })
     const {
       data: { subscription },

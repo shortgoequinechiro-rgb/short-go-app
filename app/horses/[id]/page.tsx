@@ -4,6 +4,14 @@ import Link from 'next/link'
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
+import {
+  offlineDb,
+  cacheHorses,
+  cacheVisits,
+  getCachedHorseById,
+  getCachedVisitsByHorse,
+  getCachedOwners,
+} from '../../lib/offlineDb'
 
 type Owner = {
   id: string
@@ -240,30 +248,51 @@ export default function HorseDetailPage() {
   const recordFileInputRef = useRef<HTMLInputElement>(null)
 
   async function checkUser() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
 
-    if (!user) {
+      if (!user) {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          setUserEmail(session.user.email || '')
+          setUserId(session.user.id)
+          setCheckingAuth(false)
+          return true
+        }
+        router.push('/login')
+        return false
+      }
+
+      setUserEmail(user.email || '')
+      setUserId(user.id)
+
+      // Fetch practitioner name (skip when offline)
+      if (navigator.onLine) {
+        const { data: practitioner } = await supabase
+          .from('practitioners')
+          .select('full_name')
+          .eq('id', user.id)
+          .single()
+        if (practitioner?.full_name) {
+          setPractitionerName(practitioner.full_name)
+        }
+      }
+
+      setCheckingAuth(false)
+      return true
+    } catch {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        setUserEmail(session.user.email || '')
+        setUserId(session.user.id)
+        setCheckingAuth(false)
+        return true
+      }
       router.push('/login')
       return false
     }
-
-    setUserEmail(user.email || '')
-    setUserId(user.id)
-
-    // Fetch practitioner name
-    const { data: practitioner } = await supabase
-      .from('practitioners')
-      .select('full_name')
-      .eq('id', user.id)
-      .single()
-    if (practitioner?.full_name) {
-      setPractitionerName(practitioner.full_name)
-    }
-
-    setCheckingAuth(false)
-    return true
   }
 
   function saveRecentHorse(id: string) {
@@ -290,7 +319,13 @@ export default function HorseDetailPage() {
       .order('full_name', { ascending: true })
 
     if (error) {
-      setMessage(`Error loading owners: ${error.message}`)
+      // Offline fallback
+      if (userId) {
+        try {
+          const cached = await getCachedOwners(userId)
+          setOwners(cached.map(o => ({ ...o })) as unknown as Owner[])
+        } catch { /* ignore */ }
+      }
       return
     }
 
@@ -314,6 +349,23 @@ export default function HorseDetailPage() {
       .single()
 
     if (error) {
+      // Offline fallback
+      try {
+        const cached = await getCachedHorseById(horseId)
+        if (cached) {
+          const fallback = { ...cached, owners: null, medical_alerts: null, history_notes: null, behavioral_notes: null, profile_photo_path: null } as unknown as Horse
+          setHorse(fallback)
+          setHorseNameEdit(cached.name || '')
+          setHorseBreedEdit(cached.breed || '')
+          setHorseSexEdit(cached.sex || '')
+          setHorseAgeEdit(cached.age || '')
+          setHorseDisciplineEdit(cached.discipline || '')
+          setHorseBarnLocationEdit(cached.barn_location || '')
+          setHorseSpeciesEdit((cached.species as 'equine' | 'canine') || 'equine')
+          setHorseOwnerIdEdit(cached.owner_id || '')
+          return
+        }
+      } catch { /* ignore */ }
       setMessage(`Error loading horse: ${error.message}`)
       return
     }
@@ -381,12 +433,31 @@ export default function HorseDetailPage() {
       .order('visit_date', { ascending: false })
 
     if (error) {
-      setMessage(`Error loading visits: ${error.message}`)
+      // Offline fallback
+      try {
+        const cached = await getCachedVisitsByHorse(horseId)
+        if (cached.length > 0) {
+          const mapped = cached
+            .sort((a, b) => (b.visit_date || '').localeCompare(a.visit_date || ''))
+            .map(v => ({ ...v, location: null, provider_name: null, treated_areas: null, recommendations: null, follow_up: null })) as unknown as Visit[]
+          setVisits(mapped)
+        }
+      } catch { /* ignore */ }
       return
     }
 
     const visitData = (data || []) as Visit[]
     setVisits(visitData)
+
+    // Cache for offline
+    try {
+      await cacheVisits(visitData.map(v => ({
+        id: v.id, horse_id: v.horse_id || horseId, visit_date: v.visit_date,
+        reason_for_visit: v.reason_for_visit, subjective: v.subjective,
+        objective: v.objective, assessment: v.assessment, plan: v.plan,
+        quick_notes: null, practitioner_id: userId, cachedAt: Date.now(),
+      })))
+    } catch { /* ignore */ }
 
     if (visitData.length === 0) {
       setAnatomyRegionCounts({})
@@ -865,6 +936,31 @@ export default function HorseDetailPage() {
       recommendations: recommendations || null,
       follow_up: followUp || null,
       practitioner_id: userId,
+    }
+
+    // Offline: queue new visits (edits require online)
+    if (!navigator.onLine && !editingVisitId) {
+      try {
+        const localId = crypto.randomUUID()
+        await offlineDb.pendingVisits.add({
+          localId,
+          horseId,
+          visitDate: visitDate,
+          reasonForVisit: reasonForVisit || null,
+          subjective: subjective || null,
+          objective: objective || null,
+          assessment: assessment || null,
+          plan: plan || null,
+          quickNotes: null,
+          createdAt: new Date().toISOString(),
+        })
+        setMessage('Visit saved offline — will sync when back online.')
+        resetVisitForm()
+        await loadVisits()
+      } catch {
+        setMessage('Failed to save visit offline.')
+      }
+      return
     }
 
     let savedVisitId: string | null = editingVisitId
