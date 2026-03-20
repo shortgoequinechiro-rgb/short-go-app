@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
-import { syncPendingData, getPendingCount } from '../lib/offlineDb'
+import { syncPendingData, getPendingCount, refreshOfflineCache } from '../lib/offlineDb'
 
 export default function OfflineSync() {
   const [isOnline, setIsOnline] = useState(true)
@@ -10,31 +10,7 @@ export default function OfflineSync() {
   const [syncing, setSyncing] = useState(false)
   const [justSynced, setJustSynced] = useState(false)
 
-  // Check initial state and pending count
-  useEffect(() => {
-    setIsOnline(navigator.onLine)
-    getPendingCount().then(setPendingCount)
-  }, [])
-
-  // Listen for connectivity changes
-  useEffect(() => {
-    function handleOnline() {
-      setIsOnline(true)
-      runSync()
-    }
-    function handleOffline() {
-      setIsOnline(false)
-    }
-
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
-    return () => {
-      window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
-    }
-  }, [])
-
-  async function runSync() {
+  const runSync = useCallback(async () => {
     const count = await getPendingCount()
     if (count === 0) return
     setSyncing(true)
@@ -46,7 +22,39 @@ export default function OfflineSync() {
       setJustSynced(true)
       setTimeout(() => setJustSynced(false), 4000)
     }
-  }
+  }, [])
+
+  // Check initial state, refresh cache, and sync pending
+  useEffect(() => {
+    setIsOnline(navigator.onLine)
+    getPendingCount().then(setPendingCount)
+
+    // Refresh offline cache in the background when online
+    if (navigator.onLine) {
+      refreshOfflineCache(supabase).catch(() => {})
+      // Also sync any pending items from a previous offline session
+      runSync()
+    }
+  }, [runSync])
+
+  // Listen for connectivity changes
+  useEffect(() => {
+    function handleOnline() {
+      setIsOnline(true)
+      // When coming back online: sync pending data then refresh cache
+      runSync().then(() => refreshOfflineCache(supabase).catch(() => {}))
+    }
+    function handleOffline() {
+      setIsOnline(false)
+    }
+
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [runSync])
 
   // Poll pending count periodically so the badge stays accurate
   useEffect(() => {
@@ -62,7 +70,12 @@ export default function OfflineSync() {
     return (
       <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-2xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg">
         <span className="h-2 w-2 rounded-full bg-white opacity-80 animate-pulse" />
-        No signal — forms will save locally
+        Offline mode — data saved locally
+        {pendingCount > 0 && (
+          <span className="ml-1 rounded-full bg-white/20 px-2 py-0.5 text-xs">
+            {pendingCount} pending
+          </span>
+        )}
       </div>
     )
   }
@@ -71,7 +84,7 @@ export default function OfflineSync() {
   if (justSynced) {
     return (
       <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg">
-        ✓ Offline forms synced
+        ✓ Offline data synced
       </div>
     )
   }
@@ -93,7 +106,7 @@ export default function OfflineSync() {
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-xs font-bold text-slate-900">
               {pendingCount}
             </span>
-            Tap to sync offline forms
+            Tap to sync offline data
           </>
         )}
       </div>
