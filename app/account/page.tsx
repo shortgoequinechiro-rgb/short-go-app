@@ -659,10 +659,26 @@ function AccountPageContent() {
   }, [])
 
   async function load() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { router.push('/login'); return }
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        // Try local session when offline
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.user) { router.push('/login'); return }
+      }
+    } catch {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) { router.push('/login'); return }
+    }
+
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { router.push('/login'); return }
+
+    if (!navigator.onLine) {
+      // Show a limited offline state instead of failing
+      setLoading(false)
+      return
+    }
 
     const res = await fetch('/api/billing/ensure-practitioner', {
       method: 'POST',
@@ -687,7 +703,14 @@ function AccountPageContent() {
   if (!practitioner) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#081120]">
-        <div className="text-red-400 text-sm">Could not load account info. Please refresh.</div>
+        <div className="text-center">
+          <div className="text-amber-400 text-sm mb-2">
+            {navigator.onLine ? 'Could not load account info. Please refresh.' : 'Account settings are not available offline.'}
+          </div>
+          <Link href="/dashboard" className="text-blue-400 text-sm underline hover:text-blue-300">
+            ← Back to Dashboard
+          </Link>
+        </div>
       </div>
     )
   }

@@ -498,7 +498,13 @@ export default function Home() {
       .select('*', { count: 'exact', head: true })
 
     if (error) {
-      setMessage(`Error loading visit count: ${error.message}`)
+      // Offline fallback: derive count from cached visits
+      if (userId) {
+        try {
+          const cached = await getCachedVisitsByPractitioner(userId)
+          setVisitCount(cached.length)
+        } catch { /* ignore */ }
+      }
       return
     }
 
@@ -511,7 +517,7 @@ export default function Home() {
       .select('*', { count: 'exact', head: true })
 
     if (error) {
-      setMessage(`Error loading photo count: ${error.message}`)
+      // Photos aren't cached — just leave at 0 offline (non-critical stat)
       return
     }
 
@@ -635,6 +641,9 @@ export default function Home() {
   }
 
   async function loadFormStatuses() {
+    // Skip when offline — intake/consent badges are non-critical
+    if (!navigator.onLine) return
+
     const [intakeRes, consentRes] = await Promise.all([
       supabase.from('intake_forms').select('owner_id'),
       supabase.from('consent_forms').select('owner_id'),
@@ -811,6 +820,7 @@ export default function Home() {
 
   async function saveOwnerInfo() {
     setMessage('')
+    if (!navigator.onLine) { setMessage('Cannot edit owner info while offline.'); return }
 
     if (!selectedOwnerId) {
       setMessage('Select an owner first.')
@@ -844,6 +854,7 @@ export default function Home() {
 
   async function archiveOwner() {
     setMessage('')
+    if (!navigator.onLine) { setMessage('Cannot archive while offline.'); return }
 
     if (!selectedOwnerId || !selectedOwner) {
       setMessage('Select an owner first.')
@@ -902,6 +913,7 @@ export default function Home() {
 
   async function deleteOwner() {
     setMessage('')
+    if (!navigator.onLine) { setMessage('Cannot delete while offline.'); return }
 
     if (!selectedOwnerId || !selectedOwner) {
       setMessage('Select an owner first.')
@@ -1007,6 +1019,31 @@ export default function Home() {
       return
     }
 
+    if (!navigator.onLine) {
+      const localId = crypto.randomUUID()
+      try {
+        await offlineDb.pendingHorses.add({
+          localId, ownerId: selectedOwnerId, name: inlineHorseName,
+          breed: inlineHorseBreed || null, age: inlineHorseAge || null,
+          sex: inlineHorseGender || null, species: inlineSpecies,
+          archived: false, createdAt: new Date().toISOString(),
+        })
+        await offlineDb.cachedHorses.put({
+          id: localId, owner_id: selectedOwnerId, name: inlineHorseName,
+          breed: inlineHorseBreed || null, age: inlineHorseAge || null,
+          sex: inlineHorseGender || null, species: inlineSpecies,
+          discipline: inlineHorseDiscipline || null, barn_location: null,
+          archived: false, practitioner_id: userId, cachedAt: Date.now(),
+        })
+        setMessage('Patient saved offline — will sync when back online.')
+        setInlineHorseName(''); setInlineHorseBreed(''); setInlineHorseDiscipline('')
+        setInlineHorseAge(''); setInlineHorseGender(''); setInlineSpecies('equine')
+        setShowInlineAddPatient(false)
+        await loadHorses()
+      } catch { setMessage('Failed to save offline.') }
+      return
+    }
+
     const { error } = await supabase.from('horses').insert([{
       owner_id: selectedOwnerId,
       name: inlineHorseName,
@@ -1057,6 +1094,7 @@ export default function Home() {
   }
 
   async function sendIntakeSms(ownerId: string, ownerPhone: string | null) {
+    if (!navigator.onLine) { setMessage('Cannot send texts while offline.'); return }
     if (!ownerPhone) {
       setMessage('This owner does not have a phone number on file.')
       return
@@ -1088,6 +1126,7 @@ export default function Home() {
   }
 
   async function sendIntakeEmail(ownerId: string, ownerEmail: string | null) {
+    if (!navigator.onLine) { setMessage('Cannot send emails while offline.'); return }
     if (!ownerEmail) {
       setMessage('This owner does not have an email address on file.')
       return
@@ -1110,6 +1149,7 @@ export default function Home() {
   }
 
   async function sendConsentEmail(ownerId: string, ownerEmail: string | null) {
+    if (!navigator.onLine) { setMessage('Cannot send emails while offline.'); return }
     if (!ownerEmail) {
       setMessage('This owner does not have an email address on file.')
       return
@@ -1132,6 +1172,7 @@ export default function Home() {
   }
 
   async function sendConsentSms(ownerId: string, ownerPhone: string | null) {
+    if (!navigator.onLine) { setMessage('Cannot send texts while offline.'); return }
     if (!ownerPhone) {
       setMessage('This owner does not have a phone number on file.')
       return

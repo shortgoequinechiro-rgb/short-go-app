@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
+import { getCachedOwnerById, getCachedHorsesByOwner, getCachedVisitsByHorse } from '../../lib/offlineDb'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -132,8 +133,20 @@ export default function OwnerPage() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) { router.push('/login'); return }
+      if (!user) {
+        // Try cached session when offline
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session?.user) { setCheckingAuth(false) }
+          else { router.push('/login') }
+        })
+        return
+      }
       setCheckingAuth(false)
+    }).catch(() => {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) { setCheckingAuth(false) }
+        else { router.push('/login') }
+      })
     })
   }, [router])
 
@@ -152,11 +165,24 @@ export default function OwnerPage() {
         .single()
 
       if (ownerErr || !ownerData) {
-        setNotFound(true)
-        setLoading(false)
-        return
+        // Offline fallback for owner
+        try {
+          const cached = await getCachedOwnerById(ownerId)
+          if (cached) {
+            setOwner({ id: cached.id, full_name: cached.full_name, phone: cached.phone, email: cached.email, address: cached.address })
+          } else {
+            setNotFound(true)
+            setLoading(false)
+            return
+          }
+        } catch {
+          setNotFound(true)
+          setLoading(false)
+          return
+        }
+      } else {
+        setOwner(ownerData as Owner)
       }
-      setOwner(ownerData as Owner)
 
       // Animals
       const { data: animalData } = await supabase
@@ -166,7 +192,20 @@ export default function OwnerPage() {
         .eq('archived', false)
         .order('name')
 
-      const animalList = (animalData || []) as Animal[]
+      let animalList: Animal[]
+      if (animalData) {
+        animalList = animalData as Animal[]
+      } else {
+        // Offline fallback
+        try {
+          const cached = await getCachedHorsesByOwner(ownerId)
+          animalList = cached.filter(h => !h.archived).map(h => ({
+            id: h.id, name: h.name, species: h.species as 'equine' | 'canine' | null,
+            breed: h.breed, age: h.age, sex: h.sex, discipline: h.discipline,
+            barn_location: h.barn_location, archived: h.archived,
+          }))
+        } catch { animalList = [] }
+      }
       setAnimals(animalList)
 
       // Visit counts
@@ -177,20 +216,34 @@ export default function OwnerPage() {
           .select('horse_id')
           .in('horse_id', ids)
 
-        const counts: Record<string, number> = {}
-        for (const v of (visitData || [])) {
-          if (v.horse_id) counts[v.horse_id] = (counts[v.horse_id] || 0) + 1
+        if (visitData) {
+          const counts: Record<string, number> = {}
+          for (const v of visitData) {
+            if (v.horse_id) counts[v.horse_id] = (counts[v.horse_id] || 0) + 1
+          }
+          setVisitCounts(counts)
+        } else {
+          // Offline fallback for visit counts
+          try {
+            const counts: Record<string, number> = {}
+            for (const id of ids) {
+              const cached = await getCachedVisitsByHorse(id)
+              if (cached.length > 0) counts[id] = cached.length
+            }
+            setVisitCounts(counts)
+          } catch { /* ignore */ }
         }
-        setVisitCounts(counts)
       }
 
-      // Intake / consent status
-      const [intakeRes, consentRes] = await Promise.all([
-        supabase.from('intake_forms').select('id').eq('owner_id', ownerId).limit(1),
-        supabase.from('consent_forms').select('id').eq('owner_id', ownerId).limit(1),
-      ])
-      setHasIntake(!intakeRes.error && (intakeRes.data?.length ?? 0) > 0)
-      setHasConsent(!consentRes.error && (consentRes.data?.length ?? 0) > 0)
+      // Intake / consent status (non-critical, just skip offline)
+      if (navigator.onLine) {
+        const [intakeRes, consentRes] = await Promise.all([
+          supabase.from('intake_forms').select('id').eq('owner_id', ownerId).limit(1),
+          supabase.from('consent_forms').select('id').eq('owner_id', ownerId).limit(1),
+        ])
+        setHasIntake(!intakeRes.error && (intakeRes.data?.length ?? 0) > 0)
+        setHasConsent(!consentRes.error && (consentRes.data?.length ?? 0) > 0)
+      }
 
       setLoading(false)
     }
