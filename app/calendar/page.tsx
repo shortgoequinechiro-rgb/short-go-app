@@ -790,13 +790,13 @@ function QuickBookModal({
 
           <button
             onClick={handleSave}
-            disabled={saving || selectedPatientIds.length === 0}
+            disabled={saving || !selectedOwnerId}
             className="w-full rounded-xl bg-[#c9a227] py-3 text-sm font-bold text-[#0f2040] transition hover:bg-[#b89020] disabled:opacity-40"
           >
             {saving
               ? 'Saving…'
               : selectedPatientIds.length === 0
-              ? '✓ Schedule Appointment'
+              ? `✓ Schedule Appointment (${totalDuration} min)`
               : `✓ Schedule ${selectedPatientIds.length} Appointment${selectedPatientIds.length > 1 ? 's' : ''} (${totalDuration} min)`}
           </button>
         </div>
