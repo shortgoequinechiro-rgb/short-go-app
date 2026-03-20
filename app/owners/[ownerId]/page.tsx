@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 
@@ -27,6 +27,34 @@ type Animal = {
   archived: boolean
 }
 
+type IntakeForm = {
+  id: string
+  submitted_at: string
+  animal_name: string
+  signed_name: string | null
+}
+
+type ConsentForm = {
+  id: string
+  signed_at: string
+  signed_name: string | null
+  horses_acknowledged: string | null
+}
+
+type OwnerDocument = {
+  id: string
+  file_name: string
+  file_type: string | null
+  file_size: number | null
+  category: string
+  note: string | null
+  uploaded_at: string
+  source_id: string | null
+  url: string | null
+}
+
+type Tab = 'profile' | 'records'
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatPhone(phone: string | null | undefined): string {
@@ -36,6 +64,30 @@ function formatPhone(phone: string | null | undefined): string {
     return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
   }
   return phone
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
+function formatFileSize(bytes: number | null): string {
+  if (!bytes) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function fileIcon(type: string | null): string {
+  if (!type) return '📄'
+  if (type.startsWith('image/')) return '🖼️'
+  if (type === 'application/pdf') return '📑'
+  if (type.includes('word') || type.includes('document')) return '📝'
+  if (type.includes('spreadsheet') || type.includes('excel')) return '📊'
+  return '📄'
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -52,9 +104,22 @@ export default function OwnerPage() {
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
+  // Tabs
+  const [activeTab, setActiveTab] = useState<Tab>('profile')
+
   // Intake / consent status
   const [hasIntake, setHasIntake] = useState(false)
   const [hasConsent, setHasConsent] = useState(false)
+
+  // Records tab data
+  const [intakeForms, setIntakeForms] = useState<IntakeForm[]>([])
+  const [consentForms, setConsentForms] = useState<ConsentForm[]>([])
+  const [documents, setDocuments] = useState<OwnerDocument[]>([])
+  const [loadingRecords, setLoadingRecords] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadNote, setUploadNote] = useState('')
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Sending state
   const [sendingIntake, setSendingIntake] = useState(false)
@@ -131,6 +196,130 @@ export default function OwnerPage() {
     }
     load()
   }, [checkingAuth, ownerId])
+
+  // ── Load records when tab switches ─────────────────────────────────────
+
+  useEffect(() => {
+    if (activeTab !== 'records' || checkingAuth || !ownerId) return
+    loadRecords()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, checkingAuth, ownerId])
+
+  async function loadRecords() {
+    setLoadingRecords(true)
+
+    // Intake forms
+    const { data: intakes } = await supabase
+      .from('intake_forms')
+      .select('id, submitted_at, animal_name, signed_name')
+      .eq('owner_id', ownerId)
+      .order('submitted_at', { ascending: false })
+
+    setIntakeForms((intakes || []) as IntakeForm[])
+
+    // Consent forms
+    const { data: consents } = await supabase
+      .from('consent_forms')
+      .select('id, signed_at, signed_name, horses_acknowledged')
+      .eq('owner_id', ownerId)
+      .order('signed_at', { ascending: false })
+
+    setConsentForms((consents || []) as ConsentForm[])
+
+    // Uploaded documents
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.access_token) {
+      try {
+        const res = await fetch(`/api/owners/${ownerId}/documents`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        })
+        if (res.ok) {
+          const data = await res.json()
+          setDocuments(data.documents || [])
+        }
+      } catch (err) {
+        console.error('Failed to load documents:', err)
+      }
+    }
+
+    setLoadingRecords(false)
+  }
+
+  // ── Upload handler ─────────────────────────────────────────────────────
+
+  async function handleUpload(files: FileList | null) {
+    if (!files || files.length === 0) return
+
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) { setMessage('Not authenticated.'); return }
+
+    setUploading(true)
+    setMessage('')
+
+    let successCount = 0
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+
+      if (file.size > 20 * 1024 * 1024) {
+        setMessage(`${file.name} is too large (max 20 MB). Skipped.`)
+        continue
+      }
+
+      const formData = new FormData()
+      formData.append('file', file)
+      if (uploadNote.trim()) formData.append('note', uploadNote.trim())
+
+      try {
+        const res = await fetch(`/api/owners/${ownerId}/documents`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          body: formData,
+        })
+
+        if (res.ok) {
+          successCount++
+        } else {
+          const data = await res.json()
+          setMessage(data.error || `Failed to upload ${file.name}.`)
+        }
+      } catch {
+        setMessage(`Failed to upload ${file.name}.`)
+      }
+    }
+
+    if (successCount > 0) {
+      setMessage(`${successCount} file${successCount > 1 ? 's' : ''} uploaded.`)
+      setUploadNote('')
+      loadRecords()
+    }
+
+    setUploading(false)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  // ── Delete handler ─────────────────────────────────────────────────────
+
+  async function handleDelete(docId: string) {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) return
+
+    setDeletingId(docId)
+    try {
+      const res = await fetch(`/api/owners/${ownerId}/documents/${docId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      if (res.ok) {
+        setDocuments(prev => prev.filter(d => d.id !== docId))
+      } else {
+        setMessage('Failed to delete document.')
+      }
+    } catch {
+      setMessage('Failed to delete document.')
+    }
+    setDeletingId(null)
+  }
 
   // ── Send helpers ─────────────────────────────────────────────────────────
 
@@ -227,6 +416,39 @@ export default function OwnerPage() {
             <span className="sm:hidden">📅</span>
           </Link>
         </div>
+
+        {/* ── Tabs ── */}
+        {!loading && owner && (
+          <div className="mx-auto max-w-4xl px-4">
+            <div className="flex gap-0 border-b-0">
+              <button
+                onClick={() => setActiveTab('profile')}
+                className={`px-5 py-2.5 text-sm font-semibold transition border-b-2 -mb-px ${
+                  activeTab === 'profile'
+                    ? 'border-[#0f2040] text-[#0f2040]'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                Profile
+              </button>
+              <button
+                onClick={() => setActiveTab('records')}
+                className={`px-5 py-2.5 text-sm font-semibold transition border-b-2 -mb-px flex items-center gap-1.5 ${
+                  activeTab === 'records'
+                    ? 'border-[#0f2040] text-[#0f2040]'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                Records
+                {(intakeForms.length + consentForms.length + documents.length > 0) && (
+                  <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">
+                    {intakeForms.length + consentForms.length + documents.length}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="mx-auto max-w-4xl px-4 py-6 space-y-5">
@@ -253,7 +475,7 @@ export default function OwnerPage() {
           </div>
         )}
 
-        {!loading && owner && (
+        {!loading && owner && activeTab === 'profile' && (
           <>
             {/* ── Owner contact card ── */}
             <div className="rounded-3xl bg-white p-4 shadow-sm md:p-6">
@@ -471,6 +693,237 @@ export default function OwnerPage() {
                 </div>
               )}
             </div>
+          </>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════════
+            RECORDS TAB
+        ══════════════════════════════════════════════════════════════════════ */}
+
+        {!loading && owner && activeTab === 'records' && (
+          <>
+            {/* ── Upload section ── */}
+            <div className="rounded-3xl bg-white p-5 shadow-sm md:p-6">
+              <h3 className="text-lg font-semibold text-slate-900 mb-1">Upload Documents</h3>
+              <p className="text-sm text-slate-500 mb-4">
+                Upload vet records, imaging, lab work, or any files related to this owner. Max 20 MB per file.
+              </p>
+
+              <div className="flex flex-col gap-3">
+                {/* Note input */}
+                <input
+                  type="text"
+                  placeholder="Optional note (e.g. 'X-rays from Dr. Smith')"
+                  value={uploadNote}
+                  onChange={e => setUploadNote(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0f2040]/20 focus:border-[#0f2040]"
+                />
+
+                {/* Drop zone / file input */}
+                <label
+                  className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-8 cursor-pointer transition ${
+                    uploading
+                      ? 'border-slate-300 bg-slate-100 cursor-not-allowed'
+                      : 'border-slate-300 bg-slate-50 hover:border-[#0f2040] hover:bg-blue-50/30'
+                  }`}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    className="hidden"
+                    disabled={uploading}
+                    onChange={e => handleUpload(e.target.files)}
+                    accept=".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx,.xls,.xlsx,.csv,.txt,.heic,.webp"
+                  />
+                  {uploading ? (
+                    <>
+                      <div className="w-6 h-6 border-2 border-slate-400 border-t-transparent rounded-full animate-spin mb-2" />
+                      <p className="text-sm font-medium text-slate-500">Uploading…</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-2xl mb-1">📎</p>
+                      <p className="text-sm font-medium text-slate-700">Click to choose files</p>
+                      <p className="text-xs text-slate-400 mt-0.5">PDF, images, documents — up to 20 MB each</p>
+                    </>
+                  )}
+                </label>
+              </div>
+            </div>
+
+            {loadingRecords ? (
+              <p className="text-sm text-slate-400 py-8 text-center">Loading records…</p>
+            ) : (
+              <>
+                {/* ── Intake Forms ── */}
+                {intakeForms.length > 0 && (
+                  <div className="rounded-3xl bg-white p-5 shadow-sm md:p-6">
+                    <h3 className="text-base font-semibold text-slate-900 mb-1 flex items-center gap-2">
+                      <span className="text-emerald-600">📋</span>
+                      Intake Forms
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                        {intakeForms.length}
+                      </span>
+                    </h3>
+                    <p className="text-xs text-slate-500 mb-3">Submitted intake forms for this owner</p>
+                    <div className="space-y-2">
+                      {intakeForms.map(form => (
+                        <div
+                          key={form.id}
+                          className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 hover:bg-white hover:shadow-sm transition"
+                        >
+                          <span className="text-lg">📑</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-slate-800 truncate">
+                              Intake — {form.animal_name || 'Unknown'}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              Submitted {formatDate(form.submitted_at)}
+                              {form.signed_name && ` · Signed by ${form.signed_name}`}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <a
+                              href={`/intake/view/${form.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition"
+                            >
+                              View
+                            </a>
+                            <a
+                              href={`/api/intake/${form.id}/pdf`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 transition"
+                            >
+                              PDF
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Consent Forms ── */}
+                {consentForms.length > 0 && (
+                  <div className="rounded-3xl bg-white p-5 shadow-sm md:p-6">
+                    <h3 className="text-base font-semibold text-slate-900 mb-1 flex items-center gap-2">
+                      <span className="text-purple-600">📝</span>
+                      Consent Forms
+                      <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-700">
+                        {consentForms.length}
+                      </span>
+                    </h3>
+                    <p className="text-xs text-slate-500 mb-3">Signed consent & service agreements</p>
+                    <div className="space-y-2">
+                      {consentForms.map(form => (
+                        <div
+                          key={form.id}
+                          className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 hover:bg-white hover:shadow-sm transition"
+                        >
+                          <span className="text-lg">📑</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-slate-800 truncate">
+                              Consent — {form.horses_acknowledged || 'General'}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              Signed {formatDate(form.signed_at)}
+                              {form.signed_name && ` · by ${form.signed_name}`}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <a
+                              href={`/api/consent/${form.id}/pdf`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="rounded-lg border border-purple-200 bg-purple-50 px-2.5 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-100 transition"
+                            >
+                              PDF
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Uploaded Documents ── */}
+                <div className="rounded-3xl bg-white p-5 shadow-sm md:p-6">
+                  <h3 className="text-base font-semibold text-slate-900 mb-1 flex items-center gap-2">
+                    <span className="text-blue-600">📁</span>
+                    Uploaded Files
+                    {documents.filter(d => d.category === 'upload').length > 0 && (
+                      <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+                        {documents.filter(d => d.category === 'upload').length}
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-xs text-slate-500 mb-3">Vet records, x-rays, lab work, and other uploaded files</p>
+
+                  {documents.filter(d => d.category === 'upload').length === 0 ? (
+                    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-8">
+                      <p className="text-2xl">📂</p>
+                      <p className="mt-2 text-sm text-slate-500">No files uploaded yet</p>
+                      <p className="text-xs text-slate-400 mt-0.5">Use the upload area above to add files</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {documents
+                        .filter(d => d.category === 'upload')
+                        .map(doc => (
+                          <div
+                            key={doc.id}
+                            className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 hover:bg-white hover:shadow-sm transition"
+                          >
+                            <span className="text-lg">{fileIcon(doc.file_type)}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-800 truncate">{doc.file_name}</p>
+                              <p className="text-xs text-slate-500">
+                                {formatDate(doc.uploaded_at)}
+                                {doc.file_size ? ` · ${formatFileSize(doc.file_size)}` : ''}
+                                {doc.note && ` · ${doc.note}`}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {doc.url && (
+                                <a
+                                  href={doc.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition"
+                                >
+                                  Open
+                                </a>
+                              )}
+                              <button
+                                onClick={() => handleDelete(doc.id)}
+                                disabled={deletingId === doc.id}
+                                className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100 transition disabled:opacity-50"
+                              >
+                                {deletingId === doc.id ? '…' : '✕'}
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Empty state for no records at all ── */}
+                {intakeForms.length === 0 && consentForms.length === 0 && documents.length === 0 && (
+                  <div className="rounded-3xl bg-white p-10 text-center shadow-sm">
+                    <p className="text-3xl">📂</p>
+                    <p className="mt-3 font-semibold text-slate-700">No records yet</p>
+                    <p className="text-sm text-slate-500 mt-1">
+                      Upload files above, or send this owner an intake or consent form from the Profile tab.
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
           </>
         )}
       </div>
