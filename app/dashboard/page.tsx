@@ -172,7 +172,7 @@ export default function Home() {
     return horses.filter(h => h.owner_id === bookForm.owner_id && !h.archived)
   }, [horses, bookForm.owner_id])
 
-  const bookDuration = Math.max(1, selectedPatientIds.length) * 15
+  const bookDuration = selectedPatientIds.length > 0 ? selectedPatientIds.length * 15 : 15
 
   function togglePatient(id: string) {
     setSelectedPatientIds(prev =>
@@ -217,9 +217,6 @@ export default function Home() {
   async function saveBooking() {
     if (!bookForm.owner_id || !bookForm.appointment_date) {
       setBookFormMsg('Owner and date are required.'); return
-    }
-    if (selectedPatientIds.length === 0) {
-      setBookFormMsg('Please select at least one patient.'); return
     }
     setBookSaving(true); setBookFormMsg('')
     const { error } = await supabase.from('appointments').insert({
