@@ -275,20 +275,39 @@ function AppointmentsContent() {
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) { router.push('/login'); return }
+      if (!user) {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          setUserId(session.user.id)
+          setCheckingAuth(false)
+          return
+        }
+        router.push('/login')
+        return
+      }
       setUserId(user.id)
 
-      // Fetch practitioner name
-      const { data: practitioner } = await supabase
-        .from('practitioners')
-        .select('full_name')
-        .eq('id', user.id)
-        .single()
-      if (practitioner?.full_name) {
-        setPractitionerName(practitioner.full_name)
+      // Fetch practitioner name (skip when offline)
+      if (navigator.onLine) {
+        const { data: practitioner } = await supabase
+          .from('practitioners')
+          .select('full_name')
+          .eq('id', user.id)
+          .single()
+        if (practitioner?.full_name) {
+          setPractitionerName(practitioner.full_name)
+        }
       }
 
       setCheckingAuth(false)
+    }).catch(async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        setUserId(session.user.id)
+        setCheckingAuth(false)
+      } else {
+        router.push('/login')
+      }
     })
   }, [router])
 
@@ -626,12 +645,14 @@ function AppointmentsContent() {
   }
 
   async function deleteAppt(id: string) {
+    if (!navigator.onLine) { setFormMsg('Cannot delete while offline.'); return }
     if (!confirm('Delete this appointment?')) return
     await supabase.from('appointments').delete().eq('id', id)
     await loadAppointments()
   }
 
   async function updateStatus(id: string, status: Appointment['status']) {
+    if (!navigator.onLine) return
     setUpdatingStatus(id)
     await supabase.from('appointments').update({ status }).eq('id', id)
     await loadAppointments()
@@ -641,6 +662,7 @@ function AppointmentsContent() {
   // ── Email handlers ──────────────────────────────────────────────────────────
 
   async function sendEmail(apptId: string, type: 'confirmation' | 'reminder') {
+    if (!navigator.onLine) { setEmailMsg(prev => ({ ...prev, [apptId]: 'Cannot send emails while offline.' })); return }
     setEmailingId(apptId)
     setEmailMsg(prev => ({ ...prev, [apptId]: '' }))
     try {

@@ -10,24 +10,53 @@ export default function OfflineSync() {
   const [syncing, setSyncing] = useState(false)
   const [justSynced, setJustSynced] = useState(false)
 
+  // Sync pending spine assessments stored in localStorage
+  const syncPendingSpineAssessments = useCallback(async () => {
+    try {
+      const pending = JSON.parse(localStorage.getItem('pendingSpineAssessments') || '[]')
+      if (pending.length === 0) return
+      const { data: { user } } = await supabase.auth.getUser()
+      const synced: string[] = []
+      for (const item of pending) {
+        const { error } = await supabase.from('spine_assessments').insert({
+          horse_id: item.horse_id,
+          visit_id: item.visit_id,
+          findings: item.findings,
+          notes: item.notes,
+          assessed_at: item.assessed_at,
+          practitioner_id: user?.id,
+        })
+        if (!error || error.code === '23505') synced.push(item.localId)
+      }
+      const remaining = pending.filter((p: { localId: string }) => !synced.includes(p.localId))
+      localStorage.setItem('pendingSpineAssessments', JSON.stringify(remaining))
+    } catch { /* ignore */ }
+  }, [])
+
   const runSync = useCallback(async () => {
     const count = await getPendingCount()
-    if (count === 0) return
+    const spineCount = JSON.parse(localStorage.getItem('pendingSpineAssessments') || '[]').length
+    if (count === 0 && spineCount === 0) return
     setSyncing(true)
     await syncPendingData(supabase)
+    await syncPendingSpineAssessments()
     const remaining = await getPendingCount()
-    setPendingCount(remaining)
+    const spineRemaining = JSON.parse(localStorage.getItem('pendingSpineAssessments') || '[]').length
+    setPendingCount(remaining + spineRemaining)
     setSyncing(false)
-    if (remaining === 0) {
+    if (remaining === 0 && spineRemaining === 0) {
       setJustSynced(true)
       setTimeout(() => setJustSynced(false), 4000)
     }
-  }, [])
+  }, [syncPendingSpineAssessments])
 
   // Check initial state, refresh cache, and sync pending
   useEffect(() => {
     setIsOnline(navigator.onLine)
-    getPendingCount().then(setPendingCount)
+    getPendingCount().then(c => {
+      const spineCount = JSON.parse(localStorage.getItem('pendingSpineAssessments') || '[]').length
+      setPendingCount(c + spineCount)
+    })
 
     // Refresh offline cache in the background when online
     if (navigator.onLine) {
@@ -60,7 +89,8 @@ export default function OfflineSync() {
   useEffect(() => {
     const interval = setInterval(async () => {
       const count = await getPendingCount()
-      setPendingCount(count)
+      const spineCount = JSON.parse(localStorage.getItem('pendingSpineAssessments') || '[]').length
+      setPendingCount(count + spineCount)
     }, 5000)
     return () => clearInterval(interval)
   }, [])

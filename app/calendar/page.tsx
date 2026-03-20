@@ -225,6 +225,7 @@ function ApptPopup({
   const [deleting, setDeleting] = useState(false)
 
   async function handleDelete() {
+    if (!navigator.onLine) { setErr('Cannot delete while offline.'); return }
     if (!window.confirm('Permanently delete this appointment? This cannot be undone.')) return
     setDeleting(true)
     const { error } = await supabase
@@ -241,6 +242,7 @@ function ApptPopup({
   }
 
   async function handleCancel() {
+    if (!navigator.onLine) { setErr('Cannot cancel while offline.'); return }
     if (!window.confirm('Cancel this appointment?')) return
     setCancelling(true)
     const { error } = await supabase
@@ -259,6 +261,7 @@ function ApptPopup({
   const isDirty = notes !== (appt.notes ?? '')
 
   async function handleSave() {
+    if (!navigator.onLine) { setErr('Cannot update notes while offline.'); return }
     setSaving(true)
     setErr(null)
     const { error } = await supabase
@@ -890,6 +893,7 @@ function EditApptModal({
 
   async function handleSave() {
     if (!form.date || !form.time) { setErr('Date and time are required.'); return }
+    if (!navigator.onLine) { setErr('Cannot edit appointments while offline.'); return }
     setSaving(true)
     setErr(null)
     const { error } = await supabase
@@ -1279,6 +1283,10 @@ export default function CalendarPage() {
       setBlockSaveErr('End time must be after start time.')
       return
     }
+    if (!navigator.onLine) {
+      setBlockSaveErr('Cannot save blocked time while offline.')
+      return
+    }
     setSavingBlock(true)
     setBlockSaveErr(null)
     const { data: { user } } = await supabase.auth.getUser()
@@ -1306,6 +1314,7 @@ export default function CalendarPage() {
   }
 
   async function deleteBlockedTime(id: string) {
+    if (!navigator.onLine) { alert('Cannot delete while offline.'); return }
     if (!confirm('Remove this blocked time?')) return
     await supabase.from('blocked_times').delete().eq('id', id)
     setBlockedTimes(prev => prev.filter(b => b.id !== id))
@@ -1316,6 +1325,10 @@ export default function CalendarPage() {
     if (!editingBlockId || !blockForm.date || !blockForm.startTime || !blockForm.endTime) return
     if (blockForm.endTime <= blockForm.startTime) {
       setBlockSaveErr('End time must be after start time.')
+      return
+    }
+    if (!navigator.onLine) {
+      setBlockSaveErr('Cannot update while offline.')
       return
     }
     setSavingBlock(true)

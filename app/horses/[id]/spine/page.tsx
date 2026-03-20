@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../../lib/supabase'
+import { getCachedHorseById, getCachedVisitsByHorse } from '../../../lib/offlineDb'
 
 // ── Equine spine sections & segments ──────────────────────────────────────
 const EQUINE_SPINE_SECTIONS = [
@@ -138,14 +139,31 @@ function SpineInner() {
         .select('name')
         .eq('id', horseId)
         .single()
-      if (horse) setHorseName(horse.name)
+      if (horse) {
+        setHorseName(horse.name)
+      } else {
+        try {
+          const cached = await getCachedHorseById(horseId)
+          if (cached) setHorseName(cached.name)
+        } catch { /* ignore */ }
+      }
 
       const { data: visitData } = await supabase
         .from('visits')
         .select('id, visit_date, reason_for_visit')
         .eq('horse_id', horseId)
         .order('visit_date', { ascending: false })
-      setVisits((visitData ?? []) as Visit[])
+      if (visitData) {
+        setVisits(visitData as Visit[])
+      } else {
+        try {
+          const cached = await getCachedVisitsByHorse(horseId)
+          setVisits(cached
+            .sort((a, b) => (b.visit_date || '').localeCompare(a.visit_date || ''))
+            .map(v => ({ id: v.id, visit_date: v.visit_date, reason_for_visit: v.reason_for_visit })) as Visit[]
+          )
+        } catch { /* ignore */ }
+      }
     }
     loadMeta()
   }, [horseId])
@@ -201,6 +219,32 @@ function SpineInner() {
   async function save() {
     setSaving(true)
     setSaveMsg('')
+
+    if (!navigator.onLine) {
+      // Store spine assessment in localStorage as a pending item
+      try {
+        const pending = JSON.parse(localStorage.getItem('pendingSpineAssessments') || '[]')
+        const localId = crypto.randomUUID()
+        pending.push({
+          localId,
+          horse_id: horseId,
+          visit_id: selectedVisitId || null,
+          findings,
+          notes,
+          assessed_at: new Date().toISOString(),
+        })
+        localStorage.setItem('pendingSpineAssessments', JSON.stringify(pending))
+        setSaving(false)
+        const ts = new Date().toISOString()
+        setLastSaved(ts)
+        setSaveMsg('Saved offline — will sync when back online.')
+        setTimeout(() => setSaveMsg(''), 4000)
+      } catch {
+        setSaving(false)
+        setSaveMsg('Failed to save offline.')
+      }
+      return
+    }
 
     const { data: { user } } = await supabase.auth.getUser()
     const { data, error } = await supabase.from('spine_assessments').insert({

@@ -638,6 +638,7 @@ export default function HorseDetailPage() {
 
   async function saveHorseInfo() {
     setMessage('')
+    if (!navigator.onLine) { setMessage('Cannot edit patient info while offline.'); return }
 
     if (!horseNameEdit.trim()) {
       setMessage('Patient name is required.')
@@ -894,6 +895,7 @@ export default function HorseDetailPage() {
   }
 
   async function sendVisitEmail(visitId: string) {
+    if (!navigator.onLine) throw new Error('Cannot send emails while offline.')
     const response = await fetch(`/api/visits/${visitId}/email`, {
       method: 'POST',
     })
@@ -1017,6 +1019,7 @@ export default function HorseDetailPage() {
   }
 
   async function deleteVisit(visitId: string) {
+    if (!navigator.onLine) { setMessage('Cannot delete visits while offline.'); return }
     const confirmed = window.confirm('Delete this visit record?')
     if (!confirmed) return
 
@@ -1035,6 +1038,7 @@ export default function HorseDetailPage() {
 
   async function addPhoto() {
     setMessage('')
+    if (!navigator.onLine) { setMessage('Cannot upload photos while offline.'); return }
 
     if (!selectedFile) {
       setMessage('Please choose an image file.')
@@ -1088,6 +1092,7 @@ export default function HorseDetailPage() {
   }
 
   async function deletePhoto(photo: PhotoWithSignedUrl) {
+    if (!navigator.onLine) { setMessage('Cannot delete photos while offline.'); return }
     const confirmed = window.confirm('Delete this photo?')
     if (!confirmed) return
 
@@ -1201,6 +1206,7 @@ export default function HorseDetailPage() {
   }
 
   async function uploadProfilePhoto(file: Blob | File) {
+    if (!navigator.onLine) { setMessage('Cannot upload profile photos while offline.'); return }
     setUploadingProfilePhoto(true)
 
     // Show an immediate local preview so the photo appears right away

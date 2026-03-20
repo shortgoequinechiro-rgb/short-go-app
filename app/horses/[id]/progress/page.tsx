@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
+import { getCachedHorseById, getCachedVisitsByHorse } from '../../../lib/offlineDb'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -136,6 +137,15 @@ export default function ProgressPage() {
       if (horse) {
         setHorseName(horse.name)
         setHorseSpecies((horse.species as 'equine' | 'canine') || 'equine')
+      } else {
+        // Offline fallback for horse metadata
+        try {
+          const cached = await getCachedHorseById(horseId)
+          if (cached) {
+            setHorseName(cached.name)
+            setHorseSpecies((cached.species as 'equine' | 'canine') || 'equine')
+          }
+        } catch { /* ignore */ }
       }
 
       // Spine assessments
@@ -147,6 +157,7 @@ export default function ProgressPage() {
 
       if (spineError) {
         if (spineError.code === '42P01') setNoTable(true)
+        // Spine assessments aren't cached in Dexie (specialized data) — accept empty state offline
         setLoading(false)
         return
       }
@@ -160,7 +171,19 @@ export default function ProgressPage() {
         .eq('horse_id', horseId)
         .order('visit_date', { ascending: false })
 
-      setVisits((visitData || []) as Visit[])
+      if (visitData) {
+        setVisits(visitData as Visit[])
+      } else {
+        // Offline fallback for visits
+        try {
+          const cached = await getCachedVisitsByHorse(horseId)
+          setVisits(cached
+            .sort((a, b) => (b.visit_date || '').localeCompare(a.visit_date || ''))
+            .map(v => ({ id: v.id, visit_date: v.visit_date, reason_for_visit: v.reason_for_visit, subjective: v.subjective, objective: v.objective, assessment: v.assessment, plan: v.plan })) as Visit[]
+          )
+        } catch { /* ignore */ }
+      }
+
       setLoading(false)
     }
     load()
