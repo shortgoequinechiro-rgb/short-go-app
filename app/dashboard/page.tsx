@@ -139,7 +139,7 @@ export default function Home() {
   const [showAddOwnerModal, setShowAddOwnerModal] = useState(false)
   const [showAddPatientModal, setShowAddPatientModal] = useState(false)
 
-  // ── Book Appointment Modal ──────────────────────────────────────────────────
+  // ââ Book Appointment Modal ââââââââââââââââââââââââââââââââââââââââââââââââââ
   const [showBookModal, setShowBookModal] = useState(false)
   const [bookForm, setBookForm] = useState({
     owner_id: '',
@@ -258,7 +258,7 @@ export default function Home() {
   const [ownerIntakeStatus, setOwnerIntakeStatus] = useState<Record<string, boolean>>({})
   const [ownerConsentStatus, setOwnerConsentStatus] = useState<Record<string, boolean>>({})
 
-  // ── Address autocomplete ─────────────────────────────────────────────────────
+  // ââ Address autocomplete âââââââââââââââââââââââââââââââââââââââââââââââââââââ
   const addAddressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const editAddressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [addAddressSuggestions, setAddAddressSuggestions] = useState<{ description: string; place_id: string }[]>([])
@@ -1085,7 +1085,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ── Today's Appointments ── */}
+        {/* ââ Today's Appointments ââ */}
         <div className="mt-5 rounded-3xl bg-white p-4 shadow-md md:p-6">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
@@ -1098,14 +1098,14 @@ export default function Home() {
               href="/appointments"
               className="flex-shrink-0 rounded-xl border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition md:px-4 md:py-2"
             >
-              View All →
+              View All â
             </Link>
           </div>
 
           <div className="mt-4">
             {todayAppointments.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-10 text-center">
-                <p className="text-2xl">📅</p>
+                <p className="text-2xl">ð</p>
                 <p className="mt-2 text-sm font-medium text-slate-500">No appointments scheduled for today</p>
                 <button
                   onClick={openBookModal}
@@ -1129,11 +1129,11 @@ export default function Home() {
                     return `${h % 12 || 12}:${String(min).padStart(2, '0')} ${ampm}`
                   }
 
-                  // Owner name — direct join takes priority over horse→owner
+                  // Owner name â direct join takes priority over horseâowner
                   const ownerName =
                     appt.owners?.full_name ||
                     appt.horses?.owners?.full_name ||
-                    '—'
+                    'â'
                   const ownerPhone =
                     appt.owners?.phone ||
                     appt.horses?.owners?.phone ||
@@ -1171,13 +1171,13 @@ export default function Home() {
                         </span>
                       </div>
 
-                      {/* Owner name — primary identity */}
+                      {/* Owner name â primary identity */}
                       <p className="mt-2 font-semibold text-slate-900 leading-tight">{ownerName}</p>
 
                       {/* Animal count */}
                       <p className="mt-0.5 text-sm text-slate-500">
                         {numAnimals} animal{numAnimals > 1 ? 's' : ''}
-                        {appt.duration_minutes ? ` · ${appt.duration_minutes} min` : ''}
+                        {appt.duration_minutes ? ` Â· ${appt.duration_minutes} min` : ''}
                       </p>
 
                       {/* Phone */}
@@ -1192,7 +1192,7 @@ export default function Home() {
                             <span className="rounded-full bg-white border border-slate-200 px-2.5 py-0.5 text-xs text-slate-600">{appt.reason}</span>
                           )}
                           {appt.location && (
-                            <span className="rounded-full bg-white border border-slate-200 px-2.5 py-0.5 text-xs text-slate-600">📍 {appt.location}</span>
+                            <span className="rounded-full bg-white border border-slate-200 px-2.5 py-0.5 text-xs text-slate-600">ð {appt.location}</span>
                           )}
                         </div>
                       )}
@@ -1213,7 +1213,7 @@ export default function Home() {
 
                       {/* "View" hint on hover */}
                       <span className="mt-2 text-xs font-medium text-slate-400 opacity-0 transition-opacity group-hover:opacity-100">
-                        {appt.owner_id ? 'View owner & animals →' : 'View record →'}
+                        {appt.owner_id ? 'View owner & animals â' : 'View record â'}
                       </span>
                     </Link>
                   )
@@ -1298,7 +1298,7 @@ export default function Home() {
                     })
                   )}
 
-                  {/* Patients section — only appears when search term matches patients */}
+                  {/* Patients section â only appears when search term matches patients */}
                   {filteredPatients.length > 0 && (
                     <>
                       <p className="pt-2 text-[11px] font-semibold uppercase tracking-widest text-slate-400">Patients</p>
@@ -1310,7 +1310,7 @@ export default function Home() {
                         >
                           <p className="font-semibold text-slate-900">{horse.name}</p>
                           <p className="mt-1 text-sm text-slate-500">
-                            {horse.owners?.full_name || '—'}
+                            {horse.owners?.full_name || 'â'}
                           </p>
                           {horse.breed && (
                             <p className="text-sm text-slate-400">{horse.breed}</p>
@@ -1337,33 +1337,33 @@ export default function Home() {
                             {selectedOwner.full_name}
                           </h3>
                           <p className="mt-1 text-sm text-slate-600">
-                            Phone: {selectedOwner.phone ? formatPhone(selectedOwner.phone) : '—'}
+                            Phone: {selectedOwner.phone ? formatPhone(selectedOwner.phone) : 'â'}
                           </p>
                           <p className="text-sm text-slate-600">
-                            Email: {selectedOwner.email || '—'}
+                            Email: {selectedOwner.email || 'â'}
                           </p>
                           <p className="text-sm text-slate-600">
-                            Address: {selectedOwner.address || '—'}
+                            Address: {selectedOwner.address || 'â'}
                           </p>
 
                           {/* Intake / Consent status badges */}
                           <div className="mt-3 flex items-center gap-2">
                             {ownerIntakeStatus[selectedOwner.id] ? (
                               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                                ✓ Intake on file
+                                â Intake on file
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-600">
-                                ✗ No intake on file
+                                â No intake on file
                               </span>
                             )}
                             {ownerConsentStatus[selectedOwner.id] ? (
                               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                                ✓ Consent on file
+                                â Consent on file
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-600">
-                                ✗ No consent on file
+                                â No consent on file
                               </span>
                             )}
                           </div>
@@ -1380,21 +1380,21 @@ export default function Home() {
                                 rel="noopener noreferrer"
                                 className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition"
                               >
-                                📋 Open
+                                ð Open
                               </a>
                               <button
                                 onClick={() => sendIntakeEmail(selectedOwner.id, selectedOwner.email)}
                                 disabled={sendingIntake}
                                 className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 transition disabled:opacity-50"
                               >
-                                {sendingIntake ? '…' : '📧 Email'}
+                                {sendingIntake ? 'â¦' : 'ð§ Email'}
                               </button>
                               <button
                                 onClick={() => sendIntakeSms(selectedOwner.id, selectedOwner.phone)}
                                 disabled={sendingIntakeSms}
                                 className="rounded-lg border border-green-200 bg-green-50 px-2.5 py-1.5 text-xs font-medium text-green-700 hover:bg-green-100 transition disabled:opacity-50"
                               >
-                                {sendingIntakeSms ? '…' : '📱 Text'}
+                                {sendingIntakeSms ? 'â¦' : 'ð± Text'}
                               </button>
                             </div>
 
@@ -1407,32 +1407,38 @@ export default function Home() {
                                 rel="noopener noreferrer"
                                 className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition"
                               >
-                                📝 Open
+                                ð Open
                               </a>
                               <button
                                 onClick={() => sendConsentEmail(selectedOwner.id, selectedOwner.email)}
                                 disabled={sendingConsent}
                                 className="rounded-lg border border-purple-200 bg-purple-50 px-2.5 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-100 transition disabled:opacity-50"
                               >
-                                {sendingConsent ? '…' : '📧 Email'}
+                                {sendingConsent ? 'â¦' : 'ð§ Email'}
                               </button>
                               <button
                                 onClick={() => sendConsentSms(selectedOwner.id, selectedOwner.phone)}
                                 disabled={sendingConsentSms}
                                 className="rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-1.5 text-xs font-medium text-orange-700 hover:bg-orange-100 transition disabled:opacity-50"
                               >
-                                {sendingConsentSms ? '…' : '📱 Text'}
+                                {sendingConsentSms ? 'â¦' : 'ð± Text'}
                               </button>
                             </div>
 
-                            {/* Edit row */}
+                            {/* Edit / Profile row */}
                             <div className="flex items-center gap-1.5">
                               <span className="w-16 shrink-0 text-[10px] font-semibold uppercase tracking-widest text-slate-400"></span>
+                              <Link
+                                href={`/owners/${selectedOwner.id}`}
+                                className="rounded-lg border border-[#0f2040] bg-[#0f2040] px-2.5 py-1.5 text-xs font-medium text-white hover:bg-[#162d55] transition"
+                              >
+                                📁 Records & Profile
+                              </Link>
                               <button
                                 onClick={() => startOwnerEdit(selectedOwner)}
                                 className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition"
                               >
-                                ✏️ Edit Owner
+                                âï¸ Edit Owner
                               </button>
                             </div>
                           </div>
@@ -1478,7 +1484,7 @@ export default function Home() {
                                 onFocus={() => ownerAddressEdit.length >= 2 && editAddressSuggestions.length > 0 && setShowEditAddressSuggestions(true)}
                                 autoComplete="off"
                                 className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
-                                placeholder="Start typing an address…"
+                                placeholder="Start typing an addressâ¦"
                               />
                               {showEditAddressSuggestions && editAddressSuggestions.length > 0 && (
                                 <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
@@ -1489,7 +1495,7 @@ export default function Home() {
                                       onMouseDown={() => { setOwnerAddressEdit(s.description); setEditAddressSuggestions([]); setShowEditAddressSuggestions(false) }}
                                       className={`flex w-full items-start gap-3 px-4 py-3 text-left text-sm transition hover:bg-slate-50 ${i < editAddressSuggestions.length - 1 ? 'border-b border-slate-100' : ''}`}
                                     >
-                                      <span className="mt-0.5 shrink-0 text-slate-400">📍</span>
+                                      <span className="mt-0.5 shrink-0 text-slate-400">ð</span>
                                       <span className="text-slate-700">{s.description}</span>
                                     </button>
                                   ))}
@@ -1547,7 +1553,7 @@ export default function Home() {
                           }}
                           className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition"
                         >
-                          {showInlineAddPatient ? '✕ Cancel' : '+ Add Patient'}
+                          {showInlineAddPatient ? 'â Cancel' : '+ Add Patient'}
                         </button>
                       </div>
 
@@ -1562,8 +1568,8 @@ export default function Home() {
                                 onChange={e => { setInlineSpecies(e.target.value as 'equine' | 'canine'); setInlineHorseGender('') }}
                                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
                               >
-                                <option value="equine">🐴 Equine</option>
-                                <option value="canine">🐕 Canine</option>
+                                <option value="equine">ð´ Equine</option>
+                                <option value="canine">ð Canine</option>
                               </select>
                             </div>
                             <div>
@@ -1594,7 +1600,7 @@ export default function Home() {
                                 value={inlineHorseDiscipline}
                                 onChange={e => setInlineHorseDiscipline(e.target.value)}
                                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm placeholder:text-slate-400"
-                                placeholder={inlineSpecies === 'canine' ? 'Agility, sport…' : 'Barrel, dressage…'}
+                                placeholder={inlineSpecies === 'canine' ? 'Agility, sportâ¦' : 'Barrel, dressageâ¦'}
                               />
                             </div>
                           </div>
@@ -1667,7 +1673,7 @@ export default function Home() {
                                     />
                                   ) : (
                                     <div className="flex h-full w-full items-center justify-center text-2xl">
-                                      {horse.species === 'canine' ? '🐕' : '🐴'}
+                                      {horse.species === 'canine' ? 'ð' : 'ð´'}
                                     </div>
                                   )}
                                 </div>
@@ -1678,7 +1684,7 @@ export default function Home() {
                                       {horse.name}
                                     </p>
                                     <p className="mt-1 text-sm text-slate-600">
-                                      Breed: {horse.breed || '—'}
+                                      Breed: {horse.breed || 'â'}
                                     </p>
                                   </div>
 
@@ -1696,7 +1702,7 @@ export default function Home() {
                               </div>
 
                               <div className="mt-4 text-sm text-slate-600">
-                                <p>Barn: {horse.barn_location || '—'}</p>
+                                <p>Barn: {horse.barn_location || 'â'}</p>
                               </div>
                             </Link>
                           ))
@@ -1716,7 +1722,7 @@ export default function Home() {
         ) : null}
       </div>
 
-      {/* ── Add Owner Modal ── */}
+      {/* ââ Add Owner Modal ââ */}
       {showAddOwnerModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
@@ -1729,7 +1735,7 @@ export default function Home() {
                 onClick={() => setShowAddOwnerModal(false)}
                 className="rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-500 hover:bg-slate-50 transition"
               >
-                ✕ Close
+                â Close
               </button>
             </div>
 
@@ -1772,7 +1778,7 @@ export default function Home() {
                     onFocus={() => address.length >= 2 && addAddressSuggestions.length > 0 && setShowAddAddressSuggestions(true)}
                     autoComplete="off"
                     className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
-                    placeholder="Start typing an address…"
+                    placeholder="Start typing an addressâ¦"
                   />
                   {showAddAddressSuggestions && addAddressSuggestions.length > 0 && (
                     <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
@@ -1783,7 +1789,7 @@ export default function Home() {
                           onMouseDown={() => { setAddress(s.description); setAddAddressSuggestions([]); setShowAddAddressSuggestions(false) }}
                           className={`flex w-full items-start gap-3 px-4 py-3 text-left text-sm transition hover:bg-slate-50 ${i < addAddressSuggestions.length - 1 ? 'border-b border-slate-100' : ''}`}
                         >
-                          <span className="mt-0.5 shrink-0 text-slate-400">📍</span>
+                          <span className="mt-0.5 shrink-0 text-slate-400">ð</span>
                           <span className="text-slate-700">{s.description}</span>
                         </button>
                       ))}
@@ -1807,8 +1813,8 @@ export default function Home() {
         </div>
       )}
 
-      {/* ── Add Patient Modal ── */}
-      {/* ── Book Appointment Modal ── */}
+      {/* ââ Add Patient Modal ââ */}
+      {/* ââ Book Appointment Modal ââ */}
       {showBookModal && (
         <div className="fixed inset-0 z-40 flex items-end justify-center sm:items-center" onClick={() => setShowBookModal(false)}>
           <div className="absolute inset-0 bg-black/40" />
@@ -1818,7 +1824,7 @@ export default function Home() {
           >
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-semibold text-slate-900">New Appointment</h2>
-              <button onClick={() => setShowBookModal(false)} className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50">✕</button>
+              <button onClick={() => setShowBookModal(false)} className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-50">â</button>
             </div>
 
             <div className="space-y-4">
@@ -1837,14 +1843,14 @@ export default function Home() {
                     }}
                     onFocus={() => setShowBookOwnerSuggestions(true)}
                     onBlur={() => setTimeout(() => setShowBookOwnerSuggestions(false), 150)}
-                    placeholder="Type to search owner…"
+                    placeholder="Type to search ownerâ¦"
                     autoComplete="off"
                     className={`w-full rounded-2xl border bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 ${
                       bookForm.owner_id ? 'border-emerald-300' : 'border-slate-200'
                     }`}
                   />
                   {bookForm.owner_id && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500 text-base pointer-events-none">✓</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500 text-base pointer-events-none">â</span>
                   )}
                   {showBookOwnerSuggestions && filteredBookOwners.length > 0 && (
                     <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-52 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-xl">
@@ -1908,9 +1914,9 @@ export default function Home() {
                           <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-xs transition ${
                             isSelected ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300 bg-white'
                           }`}>
-                            {isSelected && '✓'}
+                            {isSelected && 'â'}
                           </span>
-                          <span className="text-base">{patient.species === 'canine' ? '🐕' : '🐴'}</span>
+                          <span className="text-base">{patient.species === 'canine' ? 'ð' : 'ð´'}</span>
                           <span className="font-medium text-slate-800">{patient.name}</span>
                           {patient.breed && <span className="ml-auto text-xs text-slate-400">{patient.breed}</span>}
                         </button>
@@ -1923,8 +1929,8 @@ export default function Home() {
               {/* Duration auto-display */}
               {selectedPatientIds.length > 0 && (
                 <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                  <span>⏱</span>
-                  <span>Total duration: <strong className="text-slate-900">{bookDuration} min</strong> ({selectedPatientIds.length} patient{selectedPatientIds.length > 1 ? 's' : ''} × 15 min each)</span>
+                  <span>â±</span>
+                  <span>Total duration: <strong className="text-slate-900">{bookDuration} min</strong> ({selectedPatientIds.length} patient{selectedPatientIds.length > 1 ? 's' : ''} Ã 15 min each)</span>
                 </div>
               )}
 
@@ -1972,7 +1978,7 @@ export default function Home() {
                     onChange={e => handleBookLocationChange(e.target.value)}
                     onBlur={() => setTimeout(() => setShowBookLocationSuggestions(false), 150)}
                     onFocus={() => bookForm.location.length >= 2 && bookLocationSuggestions.length > 0 && setShowBookLocationSuggestions(true)}
-                    placeholder="Start typing an address or barn name…"
+                    placeholder="Start typing an address or barn nameâ¦"
                     autoComplete="off"
                     className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
@@ -1989,7 +1995,7 @@ export default function Home() {
                           }}
                           className={`flex w-full items-start gap-3 px-4 py-3 text-left text-sm transition hover:bg-slate-50 ${i < bookLocationSuggestions.length - 1 ? 'border-b border-slate-100' : ''}`}
                         >
-                          <span className="mt-0.5 shrink-0 text-slate-400">📍</span>
+                          <span className="mt-0.5 shrink-0 text-slate-400">ð</span>
                           <span className="text-slate-700">{s.description}</span>
                         </button>
                       ))}
@@ -2009,7 +2015,7 @@ export default function Home() {
                   value={bookForm.notes}
                   onChange={e => setBookForm(f => ({ ...f, notes: e.target.value }))}
                   rows={2}
-                  placeholder="Any prep notes or special instructions…"
+                  placeholder="Any prep notes or special instructionsâ¦"
                   className="w-full resize-none rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900"
                 />
               </div>
@@ -2022,7 +2028,7 @@ export default function Home() {
                   disabled={bookSaving}
                   className="flex-1 rounded-2xl bg-slate-900 py-3 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-40 transition"
                 >
-                  {bookSaving ? 'Saving…' : 'Book Appointment'}
+                  {bookSaving ? 'Savingâ¦' : 'Book Appointment'}
                 </button>
                 <button
                   onClick={() => setShowBookModal(false)}
@@ -2048,7 +2054,7 @@ export default function Home() {
                 onClick={() => setShowAddPatientModal(false)}
                 className="rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-500 hover:bg-slate-50 transition"
               >
-                ✕ Close
+                â Close
               </button>
             </div>
 
@@ -2074,8 +2080,8 @@ export default function Home() {
                   onChange={(e) => setAddSpecies(e.target.value as 'equine' | 'canine')}
                   className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
                 >
-                  <option value="equine">🐴 Equine (Horse)</option>
-                  <option value="canine">🐕 Canine (Dog)</option>
+                  <option value="equine">ð´ Equine (Horse)</option>
+                  <option value="canine">ð Canine (Dog)</option>
                 </select>
               </Field>
 
@@ -2104,7 +2110,7 @@ export default function Home() {
                     value={horseDiscipline}
                     onChange={(e) => setHorseDiscipline(e.target.value)}
                     className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
-                    placeholder={addSpecies === 'canine' ? 'Agility, hunting, sport…' : 'Barrel, ranch, dressage…'}
+                    placeholder={addSpecies === 'canine' ? 'Agility, hunting, sportâ¦' : 'Barrel, ranch, dressageâ¦'}
                   />
                 </Field>
               </div>
