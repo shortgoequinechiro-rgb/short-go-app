@@ -1277,6 +1277,7 @@ export default function Home() {
                             setEditingOwner(false)
                             setShowInlineAddPatient(false)
                           }}
+                          onDoubleClick={() => router.push(`/owners/${owner.id}`)}
                           className={`w-full rounded-2xl border p-4 text-left transition ${
                             isSelected
                               ? 'border-[#0f2040] bg-[#0f2040] text-white'
