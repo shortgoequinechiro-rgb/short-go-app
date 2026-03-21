@@ -1,408 +1,548 @@
-'use client'
+"use client";
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { supabase } from './lib/supabase'
+import React, { useRef, useEffect } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { motion, useInView, useScroll, useTransform } from "framer-motion";
+import { ContainerScroll } from "@/app/components/ui/container-scroll-animation";
+import { supabase } from "./lib/supabase";
+import {
+  ClipboardList,
+  Bone,
+  BrainCircuit,
+  CalendarDays,
+  FileSignature,
+  WifiOff,
+  Check,
+  Smartphone,
+  ChevronRight,
+  Star,
+  Layers,
+  PenTool,
+  MessageSquare,
+  Users,
+  ArrowRight,
+} from "lucide-react";
 
-// ─── Feature card data ────────────────────────────────────────────────────────
-const FEATURES = [
-  {
-    icon: '🧠',
-    title: 'AI-Powered SOAP Notes',
-    desc: 'Generate complete, professional SOAP notes from your visit findings in seconds — ready to send or save.',
-  },
-  {
-    icon: '📋',
-    title: 'Digital Intake & Consent Forms',
-    desc: 'Send owners a link before the appointment. Forms fill your records automatically — no paper, no re-entry.',
-  },
-  {
-    icon: '🐴',
-    title: 'Horse & Dog Records',
-    desc: 'Separate profiles for every patient with breed, discipline, barn location, and full visit history in one place.',
-  },
-  {
-    icon: '🦴',
-    title: 'Spine Assessment Tracker',
-    desc: 'Document spinal findings visit-over-visit with a visual timeline to show owners real progress.',
-  },
-  {
-    icon: '🫀',
-    title: '3D Anatomy Viewer',
-    desc: 'Walk through a full equine anatomy model and annotate regions directly — great for owner education.',
-  },
-  {
-    icon: '📅',
-    title: 'Appointment Scheduling',
-    desc: 'Manage your calendar, track upcoming visits, and send appointment confirmations by email.',
-  },
-  {
-    icon: '📸',
-    title: 'Visit Photos',
-    desc: 'Attach before/after photos to every visit so you and the owner can see changes over time.',
-  },
-  {
-    icon: '📵',
-    title: 'Offline Mode',
-    desc: 'Works in the field with no signal. All data syncs automatically when you\'re back online.',
-  },
-]
+/* ───────────────────────── helpers ───────────────────────── */
 
-// ─── Testimonial / social proof ───────────────────────────────────────────────
-const TESTIMONIALS = [
+function FadeIn({
+  children,
+  className = "",
+  delay = 0,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  delay?: number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-80px" });
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 40 }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.7, delay, ease: "easeOut" }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+function SlideIn({
+  children,
+  className = "",
+  direction = "left",
+  delay = 0,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  direction?: "left" | "right";
+  delay?: number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-60px" });
+  const x = direction === "left" ? -60 : 60;
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, x }}
+      animate={inView ? { opacity: 1, x: 0 } : {}}
+      transition={{ duration: 0.7, delay, ease: "easeOut" }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/* ───────────────────────── feature data ───────────────────────── */
+
+const features = [
   {
-    quote: "Finally — software that actually understands how an equine chiropractic practice works. The AI SOAP notes alone save me 30 minutes a day.",
-    name: "Dr. Sarah M.",
-    title: "Certified Animal Chiropractor, TX",
+    icon: ClipboardList,
+    title: "Patient Records",
+    desc: "Complete equine and canine profiles with breed, discipline, medical history, photos, and full visit timelines.",
   },
   {
-    quote: "The digital intake forms changed everything. Owners fill them out from the barn and by the time I arrive I already know the horse's history.",
-    name: "Dr. James K.",
-    title: "Equine & Canine Practitioner, KY",
+    icon: Bone,
+    title: "Spine Assessment",
+    desc: "Species-specific spinal maps. Track subluxation findings visit-to-visit and visualize patient progress over time.",
   },
   {
-    quote: "I've tried three different practice management apps. None of them understood what we actually do until Stride.",
-    name: "Dr. Alicia R.",
-    title: "cAVCA Certified Chiropractor, CO",
+    icon: BrainCircuit,
+    title: "AI SOAP Notes",
+    desc: "Generate professional SOAP notes from quick clinical observations. One click — done. More time with patients, less with paperwork.",
   },
-]
+  {
+    icon: CalendarDays,
+    title: "Scheduling",
+    desc: "Book appointments, send confirmations, and automate reminders via email and SMS. Clients confirm with one tap.",
+  },
+  {
+    icon: FileSignature,
+    title: "Digital Forms",
+    desc: "Send intake and consent forms directly to clients via text or email. E-signatures built in. No more paper.",
+  },
+  {
+    icon: WifiOff,
+    title: "Offline Mode",
+    desc: "Works without cell signal. Take notes at the barn, sync automatically when you're back online. Built for the field.",
+  },
+];
+
+const pricingFeatures = [
+  "Unlimited patients",
+  "AI SOAP notes",
+  "Spine assessments",
+  "3D anatomy viewer",
+  "Digital intake & consent forms",
+  "SMS & email reminders",
+  "Offline mode & PWA",
+  "Custom practice branding",
+];
+
+/* ───────────────────────── page ───────────────────────── */
 
 export default function LandingPage() {
-  const router = useRouter()
+  const router = useRouter();
 
-  // Redirect authenticated users straight to the app
+  // Redirect authenticated users straight to the dashboard
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) router.replace('/dashboard')
-    })
-  }, [router])
+      if (data.session) router.replace("/dashboard");
+    });
+  }, [router]);
 
   return (
-    <div className="min-h-screen bg-white">
-
-      {/* ── NAV ────────────────────────────────────────────────────────────── */}
-      <header
-        className="sticky top-0 z-50 border-b border-white/10"
-        style={{ background: '#0f2040' }}
-      >
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-gold.png" alt="Stride" className="h-14 w-14" />
-            <div className="flex flex-col leading-none">
-              <span className="text-xl font-extrabold text-white tracking-widest" style={{ fontFamily: "'Geist', system-ui, sans-serif" }}>
-                STRIDE
+    <div className="bg-[#0a1628] text-white overflow-x-hidden">
+      {/* ── Nav ── */}
+      <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-[#0a1628]/80 border-b border-white/5">
+        <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
+          <Link href="/" className="flex items-center gap-3">
+            <Image src="/stride-logo-gold.png" alt="Stride" width={40} height={40} />
+            <span className="text-xl font-bold tracking-tight">
+              <span className="text-white">STRIDE</span>
+              <span className="text-[#c9a227]/60 text-xs ml-2 tracking-widest uppercase hidden sm:inline">
+                Equine & Canine Chiro
               </span>
-              <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#c9a227]">
-                Equine &amp; Canine Chiro
-              </span>
-            </div>
-          </div>
-          <nav className="flex items-center gap-3">
+            </span>
+          </Link>
+          <div className="flex items-center gap-6">
+            <a href="#features" className="text-sm text-white/60 hover:text-white transition hidden md:block">
+              Features
+            </a>
+            <a href="#anatomy" className="text-sm text-white/60 hover:text-white transition hidden md:block">
+              Anatomy
+            </a>
+            <a href="#pricing" className="text-sm text-white/60 hover:text-white transition hidden md:block">
+              Pricing
+            </a>
             <Link
               href="/login"
-              className="rounded-xl px-4 py-2 text-sm font-medium text-white/80 transition hover:text-white"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/signup"
-              className="rounded-xl bg-[#c9a227] px-4 py-2 text-sm font-semibold text-[#0f2040] transition hover:bg-[#b89020]"
+              className="text-sm px-5 py-2.5 rounded-full bg-[#c9a227] text-[#0a1628] font-semibold hover:bg-[#ddb832] transition-all hover:scale-105"
             >
               Start Free Trial
             </Link>
-          </nav>
+          </div>
         </div>
-      </header>
+      </nav>
 
-      {/* ── HERO ───────────────────────────────────────────────────────────── */}
-      <section
-        className="relative overflow-hidden px-6 py-24 md:py-36"
-        style={{ background: 'linear-gradient(135deg, #0a1628 0%, #0f2040 60%, #162d55 100%)' }}
-      >
-        {/* Horse silhouette */}
-        <div
-          className="pointer-events-none absolute inset-0 flex items-center justify-end"
-          aria-hidden="true"
+      {/* ── Hero with Container Scroll ── */}
+      <section className="bg-gradient-to-b from-[#0a1628] via-[#0f2040] to-[#0a1628] pb-24 md:pb-40">
+        <ContainerScroll
+          titleComponent={
+            <div className="mt-20">
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                className="text-[#c9a227] text-sm md:text-base tracking-[0.3em] uppercase font-medium mb-4"
+              >
+                Practice Management for Animal Chiropractors
+              </motion.p>
+              <motion.h1
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.15 }}
+                className="text-4xl md:text-[5rem] font-bold leading-[1.1] tracking-tight text-white"
+              >
+                Your practice.
+                <br />
+                <span className="bg-gradient-to-r from-[#c9a227] via-[#f5e6b8] to-[#c9a227] bg-clip-text text-transparent">
+                  Simplified.
+                </span>
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+                className="text-white/50 text-lg md:text-xl max-w-2xl mx-auto mt-6"
+              >
+                Patient records, AI-powered SOAP notes, scheduling, digital forms, and more
+                — designed for the field, not the office.
+              </motion.p>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.45 }}
+                className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10 mb-16 md:mb-24"
+              >
+                <Link
+                  href="/login"
+                  className="px-8 py-4 rounded-full bg-[#c9a227] text-[#0a1628] font-bold text-lg hover:bg-[#ddb832] transition-all hover:scale-105 shadow-lg shadow-[#c9a227]/20"
+                >
+                  Start Free Trial
+                  <ChevronRight className="inline ml-1 w-5 h-5" />
+                </Link>
+                <span className="text-white/30 text-sm">14 days free · No credit card required</span>
+              </motion.div>
+            </div>
+          }
         >
+          {/* Real app screenshot */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/horse-bg.png"
-            alt=""
-            className="h-full max-h-[800px] w-auto object-contain"
-            style={{ opacity: 0.1, filter: 'invert(1) sepia(1) saturate(3) hue-rotate(5deg)' }}
+            src="https://pyuarwwhmtoflyzwblbn.supabase.co/storage/v1/object/public/marketing/dashboard-screenshot.png?v=4"
+            alt="Stride dashboard showing client records, appointments, and patient management"
+            className="mx-auto rounded-xl object-cover h-full w-full object-top"
+            draggable={false}
           />
-        </div>
+        </ContainerScroll>
+      </section>
 
-        <div className="relative mx-auto max-w-4xl">
-          {/* Brand lockup */}
-          <div className="mb-8 flex items-center gap-5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/logo-gold.png"
-              alt="Stride"
-              className="h-60 w-60 sm:h-72 sm:w-72 drop-shadow-2xl"
-            />
-            <div>
-              <h2 className="text-3xl font-extrabold tracking-widest text-white sm:text-4xl" style={{ fontFamily: "'Geist', system-ui, sans-serif", letterSpacing: '0.15em' }}>
-                STRIDE
-              </h2>
-              <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[#c9a227]">
-                Equine &amp; Canine Chiropractic
-              </p>
-            </div>
-          </div>
-
-          {/* Badge */}
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#c9a227]/40 bg-[#c9a227]/10 px-4 py-1.5">
-            <span className="text-xs font-semibold uppercase tracking-widest text-[#c9a227]">
-              Built for animal chiropractors
-            </span>
-          </div>
-
-          <h1 className="text-4xl font-extrabold leading-tight text-white sm:text-5xl md:text-6xl">
-            Practice management<br />
-            <span className="text-[#c9a227]">built for the field.</span>
-          </h1>
-
-          <p className="mt-6 max-w-2xl text-lg text-blue-200 leading-relaxed">
-            Stride is the only practice management platform designed specifically for
-            equine and canine chiropractors. AI SOAP notes, digital intake forms, spine
-            tracking, and offline access — everything you need, nothing you don&apos;t.
-          </p>
-
-          <div className="mt-10 flex flex-wrap items-center gap-4">
-            <Link
-              href="/signup"
-              className="rounded-2xl bg-[#c9a227] px-8 py-4 text-base font-bold text-[#0f2040] shadow-lg transition hover:bg-[#b89020]"
-            >
-              Start 14-Day Free Trial
-            </Link>
-            <Link
-              href="/login"
-              className="rounded-2xl border border-white/25 px-8 py-4 text-base font-medium text-white transition hover:bg-white/10"
-            >
-              Sign In →
-            </Link>
-          </div>
-
-          <p className="mt-4 text-sm text-blue-200/60">
-            No credit card required · Cancel anytime
-          </p>
+      {/* ── Social proof bar ── */}
+      <section className="border-y border-white/5 bg-[#0a1628]">
+        <div className="max-w-5xl mx-auto py-8 px-6 flex flex-wrap items-center justify-center gap-8 md:gap-16 text-center">
+          {[
+            { value: "500+", label: "Patients Managed" },
+            { value: "2,000+", label: "SOAP Notes Generated" },
+            { value: "14", label: "Day Free Trial" },
+            { value: "99.9%", label: "Uptime" },
+          ].map((stat, i) => (
+            <FadeIn key={i} delay={i * 0.1}>
+              <p className="text-2xl md:text-3xl font-bold text-white">{stat.value}</p>
+              <p className="text-white/40 text-xs mt-1">{stat.label}</p>
+            </FadeIn>
+          ))}
         </div>
       </section>
 
-      {/* ── SOCIAL PROOF STRIP ─────────────────────────────────────────────── */}
-      <section className="border-y border-slate-100 bg-slate-50 px-6 py-5">
-        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-center gap-x-10 gap-y-2 text-sm text-slate-500">
-          <span className="flex items-center gap-2"><span className="text-emerald-500 font-bold">✓</span> Equine &amp; canine records</span>
-          <span className="flex items-center gap-2"><span className="text-emerald-500 font-bold">✓</span> AI-generated SOAP notes</span>
-          <span className="flex items-center gap-2"><span className="text-emerald-500 font-bold">✓</span> Works offline in the field</span>
-          <span className="flex items-center gap-2"><span className="text-emerald-500 font-bold">✓</span> Digital intake &amp; consent forms</span>
-          <span className="flex items-center gap-2"><span className="text-emerald-500 font-bold">✓</span> No long-term contracts</span>
-        </div>
-      </section>
-
-      {/* ── FEATURES ───────────────────────────────────────────────────────── */}
-      <section className="px-6 py-24">
-        <div className="mx-auto max-w-7xl">
-          <div className="mb-16 text-center">
-            <h2 className="text-3xl font-extrabold text-slate-900 sm:text-4xl">
-              Everything your practice needs
+      {/* ── Features ── */}
+      <section id="features" className="py-24 md:py-32 bg-[#0a1628]">
+        <div className="max-w-6xl mx-auto px-6">
+          <FadeIn className="text-center mb-16">
+            <p className="text-[#c9a227] text-sm tracking-[0.3em] uppercase font-medium mb-3">Features</p>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
+              Everything you need.
+              <span className="text-white/30"> Nothing you don&apos;t.</span>
             </h2>
-            <p className="mt-4 text-lg text-slate-500 max-w-2xl mx-auto">
-              Built by working with real practitioners, not by copying generic vet software.
-            </p>
-          </div>
+          </FadeIn>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {FEATURES.map((f) => (
-              <div
-                key={f.title}
-                className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm transition hover:shadow-md hover:border-slate-200"
-              >
-                <div className="mb-3 text-3xl">{f.icon}</div>
-                <h3 className="mb-2 font-bold text-slate-900">{f.title}</h3>
-                <p className="text-sm text-slate-500 leading-relaxed">{f.desc}</p>
-              </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {features.map((f, i) => (
+              <FadeIn key={i} delay={i * 0.08}>
+                <div className="group relative bg-white/[0.03] border border-white/5 rounded-2xl p-7 hover:border-[#c9a227]/30 transition-all duration-500 hover:bg-white/[0.05]">
+                  <div className="w-12 h-12 rounded-xl bg-[#c9a227]/10 flex items-center justify-center mb-5 group-hover:bg-[#c9a227]/20 transition">
+                    <f.icon className="w-6 h-6 text-[#c9a227]" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">{f.title}</h3>
+                  <p className="text-white/40 text-sm leading-relaxed">{f.desc}</p>
+                </div>
+              </FadeIn>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── HOW IT WORKS ───────────────────────────────────────────────────── */}
-      <section
-        className="px-6 py-24"
-        style={{ background: 'linear-gradient(135deg, #0a1628 0%, #0f2040 100%)' }}
-      >
-        <div className="mx-auto max-w-5xl">
-          <div className="mb-16 text-center">
-            <h2 className="text-3xl font-extrabold text-white sm:text-4xl">
-              Your entire practice in one place
-            </h2>
-            <p className="mt-4 text-lg text-blue-200">
-              From intake to SOAP note to follow-up email — all from your phone.
-            </p>
-          </div>
+      {/* ── Anatomy section ── */}
+      <section id="anatomy" className="py-24 md:py-32 bg-gradient-to-b from-[#0a1628] via-[#0f2040] to-[#0a1628] border-y border-white/5">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <SlideIn direction="left">
+              <p className="text-[#c9a227] text-sm tracking-[0.3em] uppercase font-medium mb-3">Interactive Anatomy</p>
+              <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
+                Annotate. Educate.
+                <span className="text-white/30"> Document.</span>
+              </h2>
+              <p className="text-white/50 text-base leading-relaxed mb-8">
+                Draw directly on 3D anatomical models. Circle problem areas, add arrows, and write notes.
+                Switch between clinical terminology and owner-friendly language for patient education.
+              </p>
+              <div className="space-y-4">
+                {[
+                  { icon: Layers, text: "Toggle muscles, skeleton, nerves, vascular, and organ layers" },
+                  { icon: PenTool, text: "Draw, circle, and annotate directly on the model" },
+                  { icon: MessageSquare, text: "Owner-friendly mode for client education" },
+                  { icon: Users, text: "Save annotations per visit for progress tracking" },
+                ].map((item, i) => (
+                  <FadeIn key={i} delay={i * 0.1}>
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-[#c9a227]/10 flex items-center justify-center shrink-0 mt-0.5">
+                        <item.icon className="w-4 h-4 text-[#c9a227]" />
+                      </div>
+                      <span className="text-white/50 text-sm">{item.text}</span>
+                    </div>
+                  </FadeIn>
+                ))}
+              </div>
+            </SlideIn>
 
-          <div className="grid gap-8 md:grid-cols-3">
+            <SlideIn direction="right" delay={0.2}>
+              <div className="relative">
+                <div className="rounded-3xl border border-white/10 overflow-hidden shadow-2xl">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/anatomy-screenshot.png"
+                    alt="Stride 3D Horse Anatomy Viewer with skeleton layer, annotation tools, and region details"
+                    className="w-full h-auto object-cover rounded-3xl"
+                    draggable={false}
+                  />
+                </div>
+                {/* Floating badges */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.5 }}
+                  className="absolute -top-4 -right-4 bg-[#c9a227] text-[#0a1628] text-xs font-bold px-3 py-1.5 rounded-full shadow-lg"
+                >
+                  NEW
+                </motion.div>
+              </div>
+            </SlideIn>
+          </div>
+        </div>
+      </section>
+
+      {/* ── How it works ── */}
+      <section className="py-24 md:py-32 bg-[#0a1628]">
+        <div className="max-w-5xl mx-auto px-6">
+          <FadeIn className="text-center mb-16">
+            <p className="text-[#c9a227] text-sm tracking-[0.3em] uppercase font-medium mb-3">How It Works</p>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
+              Three steps.
+              <span className="text-white/30"> That&apos;s it.</span>
+            </h2>
+          </FadeIn>
+
+          <div className="grid md:grid-cols-3 gap-8">
             {[
               {
-                step: '01',
-                title: 'Owner fills out intake',
-                desc: 'Send a link before you arrive. The owner fills in their horse or dog\'s history from their phone — no paper forms.',
+                step: "01",
+                title: "Add your patients",
+                desc: "Create profiles for each horse or dog with breed, discipline, medical history, and photos.",
               },
               {
-                step: '02',
-                title: 'You do the assessment',
-                desc: 'Document findings with the spine tracker, anatomy viewer, and photo capture — all from the field, even offline.',
+                step: "02",
+                title: "Document visits",
+                desc: "Use AI-assisted SOAP notes, spine assessments, and interactive anatomy annotations.",
               },
               {
-                step: '03',
-                title: 'AI writes the SOAP note',
-                desc: 'One tap generates a complete, professional SOAP note. Review, edit, and send the owner a summary by email.',
+                step: "03",
+                title: "Engage clients",
+                desc: "Send intake forms, consent forms, and appointment reminders via email or text.",
               },
-            ].map((item) => (
-              <div key={item.step} className="rounded-2xl border border-white/10 bg-white/5 p-8">
-                <div className="mb-4 text-4xl font-black text-[#c9a227]/40">{item.step}</div>
-                <h3 className="mb-3 text-lg font-bold text-white">{item.title}</h3>
-                <p className="text-sm text-blue-200 leading-relaxed">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── TESTIMONIALS ───────────────────────────────────────────────────── */}
-      <section className="px-6 py-24 bg-slate-50">
-        <div className="mx-auto max-w-6xl">
-          <h2 className="mb-12 text-center text-3xl font-extrabold text-slate-900 sm:text-4xl">
-            Loved by animal chiropractors
-          </h2>
-          <div className="grid gap-6 md:grid-cols-3">
-            {TESTIMONIALS.map((t) => (
-              <div
-                key={t.name}
-                className="rounded-2xl bg-white p-8 shadow-sm border border-slate-100"
-              >
-                <p className="mb-6 text-slate-600 leading-relaxed text-sm">
-                  &ldquo;{t.quote}&rdquo;
-                </p>
-                <div>
-                  <p className="font-bold text-slate-900 text-sm">{t.name}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">{t.title}</p>
+            ].map((item, i) => (
+              <FadeIn key={i} delay={i * 0.15}>
+                <div className="text-center">
+                  <span className="text-6xl md:text-7xl font-black text-[#c9a227]/10">{item.step}</span>
+                  <h3 className="text-xl font-bold mt-2 mb-3">{item.title}</h3>
+                  <p className="text-white/40 text-sm leading-relaxed">{item.desc}</p>
                 </div>
-              </div>
+              </FadeIn>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── PRICING ────────────────────────────────────────────────────────── */}
-      <section className="px-6 py-24">
-        <div className="mx-auto max-w-lg text-center">
-          <h2 className="mb-4 text-3xl font-extrabold text-slate-900 sm:text-4xl">
-            Simple, transparent pricing
-          </h2>
-          <p className="mb-12 text-slate-500">
-            One plan. Everything included. No surprises.
-          </p>
-
-          <div className="rounded-3xl border-2 border-[#0f2040] bg-white p-10 shadow-xl">
-            <div className="mb-2 flex items-center justify-center gap-2">
-              <span className="text-sm font-extrabold tracking-widest text-slate-900">STRIDE</span>
-              <span className="rounded-full bg-[#c9a227]/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#c9a227]">Pro</span>
-            </div>
-            <div className="mb-1 flex items-end justify-center gap-1">
-              <span className="text-6xl font-black text-slate-900">$59</span>
-              <span className="mb-3 text-lg text-slate-400">/month</span>
-            </div>
-            <p className="mb-8 text-sm text-slate-400">
-              14-day free trial · No credit card required
+      {/* ── Scheduler section ── */}
+      <section className="py-24 md:py-32 bg-gradient-to-b from-[#0a1628] via-[#0f2040] to-[#0a1628] border-y border-white/5">
+        <div className="max-w-6xl mx-auto px-6">
+          <FadeIn className="text-center mb-12">
+            <p className="text-[#c9a227] text-sm tracking-[0.3em] uppercase font-medium mb-3">Scheduling</p>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">
+              Book. Remind.
+              <span className="text-white/30"> Confirm.</span>
+            </h2>
+            <p className="text-white/50 text-base md:text-lg leading-relaxed max-w-2xl mx-auto">
+              Manage your entire schedule from one place. Book appointments, send automatic
+              reminders via email or SMS, and let clients confirm with a single tap.
             </p>
+          </FadeIn>
+        </div>
 
-            <ul className="mb-8 space-y-3 text-left">
+        {/* Full-width image — breaks out of the 6xl container for more impact */}
+        <div className="max-w-[90rem] mx-auto px-4 md:px-8">
+          <FadeIn delay={0.15}>
+            <div className="rounded-3xl border border-white/10 overflow-hidden shadow-2xl">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/scheduler.png"
+                alt="Stride appointment scheduler with calendar view, booking, and automated reminders"
+                className="w-full h-auto object-cover rounded-3xl"
+                draggable={false}
+              />
+            </div>
+          </FadeIn>
+        </div>
+
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-6 mt-12">
+            {[
+              { icon: CalendarDays, text: "Full calendar view with day, week, and month layouts" },
+              { icon: MessageSquare, text: "Automatic SMS and email reminders before appointments" },
+              { icon: Check, text: "One-tap confirmation links for clients" },
+              { icon: Users, text: "Track appointment history per patient and owner" },
+            ].map((item, i) => (
+              <FadeIn key={i} delay={0.2 + i * 0.08}>
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#c9a227]/10 flex items-center justify-center shrink-0 mt-0.5">
+                    <item.icon className="w-4 h-4 text-[#c9a227]" />
+                  </div>
+                  <span className="text-white/50 text-sm">{item.text}</span>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Built for the field ── */}
+      <section className="py-24 md:py-32 bg-gradient-to-b from-[#0a1628] to-[#0f2040] border-y border-white/5">
+        <div className="max-w-5xl mx-auto px-6 text-center">
+          <FadeIn>
+            <div className="inline-flex items-center gap-2 bg-[#c9a227]/10 px-4 py-2 rounded-full mb-6">
+              <WifiOff className="w-4 h-4 text-[#c9a227]" />
+              <span className="text-[#c9a227] text-sm font-medium">Works Offline</span>
+            </div>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
+              No signal?
+              <span className="text-white/30"> No problem.</span>
+            </h2>
+          </FadeIn>
+          <FadeIn delay={0.2}>
+            <p className="text-white/50 text-lg max-w-2xl mx-auto leading-relaxed mb-10">
+              Stride is a Progressive Web App that works without internet.
+              Take notes at the barn, the arena, or the middle of nowhere.
+              Everything syncs automatically when you&apos;re back online.
+            </p>
+          </FadeIn>
+          <FadeIn delay={0.3}>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
               {[
-                'Unlimited patient records',
-                'AI SOAP note generation',
-                'Digital intake & consent forms',
-                'Spine assessment tracker',
-                '3D anatomy viewer',
-                'Appointment scheduling',
-                'Visit photos & timeline',
-                'Offline mode with sync',
-                'Email summaries to owners',
-              ].map((item) => (
-                <li key={item} className="flex items-center gap-3 text-sm text-slate-700">
-                  <span className="text-emerald-500 font-bold shrink-0">✓</span>
-                  {item}
-                </li>
+                { icon: Smartphone, text: "Install on your phone" },
+                { icon: WifiOff, text: "Works without signal" },
+                { icon: ArrowRight, text: "Auto-syncs when online" },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-2 text-white/40 text-sm">
+                  <item.icon className="w-4 h-4 text-[#c9a227]" />
+                  {item.text}
+                </div>
               ))}
-            </ul>
-
-            <Link
-              href="/signup"
-              className="block w-full rounded-xl bg-[#0f2040] py-4 text-center text-sm font-bold text-white transition hover:bg-[#162d55]"
-            >
-              Start Free Trial
-            </Link>
-            <p className="mt-3 text-xs text-slate-400">
-              Cancel anytime. No long-term commitment.
-            </p>
-          </div>
+            </div>
+          </FadeIn>
         </div>
       </section>
 
-      {/* ── FINAL CTA ──────────────────────────────────────────────────────── */}
-      <section
-        className="px-6 py-24 text-center"
-        style={{ background: 'linear-gradient(135deg, #0a1628 0%, #0f2040 100%)' }}
-      >
-        <div className="mx-auto max-w-2xl">
-          <h2 className="text-3xl font-extrabold text-white sm:text-4xl">
-            Ready to modernize your practice?
-          </h2>
-          <p className="mt-4 text-lg text-blue-200">
-            Join practitioners who are spending less time on paperwork and more time with their patients.
-          </p>
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-            <Link
-              href="/signup"
-              className="rounded-2xl bg-[#c9a227] px-10 py-4 text-base font-bold text-[#0f2040] shadow-lg transition hover:bg-[#b89020]"
-            >
-              Start Your Free Trial
-            </Link>
-          </div>
-          <p className="mt-4 text-sm text-blue-200/50">
-            14 days free · No credit card · Cancel anytime
-          </p>
+      {/* ── Pricing ── */}
+      <section id="pricing" className="py-24 md:py-32 bg-[#0a1628]">
+        <div className="max-w-4xl mx-auto px-6">
+          <FadeIn className="text-center mb-16">
+            <p className="text-[#c9a227] text-sm tracking-[0.3em] uppercase font-medium mb-3">Pricing</p>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
+              One plan.
+              <span className="text-white/30"> Everything included.</span>
+            </h2>
+          </FadeIn>
+
+          <FadeIn delay={0.15}>
+            <div className="max-w-md mx-auto bg-white/[0.03] border border-[#c9a227]/20 rounded-3xl p-8 md:p-10 text-center relative overflow-hidden">
+              {/* Glow effect */}
+              <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-48 h-48 bg-[#c9a227]/10 rounded-full blur-3xl" />
+
+              <div className="relative">
+                <div className="flex items-center justify-center gap-1 mb-2">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 fill-[#c9a227] text-[#c9a227]" />
+                  ))}
+                </div>
+                <p className="text-white/40 text-sm mb-6">Trusted by animal chiropractors</p>
+
+                <div className="mb-6">
+                  <span className="text-5xl md:text-6xl font-black text-white">$59</span>
+                  <span className="text-white/40 text-lg">/month</span>
+                </div>
+
+                <p className="text-[#c9a227] text-sm font-medium mb-8">
+                  14-day free trial · No credit card required
+                </p>
+
+                <div className="space-y-3 text-left mb-8">
+                  {pricingFeatures.map((f, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <Check className="w-4 h-4 text-[#c9a227] shrink-0" />
+                      <span className="text-white/60 text-sm">{f}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <Link
+                  href="/login"
+                  className="block w-full py-4 rounded-full bg-[#c9a227] text-[#0a1628] font-bold text-lg hover:bg-[#ddb832] transition-all hover:scale-[1.02] shadow-lg shadow-[#c9a227]/20"
+                >
+                  Start Free Trial
+                </Link>
+              </div>
+            </div>
+          </FadeIn>
         </div>
       </section>
 
-      {/* ── FOOTER ─────────────────────────────────────────────────────────── */}
-      <footer
-        className="border-t border-white/10 px-6 py-8"
-        style={{ background: '#0a1628' }}
-      >
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 text-sm text-blue-200/50 sm:flex-row">
-          <div className="flex items-center gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-gold.png" alt="Stride" className="h-10 w-10 opacity-70" />
-            <div className="flex flex-col leading-tight">
-              <span className="font-bold text-blue-200/70 text-sm tracking-widest">STRIDE</span>
-              <span className="text-[10px] text-blue-200/40">Equine &amp; Canine Chiropractic</span>
+      {/* ── Footer ── */}
+      <footer className="border-t border-white/5 bg-[#060e1a] py-12">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-3">
+              <Image src="/stride-logo-gold.png" alt="Stride" width={32} height={32} />
+              <span className="text-white/60 text-sm">
+                Built by animal chiropractors, for animal chiropractors.
+              </span>
+            </div>
+            <div className="flex items-center gap-6 text-sm text-white/30">
+              <Link href="/login" className="hover:text-white/60 transition">Login</Link>
+              <a href="mailto:support@stridechiro.com" className="hover:text-white/60 transition">Contact</a>
+              <a href="#" className="hover:text-white/60 transition">Privacy</a>
             </div>
           </div>
-          <div className="flex gap-6">
-            <Link href="/login" className="transition hover:text-white">Sign In</Link>
-            <Link href="/signup" className="transition hover:text-white">Sign Up</Link>
-            <Link href="/billing" className="transition hover:text-white">Billing</Link>
+          <div className="text-center mt-8 text-white/20 text-xs">
+            &copy; {new Date().getFullYear()} Stride Equine & Canine Chiropractic Software. All rights reserved.
           </div>
-          <span>© {new Date().getFullYear()} STRIDE. All rights reserved.</span>
         </div>
       </footer>
-
     </div>
-  )
+  );
 }
