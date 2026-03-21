@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
+const fromEmail = process.env.FROM_EMAIL
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,6 +12,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: 'Name, email, and message are required.' },
         { status: 400 }
+      )
+    }
+
+    if (!fromEmail) {
+      console.error('FROM_EMAIL env variable is not set')
+      return NextResponse.json(
+        { error: 'Email service is not configured.' },
+        { status: 500 }
       )
     }
 
@@ -45,7 +54,7 @@ export async function POST(req: NextRequest) {
     `
 
     await resend.emails.send({
-      from: 'Stride Contact Form <noreply@stridechiro.com>',
+      from: fromEmail,
       to: ['charlesdunn0603@gmail.com'],
       replyTo: email,
       subject: `Stride Contact: ${name}`,
