@@ -50,7 +50,8 @@ export default function NavBar() {
     pathname === '/' ||
     pathname === '/login' ||
     pathname === '/signup' ||
-    pathname?.startsWith('/onboarding')
+    pathname?.startsWith('/onboarding') ||
+    pathname === '/contact'
   if (isPublicPage || !userEmail) return null
 
   async function handleSignOut() {

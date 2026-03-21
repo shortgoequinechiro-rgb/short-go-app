@@ -534,7 +534,7 @@ export default function LandingPage() {
             </div>
             <div className="flex items-center gap-6 text-sm text-white/30">
               <Link href="/login" className="hover:text-white/60 transition">Login</Link>
-              <a href="mailto:support@stridechiro.com" className="hover:text-white/60 transition">Contact</a>
+              <Link href="/contact" className="hover:text-white/60 transition">Contact</Link>
               <a href="#" className="hover:text-white/60 transition">Privacy</a>
             </div>
           </div>
