@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
 
     await resend.emails.send({
       from: fromEmail,
-      to: ['charlesdunn0603@gmail.com'],
+      to: ['shortgoequinechiro@gmail.com'],
       replyTo: email,
       subject: `Stride Contact: ${name}`,
       html,
