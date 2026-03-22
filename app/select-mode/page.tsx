@@ -97,29 +97,8 @@ export default function SelectModePage() {
         >
           <div className="absolute inset-0 bg-gradient-to-br from-[#c9a227]/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
           <div className="relative">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#c9a227]/10">
-              <svg viewBox="0 0 100 100" className="h-10 w-10" fill="none" xmlns="http://www.w3.org/2000/svg">
-                {/* Circle */}
-                <circle cx="50" cy="52" r="38" stroke="#c9a227" strokeWidth="1.5" opacity="0.5" />
-                {/* Square */}
-                <rect x="18" y="18" width="64" height="70" rx="1" stroke="#c9a227" strokeWidth="1.5" opacity="0.3" />
-                {/* Head */}
-                <circle cx="50" cy="22" r="7" stroke="#c9a227" strokeWidth="2" />
-                {/* Torso */}
-                <line x1="50" y1="29" x2="50" y2="62" stroke="#c9a227" strokeWidth="2" />
-                {/* Arms outstretched */}
-                <line x1="50" y1="40" x2="22" y2="36" stroke="#c9a227" strokeWidth="2" strokeLinecap="round" />
-                <line x1="50" y1="40" x2="78" y2="36" stroke="#c9a227" strokeWidth="2" strokeLinecap="round" />
-                {/* Arms raised (secondary pose) */}
-                <line x1="50" y1="38" x2="26" y2="22" stroke="#c9a227" strokeWidth="1.2" strokeLinecap="round" opacity="0.5" />
-                <line x1="50" y1="38" x2="74" y2="22" stroke="#c9a227" strokeWidth="1.2" strokeLinecap="round" opacity="0.5" />
-                {/* Legs */}
-                <line x1="50" y1="62" x2="35" y2="88" stroke="#c9a227" strokeWidth="2" strokeLinecap="round" />
-                <line x1="50" y1="62" x2="65" y2="88" stroke="#c9a227" strokeWidth="2" strokeLinecap="round" />
-                {/* Legs spread (secondary pose) */}
-                <line x1="50" y1="62" x2="24" y2="82" stroke="#c9a227" strokeWidth="1.2" strokeLinecap="round" opacity="0.5" />
-                <line x1="50" y1="62" x2="76" y2="82" stroke="#c9a227" strokeWidth="1.2" strokeLinecap="round" opacity="0.5" />
-              </svg>
+            <div className="mb-4 h-16 w-16 overflow-hidden rounded-2xl bg-[#c9a227]/10 p-1.5">
+              <Image src="/vitruvian.png" alt="Vitruvian Man" width={52} height={52} className="h-full w-full object-contain opacity-90" />
             </div>
             <h2 className="text-xl font-bold text-white mb-2">Humans</h2>
             <p className="text-sm text-blue-300/70 leading-relaxed">
