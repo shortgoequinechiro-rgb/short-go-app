@@ -132,7 +132,7 @@ export default function LandingPage() {
   // Redirect authenticated users straight to the dashboard
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) router.replace("/dashboard");
+      if (data.session) router.replace("/select-mode");
     });
   }, [router]);
 

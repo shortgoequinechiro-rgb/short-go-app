@@ -16,6 +16,7 @@ type Practitioner = {
   animals_served: string | null
   location: string | null
   logo_url: string | null
+  practice_mode: string | null
   subscription_status: string
   trial_ends_at: string | null
   stripe_customer_id: string | null
@@ -61,6 +62,7 @@ function ProfileTab({ practitioner, onSaved }: { practitioner: Practitioner; onS
   const [practiceName,  setPracticeName]  = useState(practitioner.practice_name ?? '')
   const [animalsServed, setAnimalsServed] = useState(practitioner.animals_served ?? 'both')
   const [location,      setLocation]      = useState(practitioner.location ?? '')
+  const [practiceMode,  setPracticeMode]  = useState(practitioner.practice_mode ?? 'both')
   const [logoUrl,       setLogoUrl]       = useState(practitioner.logo_url ?? '')
   const [logoUploading, setLogoUploading] = useState(false)
   const [saving,  setSaving]  = useState(false)
@@ -113,7 +115,8 @@ function ProfileTab({ practitioner, onSaved }: { practitioner: Practitioner; onS
     fullName      !== (practitioner.full_name      ?? '') ||
     practiceName  !== (practitioner.practice_name  ?? '') ||
     animalsServed !== (practitioner.animals_served  ?? 'both') ||
-    location      !== (practitioner.location        ?? '')
+    location      !== (practitioner.location        ?? '') ||
+    practiceMode  !== (practitioner.practice_mode   ?? 'both')
 
   async function handleSave() {
     if (!practiceName.trim()) { setError('Practice name is required.'); return }
@@ -125,12 +128,13 @@ function ProfileTab({ practitioner, onSaved }: { practitioner: Practitioner; onS
         practice_name:  practiceName.trim(),
         animals_served: animalsServed,
         location:       location.trim() || null,
+        practice_mode:  practiceMode,
       })
       .eq('id', practitioner.id)
     setSaving(false)
     if (err) { setError('Failed to save. Please try again.'); return }
     setSaved(true)
-    onSaved({ ...practitioner, full_name: fullName.trim() || null, practice_name: practiceName.trim(), animals_served: animalsServed, location: location.trim() || null })
+    onSaved({ ...practitioner, full_name: fullName.trim() || null, practice_name: practiceName.trim(), animals_served: animalsServed, location: location.trim() || null, practice_mode: practiceMode })
     setTimeout(() => setSaved(false), 2500)
   }
 
@@ -241,6 +245,25 @@ function ProfileTab({ practitioner, onSaved }: { practitioner: Practitioner; onS
             <option value="both">🐴🐕 Both equine &amp; canine</option>
           </select>
         </div>
+      </div>
+
+      {/* Practice Mode */}
+      <div>
+        <label className="block text-xs font-semibold uppercase tracking-wider text-blue-400 mb-1.5">
+          Practice Mode
+        </label>
+        <p className="text-[11px] text-blue-400/60 mb-2">
+          Controls what you see after login. &quot;Both&quot; shows the mode selection screen; picking one skips it and goes straight to that dashboard.
+        </p>
+        <select
+          value={practiceMode}
+          onChange={e => { setPracticeMode(e.target.value); setSaved(false) }}
+          className="w-full max-w-sm rounded-xl border border-[#1a3358] bg-[#081120] px-4 py-2.5 text-sm text-white outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/40 transition"
+        >
+          <option value="both">🧑🐴 Both Humans &amp; Animals</option>
+          <option value="humans">🧑 Humans only</option>
+          <option value="animals">🐴 Animals only</option>
+        </select>
       </div>
 
       {/* Email (read-only) */}
