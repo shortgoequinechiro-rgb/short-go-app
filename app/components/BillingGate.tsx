@@ -44,8 +44,8 @@ export default function BillingGate({ children }: { children: React.ReactNode })
       const { data: { user } } = await supabase.auth.getUser()
 
       if (!user) {
-        // Not logged in — let the individual page handle its own auth redirect
-        setReady(true)
+        // Not logged in on a protected route — redirect to login
+        router.push('/login')
         return
       }
 
