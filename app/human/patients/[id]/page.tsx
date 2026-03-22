@@ -100,6 +100,11 @@ export default function PatientRecordPage() {
   const [visitSaving, setVisitSaving] = useState(false)
   const [visitMsg, setVisitMsg] = useState('')
 
+  // AI SOAP generation
+  const [aiQuickNotes, setAiQuickNotes] = useState('')
+  const [aiGenerating, setAiGenerating] = useState(false)
+  const [selectedTemplate, setSelectedTemplate] = useState('')
+
   // Expanded visit detail
   const [expandedVisitId, setExpandedVisitId] = useState<string | null>(null)
 
@@ -200,6 +205,56 @@ export default function PatientRecordPage() {
       })
     }
   }
+
+  async function handleAiGenerate() {
+    if (!aiQuickNotes.trim() && !selectedTemplate) return
+    setAiGenerating(true); setVisitMsg('')
+    try {
+      const res = await fetch('/api/generate-soap-human', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          quickNotes: aiQuickNotes || `Standard ${selectedTemplate} visit`,
+          patientName: patient ? `${patient.first_name} ${patient.last_name}` : 'Patient',
+          chiefComplaint: patient?.chief_complaint || '',
+          treatedAreas: visitForm.treated_areas,
+          templateType: selectedTemplate,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setVisitMsg(data.error || 'AI generation failed.'); return }
+      setVisitForm(prev => ({
+        ...prev,
+        subjective: data.subjective || prev.subjective,
+        objective: data.objective || prev.objective,
+        assessment: data.assessment || prev.assessment,
+        plan: data.plan || prev.plan,
+        treated_areas: data.treated_areas || prev.treated_areas,
+        recommendations: data.recommendations || prev.recommendations,
+        follow_up: data.follow_up || prev.follow_up,
+      }))
+    } catch {
+      setVisitMsg('Failed to connect to AI service.')
+    }
+    setAiGenerating(false)
+  }
+
+  const SOAP_TEMPLATES = [
+    { value: '', label: 'No template' },
+    { value: 'lower-back-pain', label: 'Lower Back Pain' },
+    { value: 'neck-pain', label: 'Neck Pain / Cervicalgia' },
+    { value: 'headache-migraine', label: 'Headache / Migraine' },
+    { value: 'sciatica', label: 'Sciatica' },
+    { value: 'thoracic-pain', label: 'Mid-Back / Thoracic Pain' },
+    { value: 'shoulder-pain', label: 'Shoulder Pain' },
+    { value: 'si-joint', label: 'SI Joint Dysfunction' },
+    { value: 'whiplash', label: 'Whiplash / MVA' },
+    { value: 'wellness-maintenance', label: 'Wellness / Maintenance' },
+    { value: 'prenatal', label: 'Prenatal / Webster Technique' },
+    { value: 'pediatric', label: 'Pediatric' },
+    { value: 'sports-injury', label: 'Sports Injury' },
+    { value: 'postural-correction', label: 'Postural Correction' },
+  ]
 
   if (loading || !patient) {
     return (
@@ -416,6 +471,43 @@ export default function PatientRecordPage() {
                     <input type="text" value={visitForm.reason_for_visit}
                       onChange={e => setVisitForm(prev => ({ ...prev, reason_for_visit: e.target.value }))}
                       className={inputClass} placeholder="e.g., Lower back pain, follow-up" />
+                  </div>
+                </div>
+
+                {/* AI SOAP Generation */}
+                <div className="rounded-xl border border-[#c9a227]/20 bg-[#c9a227]/5 p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-[#c9a227]">AI SOAP Generator</span>
+                    <span className="text-[10px] uppercase tracking-wider text-[#c9a227]/60 bg-[#c9a227]/10 px-2 py-0.5 rounded-full">GPT-4o</span>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className={labelClass}>Quick Notes</label>
+                      <textarea value={aiQuickNotes}
+                        onChange={e => setAiQuickNotes(e.target.value)}
+                        className={inputClass + ' min-h-[80px]'}
+                        placeholder="Type your quick notes... e.g., Patient reports sharp lower back pain radiating to left leg, worse with sitting. Adjusted L4-L5, SI joint bilateral. Moderate muscle tension in lumbar paraspinals." />
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <label className={labelClass}>Case Template (optional)</label>
+                        <select value={selectedTemplate}
+                          onChange={e => setSelectedTemplate(e.target.value)}
+                          className={inputClass}>
+                          {SOAP_TEMPLATES.map(t => (
+                            <option key={t.value} value={t.value}>{t.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <button
+                        onClick={handleAiGenerate}
+                        disabled={aiGenerating || (!aiQuickNotes.trim() && !selectedTemplate)}
+                        className="w-full rounded-xl bg-[#c9a227] py-2.5 text-sm font-semibold text-[#0f2040] hover:bg-[#b89020] disabled:opacity-50 transition"
+                      >
+                        {aiGenerating ? 'Generating SOAP Note...' : 'Generate SOAP Note with AI'}
+                      </button>
+                      <p className="text-[10px] text-blue-400/50 text-center">AI will populate all fields below. You can edit before saving.</p>
+                    </div>
                   </div>
                 </div>
 

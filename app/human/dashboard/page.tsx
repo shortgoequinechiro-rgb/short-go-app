@@ -176,6 +176,37 @@ export default function HumanDashboard() {
     }
   }
 
+  async function handleSendIntake(patientId: string) {
+    const pt = patients.find(p => p.id === patientId)
+    if (!pt) return
+
+    // Create an intake form record
+    const { data: form, error } = await supabase
+      .from('human_intake_forms')
+      .insert({
+        patient_id: patientId,
+        practitioner_id: userId,
+        first_name: pt.first_name,
+        last_name: pt.last_name,
+        phone: pt.phone,
+        email: pt.email,
+        status: 'pending',
+      })
+      .select('id')
+      .single()
+
+    if (error || !form) {
+      setMessage('Failed to create intake form.')
+      setTimeout(() => setMessage(''), 3000)
+      return
+    }
+
+    const url = `${window.location.origin}/human/intake/${form.id}`
+    await navigator.clipboard.writeText(url)
+    setMessage('Intake form link copied! Share it with the patient.')
+    setTimeout(() => setMessage(''), 4000)
+  }
+
   if (checkingAuth) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#081120]">
@@ -303,7 +334,25 @@ export default function HumanDashboard() {
                   >
                     View History
                   </Link>
+                  <button
+                    onClick={() => handleSendIntake(selectedPatient.id)}
+                    className="rounded-xl border border-white/20 px-4 py-2.5 text-sm font-medium text-white/70 hover:bg-white/10 transition"
+                  >
+                    Send Intake Form
+                  </button>
+                  <button
+                    onClick={() => {
+                      const url = `${window.location.origin}/human/portal/${selectedPatient.id}`
+                      navigator.clipboard.writeText(url)
+                      setMessage('Portal link copied!')
+                      setTimeout(() => setMessage(''), 2500)
+                    }}
+                    className="rounded-xl border border-white/20 px-4 py-2.5 text-sm font-medium text-white/70 hover:bg-white/10 transition"
+                  >
+                    Copy Portal Link
+                  </button>
                 </div>
+                {message && <p className="text-sm text-emerald-400 mt-2">{message}</p>}
               </div>
             ) : (
               /* Recent visits when no patient selected */

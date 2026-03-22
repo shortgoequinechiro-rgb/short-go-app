@@ -71,8 +71,11 @@ export default function NavBar() {
   const dashboardHref = isHumanMode ? '/human/dashboard' : '/dashboard'
   const subtitle = isHumanMode ? 'Human Chiropractic' : 'Equine & Canine Chiro'
 
+  const isHumanCalendar = pathname?.startsWith('/human/calendar')
+
   const navLinks = isHumanMode
     ? [
+        { href: '/human/calendar', label: 'Scheduler', hidden: isHumanCalendar },
         { href: '/select-mode', label: 'Switch Mode', hidden: false },
         { href: '/account', label: 'Account', hidden: isAccount },
       ]
