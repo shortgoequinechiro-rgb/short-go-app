@@ -16,7 +16,7 @@ export default withPWA({
     runtimeCaching: [
       {
         // Cache all app page navigations (HTML)
-        urlPattern: /^https?:\/\/.*\/(dashboard|calendar|appointments|horses|owners|account|billing|onboarding|anatomy|intake|consent|human|select-mode|portal|book|analytics|superbills|care-plans|booking-settings|compliance-scan|soap-templates|recall-settings|review-settings).*/i,
+        urlPattern: /^https?:\/\/.*\/(dashboard|calendar|appointments|horses|owners|account|billing|onboarding|anatomy|intake|consent|human|select-mode|portal|book|analytics|superbills|care-plans|booking-settings|compliance-scan|soap-templates|recall-settings|review-settings|outcome-measures|documents|invoices|sms-inbox|referral-sources|kiosk).*/i,
         handler: 'NetworkFirst',
         options: {
           cacheName: 'app-pages',

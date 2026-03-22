@@ -267,6 +267,36 @@ export default function HumanDashboard() {
               Reviews
             </Link>
             <Link
+              href="/human/outcome-measures"
+              className="rounded-xl border border-white/20 px-3 py-2 text-sm text-white/70 hover:bg-white/10 transition"
+            >
+              Outcomes
+            </Link>
+            <Link
+              href="/human/documents"
+              className="rounded-xl border border-white/20 px-3 py-2 text-sm text-white/70 hover:bg-white/10 transition"
+            >
+              Documents
+            </Link>
+            <Link
+              href="/human/invoices"
+              className="rounded-xl border border-white/20 px-3 py-2 text-sm text-white/70 hover:bg-white/10 transition"
+            >
+              Invoices
+            </Link>
+            <Link
+              href="/human/sms-inbox"
+              className="rounded-xl border border-white/20 px-3 py-2 text-sm text-white/70 hover:bg-white/10 transition"
+            >
+              SMS
+            </Link>
+            <Link
+              href="/human/referral-sources"
+              className="rounded-xl border border-white/20 px-3 py-2 text-sm text-white/70 hover:bg-white/10 transition"
+            >
+              Referrals
+            </Link>
+            <Link
               href="/human/booking-settings"
               className="rounded-xl border border-white/20 px-3 py-2 text-sm text-white/70 hover:bg-white/10 transition"
             >
