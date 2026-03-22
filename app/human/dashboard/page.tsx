@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { supabase } from '../../lib/supabase'
+import { logAudit } from '../../lib/audit'
 
 type Patient = {
   id: string
@@ -173,6 +174,7 @@ export default function HumanDashboard() {
       setFirstName(''); setLastName(''); setDob(''); setPhone(''); setEmail(''); setAddress(''); setChiefComplaint('')
       setShowAddModal(false)
       setSelectedPatientId(data.id)
+      logAudit({ action: 'create', resourceType: 'human_patient', resourceId: data.id })
     }
   }
 
@@ -227,7 +229,25 @@ export default function HumanDashboard() {
               {patients.length} patient{patients.length !== 1 ? 's' : ''} &middot; {visitCount} visit{visitCount !== 1 ? 's' : ''}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <Link
+              href="/human/analytics"
+              className="rounded-xl border border-white/20 px-3 py-2 text-sm text-white/70 hover:bg-white/10 transition"
+            >
+              Analytics
+            </Link>
+            <Link
+              href="/human/superbills"
+              className="rounded-xl border border-white/20 px-3 py-2 text-sm text-white/70 hover:bg-white/10 transition"
+            >
+              Superbills
+            </Link>
+            <Link
+              href="/human/booking-settings"
+              className="rounded-xl border border-white/20 px-3 py-2 text-sm text-white/70 hover:bg-white/10 transition"
+            >
+              Online Booking
+            </Link>
             <Link
               href="/select-mode"
               className="rounded-xl border border-white/20 px-3 py-2 text-sm text-white/70 hover:bg-white/10 transition"
@@ -341,11 +361,28 @@ export default function HumanDashboard() {
                     Send Intake Form
                   </button>
                   <button
-                    onClick={() => {
-                      const url = `${window.location.origin}/human/portal/${selectedPatient.id}`
-                      navigator.clipboard.writeText(url)
-                      setMessage('Portal link copied!')
-                      setTimeout(() => setMessage(''), 2500)
+                    onClick={async () => {
+                      try {
+                        const { data: { session } } = await supabase.auth.getSession()
+                        if (!session) { setMessage('Please log in again.'); return }
+                        const res = await fetch('/api/portal/generate-token', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${session.access_token}`,
+                          },
+                          body: JSON.stringify({ patientId: selectedPatient.id }),
+                        })
+                        const data = await res.json()
+                        if (!res.ok) { setMessage(data.error || 'Failed to generate link.'); return }
+                        const url = `${window.location.origin}/human/portal/${selectedPatient.id}?token=${data.token}`
+                        await navigator.clipboard.writeText(url)
+                        setMessage('Secure portal link copied! Expires in 30 days.')
+                        setTimeout(() => setMessage(''), 4000)
+                      } catch {
+                        setMessage('Failed to generate portal link.')
+                        setTimeout(() => setMessage(''), 3000)
+                      }
                     }}
                     className="rounded-xl border border-white/20 px-4 py-2.5 text-sm font-medium text-white/70 hover:bg-white/10 transition"
                   >

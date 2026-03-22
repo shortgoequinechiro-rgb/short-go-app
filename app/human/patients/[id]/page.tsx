@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../../lib/supabase'
+import { logAudit } from '../../../lib/audit'
 
 type Patient = {
   id: string
@@ -141,6 +142,7 @@ function PatientRecordPage() {
     setEditForm(pt)
     await loadVisits()
     setLoading(false)
+    logAudit({ action: 'view', resourceType: 'human_patient', resourceId: patientId })
   }
 
   async function loadVisits() {
@@ -215,6 +217,7 @@ function PatientRecordPage() {
         reason_for_visit: '', subjective: '', objective: '', assessment: '',
         plan: '', treated_areas: '', recommendations: '', follow_up: '', notes: '',
       })
+      logAudit({ action: 'create', resourceType: 'human_visit', resourceId: data.id })
     }
   }
 
@@ -245,6 +248,7 @@ function PatientRecordPage() {
         recommendations: data.recommendations || prev.recommendations,
         follow_up: data.follow_up || prev.follow_up,
       }))
+      logAudit({ action: 'generate', resourceType: 'soap_note', resourceId: patientId })
     } catch {
       setVisitMsg('Failed to connect to AI service.')
     }
@@ -301,12 +305,20 @@ function PatientRecordPage() {
                 {patient.email || ''}
               </p>
             </div>
-            <button
-              onClick={() => { setShowNewVisit(true); setTab('visits') }}
-              className="rounded-xl bg-[#c9a227] px-4 py-2 text-sm font-semibold text-[#0f2040] hover:bg-[#b89020] transition"
-            >
-              + New Visit
-            </button>
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/human/patients/${patientId}/care-plans`}
+                className="rounded-xl border border-white/20 px-3 py-2 text-sm text-white/70 hover:bg-white/10 transition"
+              >
+                Care Plans
+              </Link>
+              <button
+                onClick={() => { setShowNewVisit(true); setTab('visits') }}
+                className="rounded-xl bg-[#c9a227] px-4 py-2 text-sm font-semibold text-[#0f2040] hover:bg-[#b89020] transition"
+              >
+                + New Visit
+              </button>
+            </div>
           </div>
         </div>
       </div>

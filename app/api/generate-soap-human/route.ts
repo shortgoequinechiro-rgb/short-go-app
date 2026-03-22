@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     const prompt = `
 You are helping draft a human chiropractic SOAP note.
 
-Patient name: ${patientName}
+Patient: [REDACTED]
 ${chiefComplaint ? `Chief complaint: ${chiefComplaint}` : ''}
 ${treatedAreas ? `Areas to be treated: ${treatedAreas}` : ''}
 ${templateContext}

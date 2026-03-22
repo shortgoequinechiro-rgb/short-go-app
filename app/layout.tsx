@@ -4,6 +4,7 @@ import "./globals.css";
 import NavBar from "./components/NavBar";
 import OfflineSync from "./components/OfflineSync";
 import BillingGate from "./components/BillingGate";
+import SessionTimeout from "./components/SessionTimeout";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -44,6 +45,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <NavBar />
+        <SessionTimeout />
         <BillingGate>
           {children}
         </BillingGate>

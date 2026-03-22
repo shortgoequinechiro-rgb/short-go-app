@@ -1,8 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
-import { supabase } from '../../../lib/supabase'
+import { Suspense, useEffect, useState } from 'react'
+import { useParams, useSearchParams } from 'next/navigation'
 
 type PatientInfo = {
   first_name: string
@@ -16,8 +15,6 @@ type Visit = {
   id: string
   visit_date: string
   reason_for_visit: string | null
-  subjective: string | null
-  objective: string | null
   assessment: string | null
   plan: string | null
   treated_areas: string | null
@@ -49,9 +46,23 @@ function fmtDate(iso: string): string {
   })
 }
 
-export default function PatientPortalPage() {
+export default function PatientPortalWrapper() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <p className="text-slate-400 text-sm animate-pulse">Loading your portal...</p>
+      </div>
+    }>
+      <PatientPortalPage />
+    </Suspense>
+  )
+}
+
+function PatientPortalPage() {
   const params = useParams()
+  const searchParams = useSearchParams()
   const patientId = params.patientId as string
+  const token = searchParams.get('token')
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -66,36 +77,33 @@ export default function PatientPortalPage() {
   }, [])
 
   async function loadPortal() {
-    // Fetch patient with practitioner info
-    const { data: pt } = await supabase
-      .from('human_patients')
-      .select('first_name, last_name, date_of_birth, chief_complaint, practitioners(practice_name, logo_url, full_name)')
-      .eq('id', patientId)
-      .single()
+    if (!token) {
+      setError('Invalid portal link. Please contact your care provider for a new link.')
+      setLoading(false)
+      return
+    }
 
-    if (!pt) { setError('Patient portal not found.'); setLoading(false); return }
-    setPatient(pt as unknown as PatientInfo)
+    try {
+      const res = await fetch('/api/portal/access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, patientId }),
+      })
 
-    // Fetch visits (most recent first)
-    const { data: v } = await supabase
-      .from('human_visits')
-      .select('id, visit_date, reason_for_visit, subjective, assessment, plan, treated_areas, recommendations, follow_up, objective')
-      .eq('patient_id', patientId)
-      .order('visit_date', { ascending: false })
-      .limit(20)
-    if (v) setVisits(v)
+      const data = await res.json()
 
-    // Fetch upcoming appointments
-    const today = new Date().toISOString().split('T')[0]
-    const { data: a } = await supabase
-      .from('human_appointments')
-      .select('id, appointment_date, appointment_time, location, reason, status')
-      .eq('patient_id', patientId)
-      .gte('appointment_date', today)
-      .in('status', ['scheduled', 'confirmed'])
-      .order('appointment_date')
-      .limit(5)
-    if (a) setAppointments(a)
+      if (!res.ok) {
+        setError(data.error || 'Unable to access portal.')
+        setLoading(false)
+        return
+      }
+
+      setPatient(data.patient as unknown as PatientInfo)
+      setVisits(data.visits || [])
+      setAppointments(data.appointments || [])
+    } catch {
+      setError('Unable to connect. Please try again later.')
+    }
 
     setLoading(false)
   }
@@ -111,7 +119,12 @@ export default function PatientPortalPage() {
   if (error || !patient) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-        <p className="text-red-500 text-sm">{error || 'Something went wrong.'}</p>
+        <div className="text-center max-w-md">
+          <div className="text-4xl mb-4">🔒</div>
+          <h1 className="text-lg font-bold text-slate-900 mb-2">Access Required</h1>
+          <p className="text-sm text-slate-500">{error || 'Something went wrong.'}</p>
+          <p className="text-xs text-slate-400 mt-4">If you believe this is an error, please contact your care provider.</p>
+        </div>
       </div>
     )
   }
@@ -233,6 +246,7 @@ export default function PatientPortalPage() {
         <p className="text-[11px] text-slate-400 text-center">
           {providerName && <>{providerName} &middot; </>}{practiceName}
           <br />Powered by STRIDE
+          <br />Your health information is protected and encrypted.
         </p>
       </div>
     </div>
