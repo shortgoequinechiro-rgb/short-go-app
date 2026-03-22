@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../../lib/supabase'
@@ -62,7 +62,19 @@ function formatPhone(phone: string | null): string {
 const inputClass = 'w-full rounded-xl border border-[#1a3358] bg-[#081120] px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/40 transition'
 const labelClass = 'block text-xs font-semibold uppercase tracking-wider text-blue-400 mb-1.5'
 
-export default function PatientRecordPage() {
+export default function PatientRecordPageWrapper() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-[#081120]">
+        <p className="text-white/60 text-sm animate-pulse">Loading patient...</p>
+      </div>
+    }>
+      <PatientRecordPage />
+    </Suspense>
+  )
+}
+
+function PatientRecordPage() {
   const router = useRouter()
   const params = useParams()
   const searchParams = useSearchParams()

@@ -68,7 +68,7 @@ export default function LoginPage() {
               STRIDE
             </h1>
             <p className="mt-1 text-sm font-medium text-slate-500 uppercase tracking-widest">
-              Equine &amp; Canine Chiropractic
+              Chiropractic Practice Management
             </p>
             <div className="mt-4 h-px w-12 rounded-full bg-slate-900" />
           </div>
