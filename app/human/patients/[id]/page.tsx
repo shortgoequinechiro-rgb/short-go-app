@@ -118,6 +118,10 @@ function PatientRecordPage() {
   const [aiGenerating, setAiGenerating] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState('')
 
+  // Saved SOAP templates
+  const [savedTemplates, setSavedTemplates] = useState<{ id: string; name: string; category: string; subjective: string | null; objective: string | null; assessment: string | null; plan: string | null; treated_areas: string | null; recommendations: string | null; follow_up: string | null; chief_complaint: string | null }[]>([])
+  const [selectedSavedTemplate, setSelectedSavedTemplate] = useState('')
+
   // Expanded visit detail
   const [expandedVisitId, setExpandedVisitId] = useState<string | null>(null)
 
@@ -141,6 +145,13 @@ function PatientRecordPage() {
     setPatient(pt)
     setEditForm(pt)
     await loadVisits()
+    // Load saved SOAP templates
+    const { data: tmpl } = await supabase
+      .from('soap_templates')
+      .select('id, name, category, subjective, objective, assessment, plan, treated_areas, recommendations, follow_up, chief_complaint')
+      .eq('practitioner_id', user.id)
+      .order('sort_order', { ascending: true })
+    if (tmpl) setSavedTemplates(tmpl)
     setLoading(false)
     logAudit({ action: 'view', resourceType: 'human_patient', resourceId: patientId })
   }
@@ -514,7 +525,7 @@ function PatientRecordPage() {
                     </div>
                     <div className="space-y-3">
                       <div>
-                        <label className={labelClass}>Case Template (optional)</label>
+                        <label className={labelClass}>AI Case Template (optional)</label>
                         <select value={selectedTemplate}
                           onChange={e => setSelectedTemplate(e.target.value)}
                           className={inputClass}>
@@ -523,6 +534,38 @@ function PatientRecordPage() {
                           ))}
                         </select>
                       </div>
+                      {savedTemplates.length > 0 && (
+                        <div>
+                          <label className={labelClass}>Fill from Saved Template</label>
+                          <select value={selectedSavedTemplate}
+                            onChange={e => {
+                              const tid = e.target.value
+                              setSelectedSavedTemplate(tid)
+                              if (tid) {
+                                const t = savedTemplates.find(st => st.id === tid)
+                                if (t) {
+                                  setVisitForm(prev => ({
+                                    ...prev,
+                                    reason_for_visit: t.chief_complaint || prev.reason_for_visit,
+                                    subjective: t.subjective || prev.subjective,
+                                    objective: t.objective || prev.objective,
+                                    assessment: t.assessment || prev.assessment,
+                                    plan: t.plan || prev.plan,
+                                    treated_areas: t.treated_areas || prev.treated_areas,
+                                    recommendations: t.recommendations || prev.recommendations,
+                                    follow_up: t.follow_up || prev.follow_up,
+                                  }))
+                                }
+                              }
+                            }}
+                            className={inputClass}>
+                            <option value="">-- Select saved template --</option>
+                            {savedTemplates.map(t => (
+                              <option key={t.id} value={t.id}>{t.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                       <button
                         onClick={handleAiGenerate}
                         disabled={aiGenerating || (!aiQuickNotes.trim() && !selectedTemplate)}

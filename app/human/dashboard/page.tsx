@@ -243,6 +243,30 @@ export default function HumanDashboard() {
               Superbills
             </Link>
             <Link
+              href="/human/compliance-scan"
+              className="rounded-xl border border-white/20 px-3 py-2 text-sm text-white/70 hover:bg-white/10 transition"
+            >
+              Compliance
+            </Link>
+            <Link
+              href="/human/soap-templates"
+              className="rounded-xl border border-white/20 px-3 py-2 text-sm text-white/70 hover:bg-white/10 transition"
+            >
+              Templates
+            </Link>
+            <Link
+              href="/human/recall-settings"
+              className="rounded-xl border border-white/20 px-3 py-2 text-sm text-white/70 hover:bg-white/10 transition"
+            >
+              Recall
+            </Link>
+            <Link
+              href="/human/review-settings"
+              className="rounded-xl border border-white/20 px-3 py-2 text-sm text-white/70 hover:bg-white/10 transition"
+            >
+              Reviews
+            </Link>
+            <Link
               href="/human/booking-settings"
               className="rounded-xl border border-white/20 px-3 py-2 text-sm text-white/70 hover:bg-white/10 transition"
             >
