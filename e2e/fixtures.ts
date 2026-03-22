@@ -1,4 +1,4 @@
-import { test as base, expect } from '@playwright/test'
+import { test as base, expect, type Page } from '@playwright/test'
 
 /**
  * Authenticated test fixture.
@@ -8,7 +8,7 @@ import { test as base, expect } from '@playwright/test'
  *
  * If credentials are not set, tests using this fixture will be skipped.
  */
-export const test = base.extend<{ authenticatedPage: ReturnType<typeof base['page']> }>({
+export const test = base.extend<{ authenticatedPage: Page }>({
   authenticatedPage: async ({ page }, use) => {
     const email = process.env.E2E_USER_EMAIL
     const password = process.env.E2E_USER_PASSWORD
