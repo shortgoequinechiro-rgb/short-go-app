@@ -55,12 +55,22 @@ Rules:
 - Output JSON only.
 `.trim()
 
-    const response = await client.responses.create({
+    const response = await client.chat.completions.create({
       model: 'gpt-4o-mini',
-      input: prompt,
+      messages: [
+        {
+          role: 'system',
+          content: `You are a veterinary chiropractic documentation assistant specializing in ${species === 'canine' ? 'canine' : 'equine'} chiropractic care. You produce professional SOAP notes in valid JSON format.`,
+        },
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      temperature: 0.7,
     })
 
-    const text = response.output_text?.trim()
+    const text = response.choices[0]?.message?.content?.trim()
 
     if (!text) {
       return NextResponse.json(

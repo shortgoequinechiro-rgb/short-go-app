@@ -8,9 +8,6 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// Required: read raw body for Stripe signature verification
-export const config = { api: { bodyParser: false } }
-
 /** Look up a practitioner row by their Stripe customer ID */
 async function getPractitionerByCustomer(customerId: string): Promise<string | null> {
   const { data } = await supabaseAdmin
