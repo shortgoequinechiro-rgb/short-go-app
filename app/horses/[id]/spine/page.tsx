@@ -136,6 +136,7 @@ function SpineVisitInner() {
   const [visitDate, setVisitDate] = useState(new Date().toISOString().slice(0, 10))
   const [visitLocation, setVisitLocation] = useState('')
   const [providerName, setProviderName] = useState('')
+  const [visitType, setVisitType] = useState('initial')
   const [reasonForVisit, setReasonForVisit] = useState('Chiropractic Adjustment')
   const [quickNotes, setQuickNotes] = useState('')
   const [subjective, setSubjective] = useState('')
@@ -367,6 +368,7 @@ function SpineVisitInner() {
       visit_date: visitDate,
       location: visitLocation || null,
       provider_name: providerName || null,
+      visit_type: visitType || null,
       reason_for_visit: reasonForVisit || null,
       subjective: subjective || null,
       objective: objective || null,
@@ -559,43 +561,133 @@ function SpineVisitInner() {
       ) : (
         <div className="mx-auto max-w-2xl space-y-4 px-4 py-5">
 
-          {/* ══════════════════════════════════════════════════════════ */}
-          {/* ── SECTION 1: SPINE ASSESSMENT ── */}
-          {/* ══════════════════════════════════════════════════════════ */}
-
-          <div className="rounded-3xl bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">
-              {urlSpecies === 'canine' ? 'Canine Spine Assessment' : 'Spine Assessment'}
-            </h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Check boxes to flag subluxations. Findings auto-populate into your visit notes below.
-            </p>
-          </div>
-
-          {/* Visit selector — only when NOT in new visit flow */}
+          {/* Visit selector — only when NOT in new visit flow (standalone spine assessment) */}
           {!isNewVisitFlow && (
-            <div className="rounded-3xl bg-white px-5 py-4 shadow-sm">
-              <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                Link to Visit
-              </label>
-              <select
-                value={selectedVisitId}
-                onChange={e => setSelectedVisitId(e.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
-              >
-                <option value="">— No visit (standalone record) —</option>
-                {visits.map(v => (
-                  <option key={v.id} value={v.id}>
-                    {v.visit_date
-                      ? new Date(v.visit_date + 'T00:00:00').toLocaleDateString('en-US', {
-                          month: 'short', day: 'numeric', year: 'numeric',
-                        })
-                      : 'No date'
-                    }
-                    {v.reason_for_visit ? ` — ${v.reason_for_visit}` : ''}
-                  </option>
-                ))}
-              </select>
+            <>
+              <div className="rounded-3xl bg-white p-5 shadow-sm">
+                <h2 className="text-lg font-semibold text-slate-900">
+                  {urlSpecies === 'canine' ? 'Canine Spine Assessment' : 'Spine Assessment'}
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Check boxes to flag subluxations.
+                </p>
+              </div>
+              <div className="rounded-3xl bg-white px-5 py-4 shadow-sm">
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+                  Link to Visit
+                </label>
+                <select
+                  value={selectedVisitId}
+                  onChange={e => setSelectedVisitId(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                >
+                  <option value="">— No visit (standalone record) —</option>
+                  {visits.map(v => (
+                    <option key={v.id} value={v.id}>
+                      {v.visit_date
+                        ? new Date(v.visit_date + 'T00:00:00').toLocaleDateString('en-US', {
+                            month: 'short', day: 'numeric', year: 'numeric',
+                          })
+                        : 'No date'
+                      }
+                      {v.reason_for_visit ? ` — ${v.reason_for_visit}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════ */}
+          {/* NEW VISIT FLOW — ordered fields with inline spine       */}
+          {/* ══════════════════════════════════════════════════════════ */}
+
+          {isNewVisitFlow && (
+            <div className="rounded-3xl bg-white p-5 shadow-sm">
+              <div className="grid gap-4 md:grid-cols-2">
+
+                {/* 1. Visit Date */}
+                <Field label="Visit Date">
+                  <input
+                    type="date"
+                    value={visitDate}
+                    onChange={(e) => setVisitDate(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                  />
+                </Field>
+
+                {/* 2. Location */}
+                <Field label="Location">
+                  <input
+                    value={visitLocation}
+                    onChange={(e) => setVisitLocation(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                    placeholder="Barn / ranch location"
+                  />
+                </Field>
+
+                {/* 3. Provider Name */}
+                <Field label="Provider Name">
+                  <input
+                    value={providerName}
+                    onChange={(e) => setProviderName(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                    placeholder="Provider"
+                  />
+                </Field>
+
+                {/* 4. Visit Type */}
+                <Field label="Visit Type">
+                  <select
+                    value={visitType}
+                    onChange={(e) => setVisitType(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white"
+                  >
+                    <option value="initial">Initial</option>
+                    <option value="follow_up">Follow Up</option>
+                    <option value="maintenance">Maintenance</option>
+                  </select>
+                </Field>
+
+                {/* 5. Reason for Visit */}
+                <div className="md:col-span-2">
+                  <Field label="Reason for Visit">
+                    <input
+                      value={reasonForVisit}
+                      onChange={(e) => setReasonForVisit(e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                      placeholder="Performance maintenance, stiffness, etc."
+                    />
+                  </Field>
+                </div>
+
+                {/* 6. Subjective */}
+                <div className="md:col-span-2">
+                  <Field label="Subjective">
+                    <textarea
+                      value={subjective}
+                      onChange={(e) => setSubjective(e.target.value)}
+                      className="min-h-28 w-full rounded-xl border border-slate-300 px-4 py-3"
+                      placeholder="What the owner reports — history, complaints, concerns"
+                    />
+                  </Field>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════ */}
+          {/* 7. SPINE ASSESSMENT (shown in both flows)               */}
+          {/* ══════════════════════════════════════════════════════════ */}
+
+          {isNewVisitFlow && (
+            <div className="rounded-3xl bg-white p-5 shadow-sm border-t-4 border-slate-900">
+              <h2 className="text-lg font-semibold text-slate-900">
+                {urlSpecies === 'canine' ? 'Canine Spine Assessment' : 'Spine Assessment'}
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Check boxes to flag subluxations. Findings auto-populate into treated areas.
+              </p>
             </div>
           )}
 
@@ -686,129 +778,27 @@ function SpineVisitInner() {
           </div>
 
           {/* ══════════════════════════════════════════════════════════ */}
-          {/* ── SECTION 2: VISIT NOTES (only in new visit flow) ── */}
+          {/* 8–12. REMAINING VISIT FIELDS (after spine)              */}
           {/* ══════════════════════════════════════════════════════════ */}
 
           {isNewVisitFlow && (
-            <>
-              <div className="mt-2 rounded-3xl bg-white p-5 shadow-sm border-t-4 border-slate-900">
-                <h2 className="text-lg font-semibold text-slate-900">Visit Notes</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Spine findings have been auto-populated into your quick notes. Add details or generate SOAP notes.
-                </p>
-              </div>
+            <div className="rounded-3xl bg-white p-5 shadow-sm">
+              <div className="grid gap-4 md:grid-cols-2">
 
-              <div className="rounded-3xl bg-white p-5 shadow-sm">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Field label="Visit Date">
-                    <input
-                      type="date"
-                      value={visitDate}
-                      onChange={(e) => setVisitDate(e.target.value)}
-                      className="w-full rounded-xl border border-slate-300 px-4 py-3"
-                    />
-                  </Field>
-
-                  <Field label="Location">
-                    <input
-                      value={visitLocation}
-                      onChange={(e) => setVisitLocation(e.target.value)}
-                      className="w-full rounded-xl border border-slate-300 px-4 py-3"
-                      placeholder="Barn / ranch location"
-                    />
-                  </Field>
-
-                  <div className="md:col-span-2">
-                    <Field label="Provider Name">
-                      <input
-                        value={providerName}
-                        onChange={(e) => setProviderName(e.target.value)}
-                        className="w-full rounded-xl border border-slate-300 px-4 py-3"
-                        placeholder="Provider"
-                      />
-                    </Field>
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <Field label="Reason for Visit">
-                      <input
-                        value={reasonForVisit}
-                        onChange={(e) => setReasonForVisit(e.target.value)}
-                        className="w-full rounded-xl border border-slate-300 px-4 py-3"
-                        placeholder="Performance maintenance, stiffness, etc."
-                      />
-                    </Field>
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <Field label="Quick Notes for AI SOAP Draft">
-                      <div className="mb-2 flex flex-wrap gap-1.5">
-                        {[
-                          { label: 'Post-competition', text: 'Post-competition soreness. Reduced range of motion through back and hindquarters. Mild tension through poll and withers. Responded well to adjustment.' },
-                          { label: 'Routine adjustment', text: 'Routine maintenance adjustment. Owner reports normal performance and behavior. Minor restrictions found at thoracolumbar junction. Full adjustment performed.' },
-                          { label: 'Poll tension', text: 'Poll tension and head tilt noted on arrival. Restricted cervical range of motion. Owner reports difficulty bending left. Atlas and C2 adjusted. Good response.' },
-                          { label: 'Hind-end asymmetry', text: 'Hind-end asymmetry and reduced impulsion reported by owner. SI joint restriction noted bilaterally, left more pronounced. Adjusted lumbar and sacral regions. Follow up in 2 weeks.' },
-                          { label: 'Back soreness', text: 'Back soreness after heavy work week. Reactive mid-thoracic region on palpation. Adjusted T8–T12. Recommended 2 light days and stretching.' },
-                          { label: 'New client', text: 'Initial assessment. Owner reports history of stiffness and reluctance to pick up right lead. Full spine evaluated. Multiple restrictions found. Comprehensive adjustment performed. Recommendations discussed.' },
-                          { label: 'Pre-event', text: 'Pre-competition tune-up. Horse in good overall condition. Minor restrictions at withers and poll. Light adjustment performed to optimise range of motion ahead of event.' },
-                          { label: 'Post-fall/injury', text: 'Follow-up after recent fall/injury. Area of concern assessed carefully. Compensatory patterns noted. Gentle adjustment within comfort tolerance. Reassess in 1 week.' },
-                        ].map((t) => (
-                          <button
-                            key={t.label}
-                            type="button"
-                            onClick={() => setQuickNotes(prev => prev ? prev + '\n' + t.text : t.text)}
-                            className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 hover:border-slate-900 hover:bg-slate-900 hover:text-white transition"
-                          >
-                            {t.label}
-                          </button>
-                        ))}
-                      </div>
-                      <textarea
-                        value={quickNotes}
-                        onChange={(e) => setQuickNotes(e.target.value)}
-                        className="min-h-32 w-full rounded-xl border border-slate-300 px-4 py-3"
-                        placeholder="Spine findings auto-populate here. Add more notes or tap a template…"
-                      />
-                    </Field>
-
-                    <div className="mt-3 flex items-center gap-2">
-                      <button
-                        onClick={generateSoap}
-                        disabled={generatingSoap}
-                        className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 disabled:opacity-50"
-                      >
-                        {generatingSoap ? 'Generating SOAP...' : 'Generate SOAP'}
-                      </button>
-                      {quickNotes && (
-                        <button
-                          type="button"
-                          onClick={() => setQuickNotes('')}
-                          className="rounded-xl border border-slate-200 px-3 py-3 text-xs text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition"
-                        >
-                          Clear
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <Field label="Subjective">
-                    <textarea
-                      value={subjective}
-                      onChange={(e) => setSubjective(e.target.value)}
-                      className="min-h-28 w-full rounded-xl border border-slate-300 px-4 py-3"
-                      placeholder="What the owner reports"
-                    />
-                  </Field>
-
+                {/* 8. Objective */}
+                <div className="md:col-span-2">
                   <Field label="Objective">
                     <textarea
                       value={objective}
                       onChange={(e) => setObjective(e.target.value)}
                       className="min-h-28 w-full rounded-xl border border-slate-300 px-4 py-3"
-                      placeholder="Observed findings"
+                      placeholder="Observed findings, palpation results"
                     />
                   </Field>
+                </div>
 
+                {/* 9. Assessment */}
+                <div className="md:col-span-2">
                   <Field label="Assessment">
                     <textarea
                       value={assessment}
@@ -817,7 +807,10 @@ function SpineVisitInner() {
                       placeholder="Clinical impression"
                     />
                   </Field>
+                </div>
 
+                {/* 10. Plan */}
+                <div className="md:col-span-2">
                   <Field label="Plan">
                     <textarea
                       value={plan}
@@ -826,48 +819,101 @@ function SpineVisitInner() {
                       placeholder="Treatment plan / next steps"
                     />
                   </Field>
+                </div>
 
-                  <Field label="Follow Up">
-                    <input
-                      value={followUp}
-                      onChange={(e) => setFollowUp(e.target.value)}
-                      className="w-full rounded-xl border border-slate-300 px-4 py-3"
-                      placeholder="2 weeks, PRN, monthly, etc."
+                {/* 11. Follow Up */}
+                <Field label="Follow Up">
+                  <input
+                    value={followUp}
+                    onChange={(e) => setFollowUp(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                    placeholder="2 weeks, PRN, monthly, etc."
+                  />
+                </Field>
+
+                {/* 12. Recommendations */}
+                <div className="md:col-span-2">
+                  <Field label="Recommendations">
+                    <textarea
+                      value={recommendations}
+                      onChange={(e) => setRecommendations(e.target.value)}
+                      className="min-h-28 w-full rounded-xl border border-slate-300 px-4 py-3"
+                      placeholder="Rest, stretches, light work, etc."
+                    />
+                  </Field>
+                </div>
+
+                {/* Quick Notes + AI SOAP */}
+                <div className="md:col-span-2">
+                  <Field label="Quick Notes for AI SOAP Draft">
+                    <div className="mb-2 flex flex-wrap gap-1.5">
+                      {[
+                        { label: 'Post-competition', text: 'Post-competition soreness. Reduced range of motion through back and hindquarters. Mild tension through poll and withers. Responded well to adjustment.' },
+                        { label: 'Routine adjustment', text: 'Routine maintenance adjustment. Owner reports normal performance and behavior. Minor restrictions found at thoracolumbar junction. Full adjustment performed.' },
+                        { label: 'Poll tension', text: 'Poll tension and head tilt noted on arrival. Restricted cervical range of motion. Owner reports difficulty bending left. Atlas and C2 adjusted. Good response.' },
+                        { label: 'Hind-end asymmetry', text: 'Hind-end asymmetry and reduced impulsion reported by owner. SI joint restriction noted bilaterally, left more pronounced. Adjusted lumbar and sacral regions. Follow up in 2 weeks.' },
+                        { label: 'Back soreness', text: 'Back soreness after heavy work week. Reactive mid-thoracic region on palpation. Adjusted T8–T12. Recommended 2 light days and stretching.' },
+                        { label: 'New client', text: 'Initial assessment. Owner reports history of stiffness and reluctance to pick up right lead. Full spine evaluated. Multiple restrictions found. Comprehensive adjustment performed. Recommendations discussed.' },
+                      ].map((t) => (
+                        <button
+                          key={t.label}
+                          type="button"
+                          onClick={() => setQuickNotes(prev => prev ? prev + '\n' + t.text : t.text)}
+                          className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 hover:border-slate-900 hover:bg-slate-900 hover:text-white transition"
+                        >
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                    <textarea
+                      value={quickNotes}
+                      onChange={(e) => setQuickNotes(e.target.value)}
+                      className="min-h-24 w-full rounded-xl border border-slate-300 px-4 py-3"
+                      placeholder="Spine findings auto-populate here. Add more notes or tap a template…"
                     />
                   </Field>
 
-                  <div className="md:col-span-2">
-                    <Field label="Recommendations">
-                      <textarea
-                        value={recommendations}
-                        onChange={(e) => setRecommendations(e.target.value)}
-                        className="min-h-28 w-full rounded-xl border border-slate-300 px-4 py-3"
-                        placeholder="Rest, stretches, light work, etc."
-                      />
-                    </Field>
-                  </div>
-
-                  <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <label className="flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        checked={autoEmailAfterSave}
-                        onChange={(e) => setAutoEmailAfterSave(e.target.checked)}
-                        className="mt-1 h-4 w-4 rounded border-slate-300"
-                      />
-                      <div>
-                        <p className="text-sm font-medium text-slate-900">
-                          Auto-email PDF to owner after saving visit
-                        </p>
-                        <p className="mt-1 text-sm text-slate-600">
-                          Uses the owner email saved on this horse record.
-                        </p>
-                      </div>
-                    </label>
+                  <div className="mt-3 flex items-center gap-2">
+                    <button
+                      onClick={generateSoap}
+                      disabled={generatingSoap}
+                      className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 disabled:opacity-50"
+                    >
+                      {generatingSoap ? 'Generating SOAP...' : 'Generate SOAP with AI'}
+                    </button>
+                    {quickNotes && (
+                      <button
+                        type="button"
+                        onClick={() => setQuickNotes('')}
+                        className="rounded-xl border border-slate-200 px-3 py-3 text-xs text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition"
+                      >
+                        Clear
+                      </button>
+                    )}
                   </div>
                 </div>
+
+                {/* Auto-email toggle */}
+                <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <label className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={autoEmailAfterSave}
+                      onChange={(e) => setAutoEmailAfterSave(e.target.checked)}
+                      className="mt-1 h-4 w-4 rounded border-slate-300"
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">
+                        Auto-email PDF to owner after saving visit
+                      </p>
+                      <p className="mt-1 text-sm text-slate-600">
+                        Uses the owner email saved on this horse record.
+                      </p>
+                    </div>
+                  </label>
+                </div>
               </div>
-            </>
+            </div>
           )}
 
           {/* ── Bottom save button ── */}
