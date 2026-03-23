@@ -118,6 +118,7 @@ function SpineInner() {
   const urlVisitId       = searchParams.get('visitId') ?? null
   const urlSpecies       = searchParams.get('species') ?? 'equine'
   const isNewVisitFlow   = searchParams.get('newVisit') === 'true'
+  const appointmentId    = searchParams.get('appointmentId')
   const SPINE_SECTIONS   = urlSpecies === 'canine' ? CANINE_SPINE_SECTIONS : EQUINE_SPINE_SECTIONS
 
   const [horseName,       setHorseName]       = useState('')
@@ -266,7 +267,7 @@ function SpineInner() {
 
       if (isNewVisitFlow && data?.id) {
         // Redirect back to patient page to pre-fill visit form with spine data
-        router.push(`/horses/${horseId}?fromSpine=${data.id}`)
+        router.push(`/horses/${horseId}?fromSpine=${data.id}${appointmentId ? `&appointmentId=${appointmentId}` : ''}`)
         return
       }
 

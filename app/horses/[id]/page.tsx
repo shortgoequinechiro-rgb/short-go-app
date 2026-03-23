@@ -150,6 +150,7 @@ export default function HorseDetailPage() {
   const [message, setMessage] = useState('')
   const [activeTab, setActiveTab] = useState<'info' | 'visits' | 'appointments' | 'photos' | 'records'>('info')
   const [pendingSpineId, setPendingSpineId] = useState<string | null>(null)
+  const [pendingAppointmentId, setPendingAppointmentId] = useState<string | null>(null)
 
   const [owners, setOwners] = useState<Owner[]>([])
   const [horse, setHorse] = useState<Horse | null>(null)
@@ -1005,6 +1006,17 @@ export default function HorseDetailPage() {
       setPendingSpineId(null)
     }
 
+    // Link appointment to the saved visit and mark it completed
+    if (pendingAppointmentId && savedVisitId) {
+      await supabase
+        .from('appointments')
+        .update({ visit_id: savedVisitId, status: 'completed' })
+        .eq('id', pendingAppointmentId)
+      setPendingAppointmentId(null)
+      // Refresh appointments so the Appointments tab shows updated data
+      await loadAppointments()
+    }
+
     if (autoEmailAfterSave && savedVisitId) {
       try {
         setMessage('Visit saved. Sending PDF to owner...')
@@ -1493,6 +1505,7 @@ export default function HorseDetailPage() {
   // ── Detect redirect from spine assessment (new visit flow) ──
   useEffect(() => {
     const fromSpineId = searchParams.get('fromSpine')
+    const apptId = searchParams.get('appointmentId')
     if (!fromSpineId || checkingAuth) return
 
     async function prefillFromSpine() {
@@ -1530,6 +1543,7 @@ export default function HorseDetailPage() {
       setObjective(objectiveSummary)
       if (spineData.notes) setQuickNotes(spineData.notes)
       setPendingSpineId(fromSpineId)
+      if (apptId) setPendingAppointmentId(apptId)
       setActiveTab('visits')
 
       // Clear the URL param so refreshing doesn't re-trigger
@@ -1582,35 +1596,37 @@ export default function HorseDetailPage() {
   }, [horseId])
 
   // Load appointments for this horse (upcoming + past)
-  useEffect(() => {
+  async function loadAppointments() {
     if (!horseId) return
-    async function loadAppts() {
-      const today = new Date().toISOString().split('T')[0]
-      try {
-        // Upcoming: today or later, not cancelled
-        const { data: upcoming } = await supabase
-          .from('appointments')
-          .select('id, appointment_date, appointment_time, reason, status, visit_id')
-          .eq('horse_id', horseId)
-          .gte('appointment_date', today)
-          .neq('status', 'cancelled')
-          .order('appointment_date', { ascending: true })
-        setUpcomingAppointments(upcoming || [])
+    const today = new Date().toISOString().split('T')[0]
+    try {
+      // Upcoming: today or later, not cancelled/completed
+      const { data: upcoming } = await supabase
+        .from('appointments')
+        .select('id, appointment_date, appointment_time, reason, status, visit_id')
+        .eq('horse_id', horseId)
+        .gte('appointment_date', today)
+        .not('status', 'in', '("cancelled","completed")')
+        .order('appointment_date', { ascending: true })
+      setUpcomingAppointments(upcoming || [])
 
-        // Past: before today OR completed/cancelled
-        const { data: past } = await supabase
-          .from('appointments')
-          .select('id, appointment_date, appointment_time, reason, status, visit_id')
-          .eq('horse_id', horseId)
-          .lt('appointment_date', today)
-          .order('appointment_date', { ascending: false })
-        setPastAppointments(past || [])
-      } catch {
-        setUpcomingAppointments([])
-        setPastAppointments([])
-      }
+      // Past: before today OR completed (any date)
+      const { data: past } = await supabase
+        .from('appointments')
+        .select('id, appointment_date, appointment_time, reason, status, visit_id')
+        .eq('horse_id', horseId)
+        .or(`appointment_date.lt.${today},status.eq.completed`)
+        .order('appointment_date', { ascending: false })
+      setPastAppointments(past || [])
+    } catch {
+      setUpcomingAppointments([])
+      setPastAppointments([])
     }
-    loadAppts()
+  }
+
+  useEffect(() => {
+    loadAppointments()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [horseId])
 
   // Load horse contacts
@@ -2815,7 +2831,7 @@ export default function HorseDetailPage() {
                         {a.status.charAt(0).toUpperCase() + a.status.slice(1)}
                       </span>
                       <button
-                        onClick={() => router.push(`/horses/${horseId}/spine?newVisit=true&species=${horse?.species || 'equine'}`)}
+                        onClick={() => router.push(`/horses/${horseId}/spine?newVisit=true&species=${horse?.species || 'equine'}&appointmentId=${a.id}`)}
                         className="shrink-0 rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#162d55] transition"
                       >
                         Start Visit
