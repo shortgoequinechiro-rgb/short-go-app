@@ -614,6 +614,7 @@ export default function HorseDetailPage() {
 
   async function uploadRecord() {
     if (!recordFile) { setRecordMsg('Please select a file.'); return }
+    if (!navigator.onLine) { setRecordMsg('Cannot upload files while offline. Please reconnect and try again.'); return }
     setUploadingRecord(true)
     setRecordMsg('')
 
@@ -664,6 +665,7 @@ export default function HorseDetailPage() {
   }
 
   async function deleteRecord(rec: PatientRecord) {
+    if (!navigator.onLine) { setRecordMsg('Cannot delete records while offline. Please reconnect and try again.'); return }
     if (!confirm(`Delete "${rec.file_name}"? This cannot be undone.`)) return
     await supabase.storage.from('horse-photos').remove([rec.file_path])
     await supabase.from('patient_records').delete().eq('id', rec.id)
@@ -671,6 +673,7 @@ export default function HorseDetailPage() {
   }
 
   async function updateRecordNote(id: string, note: string) {
+    if (!navigator.onLine) { setRecordMsg('Cannot update records while offline. Please reconnect and try again.'); return }
     await supabase.from('patient_records').update({ note: note || null }).eq('id', id)
     setRecords(prev => prev.map(r => r.id === id ? { ...r, note: note || null } : r))
     setEditingRecordId(null)
@@ -678,6 +681,7 @@ export default function HorseDetailPage() {
   }
 
   async function downloadRecord(rec: PatientRecord) {
+    if (!navigator.onLine) { setRecordMsg('Cannot download records while offline.'); return }
     const { data, error } = await supabase.storage
       .from('horse-photos')
       .createSignedUrl(rec.file_path, 300)
@@ -728,6 +732,7 @@ export default function HorseDetailPage() {
   }
 
   async function deletePatient() {
+    if (!navigator.onLine) { setMessage('Cannot delete patients while offline. Please reconnect and try again.'); return }
     const confirmed = window.confirm(
       `Are you sure you want to permanently delete ${horse?.name || 'this patient'}? This will also delete all visits, intake forms, photos, and contacts linked to this record. This cannot be undone.`
     )
@@ -738,6 +743,7 @@ export default function HorseDetailPage() {
   }
 
   async function saveBehavioralNotes() {
+    if (!navigator.onLine) { setMessage('Cannot save behavioral notes while offline. Please reconnect and try again.'); return }
     setSavingBehavioralNotes(true)
     const { error } = await supabase
       .from('horses')
@@ -1666,6 +1672,7 @@ export default function HorseDetailPage() {
 
   async function saveContact() {
     if (!contactForm.name.trim()) { setContactMsg('Name is required.'); return }
+    if (!navigator.onLine) { setContactMsg('Cannot save contacts while offline. Please reconnect and try again.'); return }
     setSavingContact(true); setContactMsg('')
     const payload = { horse_id: horseId, name: contactForm.name.trim(), role: contactForm.role, phone: contactForm.phone || null, email: contactForm.email || null, notes: contactForm.notes || null }
     const { error } = editingContactId
@@ -1679,6 +1686,7 @@ export default function HorseDetailPage() {
   }
 
   async function deleteContact(id: string) {
+    if (!navigator.onLine) { setContactMsg('Cannot delete contacts while offline. Please reconnect and try again.'); return }
     if (!confirm('Remove this contact?')) return
     await supabase.from('horse_contacts').delete().eq('id', id)
     await loadContacts()

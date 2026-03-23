@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, Suspense } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../../lib/supabase'
-import { getCachedHorseById, getCachedVisitsByHorse } from '../../../lib/offlineDb'
+import { getCachedHorseById, getCachedVisitsByHorse, offlineDb } from '../../../lib/offlineDb'
 
 // ── Equine spine sections & segments ──────────────────────────────────────
 const EQUINE_SPINE_SECTIONS = [
@@ -497,6 +497,67 @@ function SpineVisitInner() {
       return
     }
 
+    // ── OFFLINE PATH ──
+    if (!navigator.onLine) {
+      try {
+        const localVisitId = crypto.randomUUID()
+
+        // Save spine assessment to localStorage (same as saveSpineOnly offline)
+        const pendingSpines = JSON.parse(localStorage.getItem('pendingSpineAssessments') || '[]')
+        pendingSpines.push({
+          localId: crypto.randomUUID(),
+          horse_id: horseId,
+          visit_id: null, // will link on sync
+          findings,
+          notes: spineNotes,
+          assessed_at: new Date().toISOString(),
+        })
+        localStorage.setItem('pendingSpineAssessments', JSON.stringify(pendingSpines))
+
+        // Save visit to IndexedDB pending queue
+        await offlineDb.pendingVisits.add({
+          localId: localVisitId,
+          horseId: horseId,
+          visitDate: visitDate,
+          reasonForVisit: reasonForVisit || null,
+          subjective: subjective || null,
+          objective: objective || null,
+          assessment: assessment || null,
+          plan: plan || null,
+          quickNotes: null,
+          createdAt: new Date().toISOString(),
+        })
+
+        // Also save to cached visits so it shows immediately
+        await offlineDb.cachedVisits.put({
+          id: localVisitId,
+          horse_id: horseId,
+          visit_date: visitDate,
+          reason_for_visit: reasonForVisit || null,
+          subjective: subjective || null,
+          objective: objective || null,
+          assessment: assessment || null,
+          plan: plan || null,
+          quick_notes: null,
+          practitioner_id: userId || '',
+          cachedAt: Date.now(),
+        })
+
+        setSaving(false)
+        setSaveMsg('Saved offline — will sync when back online.')
+        setMessage('Visit & spine saved offline. Data will sync automatically when you reconnect.')
+        setTimeout(() => {
+          router.push(`/horses/${horseId}?tab=visits`)
+        }, 2000)
+      } catch {
+        setSaving(false)
+        setSaveMsg('Failed to save offline.')
+        setMessage('Could not save offline. Please try again.')
+      }
+      return
+    }
+
+    // ── ONLINE PATH ──
     // 1. Save spine assessment
     const { data: spineData, error: spineError } = await supabase
       .from('spine_assessments')
