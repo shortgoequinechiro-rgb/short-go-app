@@ -1390,7 +1390,7 @@ export default function Home() {
 
                   // Animal count from duration (15 min each)
                   const numAnimals = appt.duration_minutes
-                    ? Math.max(1, Math.round(appt.duration_minutes / 15))
+                    ? Math.max(0, Math.round(appt.duration_minutes / 15))
                     : 1
 
                   // Link to the owner's page if we have an owner_id, otherwise
@@ -1425,7 +1425,9 @@ export default function Home() {
 
                       {/* Animal count */}
                       <p className="mt-0.5 text-sm text-slate-500">
-                        {numAnimals} animal{numAnimals > 1 ? 's' : ''}
+                        {numAnimals > 0
+                          ? `${numAnimals} animal${numAnimals > 1 ? 's' : ''}`
+                          : 'Consultation'}
                         {appt.duration_minutes ? ` · ${appt.duration_minutes} min` : ''}
                       </p>
 
@@ -1467,6 +1469,15 @@ export default function Home() {
                     </Link>
                   )
                 })}
+
+                {/* Add another appointment */}
+                <button
+                  onClick={openBookModal}
+                  className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-4 text-slate-400 transition hover:border-slate-400 hover:bg-slate-50 hover:text-slate-600"
+                >
+                  <span className="text-2xl">+</span>
+                  <span className="mt-1 text-sm font-medium">Book Appointment</span>
+                </button>
               </div>
             )}
           </div>
