@@ -1,9 +1,21 @@
 -- Expand species options to include feline, bovine, porcine, and exotic
--- The species column is a text column with no CHECK constraint, so no schema change needed.
--- This migration is a no-op placeholder documenting the new valid species values:
---   equine, canine, feline, bovine, porcine, exotic
--- If a CHECK constraint exists on the species column, run:
--- ALTER TABLE horses DROP CONSTRAINT IF EXISTS horses_species_check;
--- ALTER TABLE horses ADD CONSTRAINT horses_species_check
---   CHECK (species IN ('equine', 'canine', 'feline', 'bovine', 'porcine', 'exotic'));
-SELECT 1;
+-- First, find and drop ANY existing CHECK constraint on the species column
+DO $$
+DECLARE
+  r RECORD;
+BEGIN
+  FOR r IN
+    SELECT con.conname
+    FROM pg_constraint con
+    JOIN pg_attribute att ON att.attnum = ANY(con.conkey) AND att.attrelid = con.conrelid
+    WHERE con.conrelid = 'horses'::regclass
+      AND att.attname = 'species'
+      AND con.contype = 'c'
+  LOOP
+    EXECUTE format('ALTER TABLE horses DROP CONSTRAINT %I', r.conname);
+  END LOOP;
+END $$;
+
+-- Add updated CHECK constraint allowing all 6 species
+ALTER TABLE horses ADD CONSTRAINT horses_species_check
+  CHECK (species IN ('equine', 'canine', 'feline', 'bovine', 'porcine', 'exotic'));
