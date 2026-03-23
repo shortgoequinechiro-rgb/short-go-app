@@ -655,6 +655,7 @@ function AnatomyContent() {
 
   async function saveRegionNotes() {
     if (!selectedLandmark) return
+    if (!navigator.onLine) { setNoteMessage('Cannot save region notes while offline. Please reconnect and try again.'); return }
 
     if (visitId) {
       const { data: { user } } = await supabase.auth.getUser()
@@ -719,6 +720,7 @@ function AnatomyContent() {
   // ── Screenshot (composites 3D + annotations) ─────────────────────────────────
 
   async function captureAnatomyScreenshot() {
+    if (!navigator.onLine) { alert('Cannot capture screenshots while offline. Please reconnect and try again.'); return }
     if (!canvasRef.current) { alert('Canvas not ready yet.'); return }
     if (!visitId) { alert('Screenshot only saves in Visit Mode.'); return }
     if (!horseId) { alert('Horse record not loaded yet.'); return }
