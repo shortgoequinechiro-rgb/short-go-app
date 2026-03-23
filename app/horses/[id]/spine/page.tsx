@@ -388,9 +388,10 @@ function SpineVisitInner() {
     setCloningVisit(true)
     setMessage('')
     try {
+      // 1. Fetch most recent visit
       const { data: prevVisits } = await supabase
         .from('visits')
-        .select('subjective, objective, assessment, plan, reason_for_visit, treated_areas, recommendations, follow_up, location, provider_name')
+        .select('id, subjective, objective, assessment, plan, reason_for_visit, treated_areas, recommendations, follow_up, location, provider_name, quick_notes')
         .eq('horse_id', horseId)
         .order('visit_date', { ascending: false })
         .limit(1)
@@ -402,18 +403,66 @@ function SpineVisitInner() {
       }
 
       const prev = prevVisits[0]
-      if (prev.subjective) setSubjective(prev.subjective)
-      if (prev.objective) setObjective(prev.objective)
-      if (prev.assessment) setAssessment(prev.assessment)
-      if (prev.plan) setPlan(prev.plan)
-      if (prev.reason_for_visit) setReasonForVisit(prev.reason_for_visit)
-      if (prev.treated_areas) setTreatedAreas(prev.treated_areas)
-      if (prev.recommendations) setRecommendations(prev.recommendations)
-      if (prev.follow_up) setFollowUp(prev.follow_up)
-      if (prev.location) setVisitLocation(prev.location)
-      if (prev.provider_name) setProviderName(prev.provider_name)
+      let clonedCount = 0
 
-      setMessage('Previous visit cloned. Adjust any changes and save.')
+      // Clone all non-null fields
+      if (prev.subjective) { setSubjective(prev.subjective); clonedCount++ }
+      if (prev.objective) { setObjective(prev.objective); clonedCount++ }
+      if (prev.assessment) { setAssessment(prev.assessment); clonedCount++ }
+      if (prev.plan) { setPlan(prev.plan); clonedCount++ }
+      if (prev.reason_for_visit) { setReasonForVisit(prev.reason_for_visit); clonedCount++ }
+      if (prev.treated_areas) { setTreatedAreas(prev.treated_areas); clonedCount++ }
+      if (prev.recommendations) { setRecommendations(prev.recommendations); clonedCount++ }
+      if (prev.follow_up) { setFollowUp(prev.follow_up); clonedCount++ }
+      if (prev.location) { setVisitLocation(prev.location); clonedCount++ }
+      if (prev.provider_name) { setProviderName(prev.provider_name); clonedCount++ }
+      if (prev.quick_notes) { setQuickNotes(prev.quick_notes); clonedCount++ }
+
+      // 2. Also clone spine findings from the previous visit
+      if (prev.id) {
+        const { data: spineData } = await supabase
+          .from('spine_assessments')
+          .select('findings, notes')
+          .eq('visit_id', prev.id)
+          .order('assessed_at', { ascending: false })
+          .limit(1)
+
+        if (spineData && spineData.length > 0) {
+          const spine = spineData[0]
+          if (spine.findings && typeof spine.findings === 'object') {
+            setFindings(spine.findings as Findings)
+            // Also update quick notes & treated areas from spine
+            const spineSummary = buildQuickNotesFromFindings(spine.findings as Findings)
+            if (spineSummary) {
+              setQuickNotes(prev_qn => {
+                const lines = (prev_qn || '').split('\n').filter(l => !l.startsWith('Spine assessment:'))
+                return [spineSummary, ...lines.filter(l => l.trim())].join('\n')
+              })
+            }
+            // Build treated areas
+            const flagged: string[] = []
+            for (const [key, val] of Object.entries(spine.findings as Findings)) {
+              if (!val.left && !val.right) continue
+              const sides: string[] = []
+              if (val.left) sides.push('L')
+              if (val.right) sides.push('R')
+              const label = key.toUpperCase().replace('_', ' ')
+              flagged.push(`${label} (${sides.join('/')})`)
+            }
+            if (flagged.length > 0) {
+              setTreatedAreas(flagged.join(', '))
+              clonedCount++
+            }
+          }
+          if (spine.notes) { setSpineNotes(spine.notes); clonedCount++ }
+        }
+      }
+
+      if (clonedCount === 0) {
+        setMessage('Previous visit found but all fields were empty. Try filling in manually.')
+      } else {
+        setMessage(`Cloned ${clonedCount} field${clonedCount !== 1 ? 's' : ''} from previous visit. Adjust any changes and save.`)
+      }
     } catch {
       setMessage('Failed to clone previous visit.')
     } finally {

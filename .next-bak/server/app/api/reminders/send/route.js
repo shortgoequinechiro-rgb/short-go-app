@@ -1,0 +1,10 @@
+var R=require("../../../../chunks/[turbopack]_runtime.js")("server/app/api/reminders/send/route.js")
+R.c("server/chunks/[externals]__3b70be0f._.js")
+R.c("server/chunks/[root-of-the-server]__55b9e8f9._.js")
+R.c("server/chunks/node_modules_next_dist_esm_build_templates_app-route_6c3dd77e.js")
+R.c("server/chunks/node_modules_@supabase_supabase-js_dist_index_mjs_669a44bf._.js")
+R.c("server/chunks/[root-of-the-server]__f408c708._.js")
+R.c("server/chunks/[root-of-the-server]__a65787dc._.js")
+R.c("server/chunks/_next-internal_server_app_api_reminders_send_route_actions_0557ea6a.js")
+R.m(4022)
+module.exports=R.m(4022).exports

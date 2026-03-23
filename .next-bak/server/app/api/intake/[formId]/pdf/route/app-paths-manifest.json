@@ -1,0 +1,3 @@
+{
+  "/api/intake/[formId]/pdf/route": "app/api/intake/[formId]/pdf/route.js"
+}

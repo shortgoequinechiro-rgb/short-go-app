@@ -1,0 +1,3 @@
+{
+  "/api/consent/[consentId]/pdf/route": "app/api/consent/[consentId]/pdf/route.js"
+}

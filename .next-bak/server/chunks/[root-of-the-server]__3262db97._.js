@@ -1,0 +1,51 @@
+module.exports=[93695,(e,t,r)=>{t.exports=e.x("next/dist/shared/lib/no-fallback-error.external.js",()=>require("next/dist/shared/lib/no-fallback-error.external.js"))},70406,(e,t,r)=>{t.exports=e.x("next/dist/compiled/@opentelemetry/api",()=>require("next/dist/compiled/@opentelemetry/api"))},18622,(e,t,r)=>{t.exports=e.x("next/dist/compiled/next-server/app-page-turbo.runtime.prod.js",()=>require("next/dist/compiled/next-server/app-page-turbo.runtime.prod.js"))},56704,(e,t,r)=>{t.exports=e.x("next/dist/server/app-render/work-async-storage.external.js",()=>require("next/dist/server/app-render/work-async-storage.external.js"))},32319,(e,t,r)=>{t.exports=e.x("next/dist/server/app-render/work-unit-async-storage.external.js",()=>require("next/dist/server/app-render/work-unit-async-storage.external.js"))},24725,(e,t,r)=>{t.exports=e.x("next/dist/server/app-render/after-task-async-storage.external.js",()=>require("next/dist/server/app-render/after-task-async-storage.external.js"))},2077,e=>{"use strict";var t=e.i(47909),r=e.i(74017),n=e.i(96250),a=e.i(59756),o=e.i(61916),s=e.i(74677),i=e.i(69741),l=e.i(16795),d=e.i(87718),p=e.i(95169),u=e.i(47587),c=e.i(66012),x=e.i(70101),f=e.i(26937),h=e.i(10372),m=e.i(93695);e.i(52474);var g=e.i(5232),R=e.i(24389),v=e.i(89171),w=e.i(46245);async function y(e,{params:t}){let{ownerId:r}=await t,n=process.env.RESEND_API_KEY,a=process.env.FROM_EMAIL;if(!n)return v.NextResponse.json({error:"Missing RESEND_API_KEY"},{status:500});if(!a)return v.NextResponse.json({error:"Missing FROM_EMAIL"},{status:500});let o=(0,R.createClient)("https://pyuarwwhmtoflyzwblbn.supabase.co",process.env.SUPABASE_SERVICE_ROLE_KEY),{data:s,error:i}=await o.from("owners").select("id, full_name, email, practitioner_id").eq("id",r).single();if(i||!s)return v.NextResponse.json({error:"Owner not found"},{status:404});let l=null;if(s.practitioner_id){let{data:e}=await o.from("practitioners").select("logo_url, practice_name, full_name").eq("id",s.practitioner_id).single();l=e}let d=l?.practice_name||"Your Care Provider",p=l?.full_name||"Your practitioner";if(!s.email)return v.NextResponse.json({error:"This owner does not have an email address on file."},{status:400});let u=`https://short-go-app.vercel.app/intake/${r}`,c=s.full_name?.split(" ")[0]||s.full_name||"there",x=new w.Resend(n),f=await x.emails.send({from:a,to:s.email,subject:`Please complete your intake form – ${d}`,html:`
+      <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; color: #1e293b;">
+        <div style="background: #0f2040; padding: 24px 32px; border-radius: 12px 12px 0 0;">
+          ${l?.logo_url?`<img src="${l.logo_url}" alt="Logo" style="max-height: 48px; margin-bottom: 8px; display: block;" />`:""}
+          <h1 style="color: white; margin: 0; font-size: 20px; font-weight: 700;">
+            ${d}
+          </h1>
+        </div>
+
+        <div style="background: #f8fafc; padding: 32px; border-radius: 0 0 12px 12px; border: 1px solid #e2e8f0; border-top: none;">
+          <p style="margin: 0 0 16px; font-size: 16px;">Hi ${c},</p>
+
+          <p style="margin: 0 0 16px; font-size: 15px; color: #475569;">
+            Please take a moment to fill out your patient intake form before your appointment.
+            It only takes a few minutes and helps us provide the best possible care.
+          </p>
+
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${u}"
+               style="background: #0f2040; color: white; text-decoration: none; padding: 14px 32px;
+                      border-radius: 8px; font-size: 16px; font-weight: 600; display: inline-block;">
+              Complete Intake Form →
+            </a>
+          </div>
+
+          <p style="margin: 0 0 8px; font-size: 13px; color: #94a3b8;">
+            Or copy and paste this link into your browser:
+          </p>
+          <p style="margin: 0; font-size: 13px; color: #64748b; word-break: break-all;">
+            ${u}
+          </p>
+
+          <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 28px 0;" />
+
+          <p style="margin: 0; font-size: 13px; color: #94a3b8;">
+            ${p}<br/>
+            ${d}
+          </p>
+        </div>
+      </div>
+    `,text:`Hi ${c},
+
+Please fill out your intake form before your appointment:
+
+${u}
+
+Thank you,
+${p}
+${d}`});return f?.error?v.NextResponse.json({error:f.error.message||"Failed to send email."},{status:500}):v.NextResponse.json({success:!0})}e.s(["POST",()=>y],92700);var b=e.i(92700);let E=new t.AppRouteRouteModule({definition:{kind:r.RouteKind.APP_ROUTE,page:"/api/owners/[ownerId]/send-intake/route",pathname:"/api/owners/[ownerId]/send-intake",filename:"route",bundlePath:""},distDir:".next",relativeProjectDir:"",resolvedPagePath:"[project]/app/api/owners/[ownerId]/send-intake/route.ts",nextConfigOutput:"",userland:b}),{workAsyncStorage:_,workUnitAsyncStorage:k,serverHooks:C}=E;function A(){return(0,n.patchFetch)({workAsyncStorage:_,workUnitAsyncStorage:k})}async function N(e,t,n){E.isDev&&(0,a.addRequestMeta)(e,"devRequestTimingInternalsEnd",process.hrtime.bigint());let R="/api/owners/[ownerId]/send-intake/route";R=R.replace(/\/index$/,"")||"/";let v=await E.prepare(e,t,{srcPage:R,multiZoneDraftMode:!1});if(!v)return t.statusCode=400,t.end("Bad Request"),null==n.waitUntil||n.waitUntil.call(n,Promise.resolve()),null;let{buildId:w,params:y,nextConfig:b,parsedUrl:_,isDraftMode:k,prerenderManifest:C,routerServerContext:A,isOnDemandRevalidate:N,revalidateOnlyGenerated:P,resolvedPathname:O,clientReferenceManifest:T,serverActionsManifest:I}=v,S=(0,i.normalizeAppPath)(R),j=!!(C.dynamicRoutes[S]||C.routes[O]),$=async()=>((null==A?void 0:A.render404)?await A.render404(e,t,_,!1):t.end("This page could not be found"),null);if(j&&!k){let e=!!C.routes[O],t=C.dynamicRoutes[S];if(t&&!1===t.fallback&&!e){if(b.experimental.adapterPath)return await $();throw new m.NoFallbackError}}let q=null;!j||E.isDev||k||(q="/index"===(q=O)?"/":q);let H=!0===E.isDev||!j,M=j&&!H;I&&T&&(0,s.setManifestsSingleton)({page:R,clientReferenceManifest:T,serverActionsManifest:I});let U=e.method||"GET",D=(0,o.getTracer)(),F=D.getActiveScopeSpan(),K={params:y,prerenderManifest:C,renderOpts:{experimental:{authInterrupts:!!b.experimental.authInterrupts},cacheComponents:!!b.cacheComponents,supportsDynamicResponse:H,incrementalCache:(0,a.getRequestMeta)(e,"incrementalCache"),cacheLifeProfiles:b.cacheLife,waitUntil:n.waitUntil,onClose:e=>{t.on("close",e)},onAfterTaskError:void 0,onInstrumentationRequestError:(t,r,n,a)=>E.onRequestError(e,t,n,a,A)},sharedContext:{buildId:w}},z=new l.NodeNextRequest(e),L=new l.NodeNextResponse(t),B=d.NextRequestAdapter.fromNodeNextRequest(z,(0,d.signalFromNodeResponse)(t));try{let s=async e=>E.handle(B,K).finally(()=>{if(!e)return;e.setAttributes({"http.status_code":t.statusCode,"next.rsc":!1});let r=D.getRootSpanAttributes();if(!r)return;if(r.get("next.span_type")!==p.BaseServerSpan.handleRequest)return void console.warn(`Unexpected root span type '${r.get("next.span_type")}'. Please report this Next.js issue https://github.com/vercel/next.js`);let n=r.get("next.route");if(n){let t=`${U} ${n}`;e.setAttributes({"next.route":n,"http.route":n,"next.span_name":t}),e.updateName(t)}else e.updateName(`${U} ${R}`)}),i=!!(0,a.getRequestMeta)(e,"minimalMode"),l=async a=>{var o,l;let d=async({previousCacheEntry:r})=>{try{if(!i&&N&&P&&!r)return t.statusCode=404,t.setHeader("x-nextjs-cache","REVALIDATED"),t.end("This page could not be found"),null;let o=await s(a);e.fetchMetrics=K.renderOpts.fetchMetrics;let l=K.renderOpts.pendingWaitUntil;l&&n.waitUntil&&(n.waitUntil(l),l=void 0);let d=K.renderOpts.collectedTags;if(!j)return await (0,c.sendResponse)(z,L,o,K.renderOpts.pendingWaitUntil),null;{let e=await o.blob(),t=(0,x.toNodeOutgoingHttpHeaders)(o.headers);d&&(t[h.NEXT_CACHE_TAGS_HEADER]=d),!t["content-type"]&&e.type&&(t["content-type"]=e.type);let r=void 0!==K.renderOpts.collectedRevalidate&&!(K.renderOpts.collectedRevalidate>=h.INFINITE_CACHE)&&K.renderOpts.collectedRevalidate,n=void 0===K.renderOpts.collectedExpire||K.renderOpts.collectedExpire>=h.INFINITE_CACHE?void 0:K.renderOpts.collectedExpire;return{value:{kind:g.CachedRouteKind.APP_ROUTE,status:o.status,body:Buffer.from(await e.arrayBuffer()),headers:t},cacheControl:{revalidate:r,expire:n}}}}catch(t){throw(null==r?void 0:r.isStale)&&await E.onRequestError(e,t,{routerKind:"App Router",routePath:R,routeType:"route",revalidateReason:(0,u.getRevalidateReason)({isStaticGeneration:M,isOnDemandRevalidate:N})},!1,A),t}},p=await E.handleResponse({req:e,nextConfig:b,cacheKey:q,routeKind:r.RouteKind.APP_ROUTE,isFallback:!1,prerenderManifest:C,isRoutePPREnabled:!1,isOnDemandRevalidate:N,revalidateOnlyGenerated:P,responseGenerator:d,waitUntil:n.waitUntil,isMinimalMode:i});if(!j)return null;if((null==p||null==(o=p.value)?void 0:o.kind)!==g.CachedRouteKind.APP_ROUTE)throw Object.defineProperty(Error(`Invariant: app-route received invalid cache entry ${null==p||null==(l=p.value)?void 0:l.kind}`),"__NEXT_ERROR_CODE",{value:"E701",enumerable:!1,configurable:!0});i||t.setHeader("x-nextjs-cache",N?"REVALIDATED":p.isMiss?"MISS":p.isStale?"STALE":"HIT"),k&&t.setHeader("Cache-Control","private, no-cache, no-store, max-age=0, must-revalidate");let m=(0,x.fromNodeOutgoingHttpHeaders)(p.value.headers);return i&&j||m.delete(h.NEXT_CACHE_TAGS_HEADER),!p.cacheControl||t.getHeader("Cache-Control")||m.get("Cache-Control")||m.set("Cache-Control",(0,f.getCacheControlHeader)(p.cacheControl)),await (0,c.sendResponse)(z,L,new Response(p.value.body,{headers:m,status:p.value.status||200})),null};F?await l(F):await D.withPropagatedContext(e.headers,()=>D.trace(p.BaseServerSpan.handleRequest,{spanName:`${U} ${R}`,kind:o.SpanKind.SERVER,attributes:{"http.method":U,"http.target":e.url}},l))}catch(t){if(t instanceof m.NoFallbackError||await E.onRequestError(e,t,{routerKind:"App Router",routePath:S,routeType:"route",revalidateReason:(0,u.getRevalidateReason)({isStaticGeneration:M,isOnDemandRevalidate:N})},!1,A),j)throw t;return await (0,c.sendResponse)(z,L,new Response(null,{status:500})),null}}e.s(["handler",()=>N,"patchFetch",()=>A,"routeModule",()=>E,"serverHooks",()=>C,"workAsyncStorage",()=>_,"workUnitAsyncStorage",()=>k],2077)}];
+
+//# sourceMappingURL=%5Broot-of-the-server%5D__3262db97._.js.map

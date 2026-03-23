@@ -1,0 +1,3 @@
+{
+  "/api/billing/ensure-practitioner/route": "app/api/billing/ensure-practitioner/route.js"
+}

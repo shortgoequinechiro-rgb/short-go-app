@@ -1,0 +1,3 @@
+{
+  "/api/owners/[ownerId]/send-intake/route": "app/api/owners/[ownerId]/send-intake/route.js"
+}
