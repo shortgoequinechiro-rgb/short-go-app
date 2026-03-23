@@ -187,6 +187,59 @@ export default function Home() {
 
   const bookDuration = selectedPatientIds.length > 0 ? selectedPatientIds.length * 15 : 15
 
+  // ── Conflict detection for booking modal ──
+  const [bookConflicts, setBookConflicts] = useState<{ id: string; appointment_time: string | null; duration_minutes: number | null; owner_name: string }[]>([])
+
+  useEffect(() => {
+    if (!showBookModal || !bookForm.appointment_date) { setBookConflicts([]); return }
+
+    async function checkConflicts() {
+      const { data } = await supabase
+        .from('appointments')
+        .select('id, appointment_time, duration_minutes, owners(full_name)')
+        .eq('appointment_date', bookForm.appointment_date)
+        .neq('status', 'cancelled')
+
+      if (!data || data.length === 0) { setBookConflicts([]); return }
+
+      function toMin(t: string) {
+        const [h, m] = t.split(':').map(Number)
+        return h * 60 + m
+      }
+
+      if (!bookForm.appointment_time) {
+        // No time selected — show all appointments on that day as potential conflicts
+        setBookConflicts(data.map((a: any) => ({
+          id: a.id,
+          appointment_time: a.appointment_time,
+          duration_minutes: a.duration_minutes,
+          owner_name: a.owners?.full_name || 'Unknown',
+        })))
+        return
+      }
+
+      const newStart = toMin(bookForm.appointment_time)
+      const newEnd = newStart + (bookDuration || 15)
+
+      const overlaps = data.filter((a: any) => {
+        if (!a.appointment_time) return true
+        const exStart = toMin(a.appointment_time)
+        const exEnd = exStart + (a.duration_minutes || 15)
+        return newStart < exEnd && newEnd > exStart
+      })
+
+      setBookConflicts(overlaps.map((a: any) => ({
+        id: a.id,
+        appointment_time: a.appointment_time,
+        duration_minutes: a.duration_minutes,
+        owner_name: a.owners?.full_name || 'Unknown',
+      })))
+    }
+
+    checkConflicts()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showBookModal, bookForm.appointment_date, bookForm.appointment_time, bookDuration])
+
   function togglePatient(id: string) {
     setSelectedPatientIds(prev =>
       prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
@@ -2207,6 +2260,21 @@ export default function Home() {
                   />
                 </div>
               </div>
+
+              {/* Conflict warning */}
+              {bookConflicts.length > 0 && (
+                <div className="flex items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  <span className="mt-0.5 shrink-0">⚠️</span>
+                  <div>
+                    <span className="font-semibold">Scheduling conflict:</span>{' '}
+                    {bookForm.appointment_time
+                      ? `Overlaps with ${bookConflicts.length} existing appointment${bookConflicts.length > 1 ? 's' : ''} — ${bookConflicts.map(c => c.owner_name).join(', ')}.`
+                      : `There ${bookConflicts.length === 1 ? 'is' : 'are'} already ${bookConflicts.length} appointment${bookConflicts.length > 1 ? 's' : ''} on this day.`
+                    }
+                    <span className="block mt-1 text-xs text-amber-600">You can still book, but check the schedule first.</span>
+                  </div>
+                </div>
+              )}
 
               {/* Reason */}
               <div>
