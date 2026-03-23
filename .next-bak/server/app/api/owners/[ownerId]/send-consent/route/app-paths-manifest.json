@@ -1,0 +1,3 @@
+{
+  "/api/owners/[ownerId]/send-consent/route": "app/api/owners/[ownerId]/send-consent/route.js"
+}

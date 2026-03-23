@@ -1,0 +1,3 @@
+{
+  "/api/visits/[visitId]/owner-summary/route": "app/api/visits/[visitId]/owner-summary/route.js"
+}
