@@ -368,7 +368,57 @@ function SpineVisitInner() {
     if (obj) setObjective(obj)
     if (asx) setAssessment(asx)
     if (pln) setPlan(pln)
+
+    // Auto-fill follow up from plan chips
+    const followUpChips = ['plan_2wk', 'plan_3wk', 'plan_monthly', 'plan_prn']
+    const selectedFollowUp = PLAN_CHIPS
+      .flatMap(c => c.chips)
+      .filter(c => planChips.has(c.id) && followUpChips.includes(c.id))
+    if (selectedFollowUp.length > 0) {
+      setFollowUp(selectedFollowUp.map(c => c.label).join(', '))
+    }
+
     setMessage('SOAP fields populated from selections.')
+  }
+
+  // ── Clone Previous Visit ──
+  const [cloningVisit, setCloningVisit] = useState(false)
+
+  async function clonePreviousVisit() {
+    setCloningVisit(true)
+    setMessage('')
+    try {
+      const { data: prevVisits } = await supabase
+        .from('visits')
+        .select('subjective, objective, assessment, plan, reason_for_visit, treated_areas, recommendations, follow_up, location, provider_name')
+        .eq('horse_id', horseId)
+        .order('visit_date', { ascending: false })
+        .limit(1)
+
+      if (!prevVisits || prevVisits.length === 0) {
+        setMessage('No previous visits found for this patient.')
+        setCloningVisit(false)
+        return
+      }
+
+      const prev = prevVisits[0]
+      if (prev.subjective) setSubjective(prev.subjective)
+      if (prev.objective) setObjective(prev.objective)
+      if (prev.assessment) setAssessment(prev.assessment)
+      if (prev.plan) setPlan(prev.plan)
+      if (prev.reason_for_visit) setReasonForVisit(prev.reason_for_visit)
+      if (prev.treated_areas) setTreatedAreas(prev.treated_areas)
+      if (prev.recommendations) setRecommendations(prev.recommendations)
+      if (prev.follow_up) setFollowUp(prev.follow_up)
+      if (prev.location) setVisitLocation(prev.location)
+      if (prev.provider_name) setProviderName(prev.provider_name)
+
+      setMessage('Previous visit cloned. Adjust any changes and save.')
+    } catch {
+      setMessage('Failed to clone previous visit.')
+    } finally {
+      setCloningVisit(false)
+    }
   }
 
   // ── Build quick notes summary from findings ──
@@ -793,7 +843,7 @@ function SpineVisitInner() {
             </div>
           </div>
 
-          <div className="mt-3 flex items-center gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               onClick={isNewVisitFlow ? saveAll : saveSpineOnly}
               disabled={saving || noTable || loading}
@@ -801,6 +851,15 @@ function SpineVisitInner() {
             >
               {saving ? 'Saving…' : isNewVisitFlow ? 'Save Visit' : 'Save Assessment'}
             </button>
+            {isNewVisitFlow && (
+              <button
+                onClick={clonePreviousVisit}
+                disabled={cloningVisit}
+                className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 transition disabled:opacity-40"
+              >
+                {cloningVisit ? 'Cloning…' : 'Clone Previous Visit'}
+              </button>
+            )}
             {flaggedCount > 0 && (
               <button
                 onClick={() => {
@@ -1190,7 +1249,13 @@ function SpineVisitInner() {
                       onToggle={(id) => toggleChip(setPlanChips, id)}
                       onClearSection={() => setPlanChips(new Set())}
                       generatedText={buildPlanSentence(planChips)}
-                      onFill={() => setPlan(buildPlanSentence(planChips))}
+                      onFill={() => {
+                        setPlan(buildPlanSentence(planChips))
+                        // Auto-fill follow up from plan chips
+                        const followUpChipIds = ['plan_2wk', 'plan_3wk', 'plan_monthly', 'plan_prn']
+                        const selFU = PLAN_CHIPS.flatMap(c => c.chips).filter(c => planChips.has(c.id) && followUpChipIds.includes(c.id))
+                        if (selFU.length > 0) setFollowUp(selFU.map(c => c.label).join(', '))
+                      }}
                       sectionLabel="Plan"
                     />
                   </Field>

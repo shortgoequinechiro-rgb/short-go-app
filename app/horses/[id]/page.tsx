@@ -12,6 +12,11 @@ import {
   getCachedVisitsByHorse,
   getCachedOwners,
 } from '../../lib/offlineDb'
+import {
+  SUBJECTIVE_CHIPS, OBJECTIVE_CHIPS, ASSESSMENT_CHIPS, PLAN_CHIPS,
+  buildSubjectiveSentence, buildObjectiveSentence, buildAssessmentSentence, buildPlanSentence,
+  QuickAddChipsSection,
+} from '../../components/QuickAddChips'
 
 type SpeciesType = 'equine' | 'canine' | 'feline' | 'bovine' | 'porcine' | 'exotic'
 
@@ -263,6 +268,39 @@ export default function HorseDetailPage() {
   const [treatedAreas, setTreatedAreas] = useState('')
   const [recommendations, setRecommendations] = useState('')
   const [followUp, setFollowUp] = useState('')
+
+  // ── Quick Add chip selections ──
+  const [subjectiveChips, setSubjectiveChips] = useState<Set<string>>(new Set())
+  const [objectiveChips, setObjectiveChips] = useState<Set<string>>(new Set())
+  const [assessmentChips, setAssessmentChips] = useState<Set<string>>(new Set())
+  const [planChips, setPlanChips] = useState<Set<string>>(new Set())
+
+  function toggleChip(setter: React.Dispatch<React.SetStateAction<Set<string>>>, chipId: string) {
+    setter(prev => {
+      const next = new Set(prev)
+      if (next.has(chipId)) next.delete(chipId)
+      else next.add(chipId)
+      return next
+    })
+  }
+
+  // Generate all SOAP fields from chip selections (rule-based)
+  function generateFromSelections() {
+    const sub = buildSubjectiveSentence(subjectiveChips)
+    const obj = buildObjectiveSentence(objectiveChips)
+    const asx = buildAssessmentSentence(assessmentChips)
+    const pln = buildPlanSentence(planChips)
+
+    if (sub) setSubjective(sub)
+    if (obj) setObjective(obj)
+    if (asx) setAssessment(asx)
+    if (pln) setPlan(pln)
+
+    // Auto-fill follow up from plan chips
+    const followUpChipIds = ['plan_2wk', 'plan_3wk', 'plan_monthly', 'plan_prn']
+    const selFU = PLAN_CHIPS.flatMap(c => c.chips).filter(c => planChips.has(c.id) && followUpChipIds.includes(c.id))
+    if (selFU.length > 0) setFollowUp(selFU.map(c => c.label).join(', '))
+  }
 
   const [selectedPhotoVisitId, setSelectedPhotoVisitId] = useState('')
   const [photoCaption, setPhotoCaption] = useState('')
@@ -824,6 +862,10 @@ export default function HorseDetailPage() {
     setRecommendations(emptyVisitForm.recommendations)
     setFollowUp(emptyVisitForm.followUp)
     setAutoEmailAfterSave(false)
+    setSubjectiveChips(new Set())
+    setObjectiveChips(new Set())
+    setAssessmentChips(new Set())
+    setPlanChips(new Set())
   }
 
   async function startEditVisit(visit: Visit) {
@@ -2519,13 +2561,24 @@ export default function HorseDetailPage() {
                     />
                   </Field>
 
-                  <div className="mt-3 flex items-center gap-2">
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {/* Generate from chip selections (rule-based) */}
+                    {(subjectiveChips.size > 0 || objectiveChips.size > 0 || assessmentChips.size > 0 || planChips.size > 0) && (
+                      <button
+                        type="button"
+                        onClick={generateFromSelections}
+                        className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700 transition shadow-sm"
+                      >
+                        Generate SOAP from Selections
+                      </button>
+                    )}
+                    {/* Generate with AI */}
                     <button
                       onClick={generateSoap}
                       disabled={generatingSoap}
                       className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 disabled:opacity-50"
                     >
-                      {generatingSoap ? 'Generating SOAP...' : 'Generate SOAP'}
+                      {generatingSoap ? 'Generating SOAP...' : 'Generate SOAP with AI'}
                     </button>
                     {quickNotes && (
                       <button
@@ -2546,6 +2599,15 @@ export default function HorseDetailPage() {
                     className="min-h-28 w-full rounded-xl border border-slate-300 px-4 py-3"
                     placeholder="What the owner reports"
                   />
+                  <QuickAddChipsSection
+                    categories={SUBJECTIVE_CHIPS}
+                    selectedIds={subjectiveChips}
+                    onToggle={(id) => toggleChip(setSubjectiveChips, id)}
+                    onClearSection={() => setSubjectiveChips(new Set())}
+                    generatedText={buildSubjectiveSentence(subjectiveChips)}
+                    onFill={() => setSubjective(buildSubjectiveSentence(subjectiveChips))}
+                    sectionLabel="Subjective"
+                  />
                 </Field>
 
                 <Field label="Objective">
@@ -2554,6 +2616,15 @@ export default function HorseDetailPage() {
                     onChange={(e) => setObjective(e.target.value)}
                     className="min-h-28 w-full rounded-xl border border-slate-300 px-4 py-3"
                     placeholder="Observed findings"
+                  />
+                  <QuickAddChipsSection
+                    categories={OBJECTIVE_CHIPS}
+                    selectedIds={objectiveChips}
+                    onToggle={(id) => toggleChip(setObjectiveChips, id)}
+                    onClearSection={() => setObjectiveChips(new Set())}
+                    generatedText={buildObjectiveSentence(objectiveChips)}
+                    onFill={() => setObjective(buildObjectiveSentence(objectiveChips))}
+                    sectionLabel="Objective"
                   />
                 </Field>
 
@@ -2564,6 +2635,15 @@ export default function HorseDetailPage() {
                     className="min-h-28 w-full rounded-xl border border-slate-300 px-4 py-3"
                     placeholder="Clinical impression"
                   />
+                  <QuickAddChipsSection
+                    categories={ASSESSMENT_CHIPS}
+                    selectedIds={assessmentChips}
+                    onToggle={(id) => toggleChip(setAssessmentChips, id)}
+                    onClearSection={() => setAssessmentChips(new Set())}
+                    generatedText={buildAssessmentSentence(assessmentChips)}
+                    onFill={() => setAssessment(buildAssessmentSentence(assessmentChips))}
+                    sectionLabel="Assessment"
+                  />
                 </Field>
 
                 <Field label="Plan">
@@ -2572,6 +2652,20 @@ export default function HorseDetailPage() {
                     onChange={(e) => setPlan(e.target.value)}
                     className="min-h-28 w-full rounded-xl border border-slate-300 px-4 py-3"
                     placeholder="Treatment plan / next steps"
+                  />
+                  <QuickAddChipsSection
+                    categories={PLAN_CHIPS}
+                    selectedIds={planChips}
+                    onToggle={(id) => toggleChip(setPlanChips, id)}
+                    onClearSection={() => setPlanChips(new Set())}
+                    generatedText={buildPlanSentence(planChips)}
+                    onFill={() => {
+                      setPlan(buildPlanSentence(planChips))
+                      const followUpChipIds = ['plan_2wk', 'plan_3wk', 'plan_monthly', 'plan_prn']
+                      const selFU = PLAN_CHIPS.flatMap(c => c.chips).filter(c => planChips.has(c.id) && followUpChipIds.includes(c.id))
+                      if (selFU.length > 0) setFollowUp(selFU.map(c => c.label).join(', '))
+                    }}
+                    sectionLabel="Plan"
                   />
                 </Field>
 
