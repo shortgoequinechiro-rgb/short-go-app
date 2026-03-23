@@ -513,46 +513,58 @@ function AppointmentsContent() {
 
   // ── Conflict detection ───────────────────────────────────────────────────────
 
-  const conflictWarning = useMemo(() => {
-    if (!form.appointment_date || !showForm) return ''
+  // ── Live conflict check via Supabase query ──
+  const [conflictWarning, setConflictWarning] = useState('')
 
-    // Helper: "HH:MM" → minutes since midnight
-    function toMin(t: string) {
-      const [h, m] = t.split(':').map(Number)
-      return h * 60 + m
+  useEffect(() => {
+    if (!form.appointment_date || !showForm) { setConflictWarning(''); return }
+
+    async function checkConflicts() {
+      const { data } = await supabase
+        .from('appointments')
+        .select('id, appointment_time, duration_minutes, owners(full_name), horses(owners(full_name))')
+        .eq('appointment_date', form.appointment_date)
+        .neq('status', 'cancelled')
+
+      if (!data || data.length === 0) { setConflictWarning(''); return }
+
+      // Exclude the appointment being edited
+      const others = editingId ? data.filter((a: any) => a.id !== editingId) : data
+      if (others.length === 0) { setConflictWarning(''); return }
+
+      function toMin(t: string) {
+        const [h, m] = t.split(':').map(Number)
+        return h * 60 + m
+      }
+
+      // If no time on the new appointment, just flag the count
+      if (!form.appointment_time) {
+        const n = others.length
+        setConflictWarning(`There ${n === 1 ? 'is' : 'are'} already ${n} appointment${n > 1 ? 's' : ''} on this day.`)
+        return
+      }
+
+      const newStart = toMin(form.appointment_time)
+      const newEnd   = newStart + (form.duration_minutes || 15)
+
+      const overlaps = others.filter((a: any) => {
+        if (!a.appointment_time) return true
+        const exStart = toMin(a.appointment_time)
+        const exEnd   = exStart + (a.duration_minutes || 15)
+        return newStart < exEnd && newEnd > exStart
+      })
+
+      if (overlaps.length === 0) { setConflictWarning(''); return }
+
+      const names = overlaps
+        .map((a: any) => a.owners?.full_name || a.horses?.owners?.full_name || 'Unknown owner')
+        .join(', ')
+      setConflictWarning(`Scheduling conflict: overlaps with ${overlaps.length} existing appointment${overlaps.length > 1 ? 's' : ''} — ${names}.`)
     }
 
-    const sameDay = appointments.filter(a =>
-      a.appointment_date === form.appointment_date &&
-      a.id !== editingId &&
-      a.status !== 'cancelled'
-    )
-
-    if (sameDay.length === 0) return ''
-
-    // If no time on the new appointment, just flag the count
-    if (!form.appointment_time) {
-      const n = sameDay.length
-      return `There ${n === 1 ? 'is' : 'are'} already ${n} appointment${n > 1 ? 's' : ''} on this day.`
-    }
-
-    const newStart = toMin(form.appointment_time)
-    const newEnd   = newStart + (form.duration_minutes || 15)
-
-    const overlaps = sameDay.filter(a => {
-      if (!a.appointment_time) return true // no time = unknown overlap, flag it
-      const exStart = toMin(a.appointment_time)
-      const exEnd   = exStart + (a.duration_minutes || 15)
-      return newStart < exEnd && newEnd > exStart
-    })
-
-    if (overlaps.length === 0) return ''
-
-    const names = overlaps
-      .map(a => a.owners?.full_name || a.horses?.owners?.full_name || 'Unknown owner')
-      .join(', ')
-    return `Scheduling conflict: overlaps with ${overlaps.length} existing appointment${overlaps.length > 1 ? 's' : ''} — ${names}.`
-  }, [form.appointment_date, form.appointment_time, form.duration_minutes, appointments, editingId, showForm])
+    checkConflicts()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.appointment_date, form.appointment_time, form.duration_minutes, editingId, showForm])
 
   // ── Form handlers ───────────────────────────────────────────────────────────
 
