@@ -734,11 +734,18 @@ export default function OwnerPage() {
                         {/* CTA */}
                         <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between">
                           <span className="text-xs text-slate-400 group-hover:text-slate-600 transition">
-                            View record & history
+                            View record & history →
                           </span>
-                          <span className="rounded-xl bg-[#0f2040] px-3 py-1.5 text-xs font-semibold text-white group-hover:bg-[#162d55] transition">
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              router.push(`/horses/${animal.id}/spine?newVisit=true&species=${animal.species || 'equine'}`)
+                            }}
+                            className="rounded-xl bg-[#0f2040] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#162d55] transition"
+                          >
                             Start Visit →
-                          </span>
+                          </button>
                         </div>
                       </Link>
                     )
