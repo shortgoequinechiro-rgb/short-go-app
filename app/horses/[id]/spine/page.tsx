@@ -391,7 +391,7 @@ function SpineVisitInner() {
       // 1. Fetch most recent visit
       const { data: prevVisits } = await supabase
         .from('visits')
-        .select('id, subjective, objective, assessment, plan, reason_for_visit, treated_areas, recommendations, follow_up, location, provider_name, quick_notes')
+        .select('id, subjective, objective, assessment, plan, reason_for_visit, treated_areas, recommendations, follow_up, location, provider_name')
         .eq('horse_id', horseId)
         .order('visit_date', { ascending: false })
         .limit(1)
@@ -416,7 +416,6 @@ function SpineVisitInner() {
       if (prev.follow_up) { setFollowUp(prev.follow_up); clonedCount++ }
       if (prev.location) { setVisitLocation(prev.location); clonedCount++ }
       if (prev.provider_name) { setProviderName(prev.provider_name); clonedCount++ }
-      if (prev.quick_notes) { setQuickNotes(prev.quick_notes); clonedCount++ }
 
       // 2. Also clone spine findings from the previous visit
       if (prev.id) {
