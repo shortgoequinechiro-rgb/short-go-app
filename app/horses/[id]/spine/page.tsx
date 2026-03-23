@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useState, useCallback, Suspense } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../../lib/supabase'
@@ -96,22 +96,19 @@ const CANINE_SPINE_SECTIONS = [
 type SegmentFinding = { left: boolean; right: boolean }
 type Findings = Record<string, SegmentFinding>
 
-const SQL_SETUP = `CREATE TABLE spine_assessments (
-  id          uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  horse_id    uuid REFERENCES horses(id) ON DELETE CASCADE NOT NULL,
-  visit_id    uuid REFERENCES visits(id) ON DELETE SET NULL,
-  assessed_at timestamptz DEFAULT now(),
-  findings    jsonb NOT NULL DEFAULT '{}',
-  notes       text,
-  created_at  timestamptz DEFAULT now()
-);
-
-CREATE INDEX ON spine_assessments (horse_id, assessed_at DESC);`
-
 type Visit = { id: string; visit_date: string | null; reason_for_visit: string | null }
 
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="mb-1 block text-sm font-medium text-slate-700">{label}</label>
+      {children}
+    </div>
+  )
+}
+
 // ── Inner component (needs useSearchParams) ───────────────────────────────
-function SpineInner() {
+function SpineVisitInner() {
   const { id: horseId } = useParams<{ id: string }>()
   const searchParams     = useSearchParams()
   const router           = useRouter()
@@ -121,31 +118,84 @@ function SpineInner() {
   const appointmentId    = searchParams.get('appointmentId')
   const SPINE_SECTIONS   = urlSpecies === 'canine' ? CANINE_SPINE_SECTIONS : EQUINE_SPINE_SECTIONS
 
+  // ── Spine assessment state ──
   const [horseName,       setHorseName]       = useState('')
+  const [horseData,       setHorseData]       = useState<{ name: string; species: string | null; discipline: string | null; owner_id: string | null } | null>(null)
   const [visits,          setVisits]          = useState<Visit[]>([])
   const [selectedVisitId, setSelectedVisitId] = useState<string>(urlVisitId ?? '')
   const [findings,        setFindings]        = useState<Findings>({})
-  const [notes,           setNotes]           = useState('')
+  const [spineNotes,      setSpineNotes]      = useState('')
   const [saving,          setSaving]          = useState(false)
   const [saveMsg,         setSaveMsg]         = useState('')
   const [lastSaved,       setLastSaved]       = useState<string | null>(null)
   const [noTable,         setNoTable]         = useState(false)
   const [loading,         setLoading]         = useState(true)
+  const [userId,          setUserId]          = useState('')
 
-  // ── Load horse name + visits ─────────────────────────────────────────────
+  // ── Visit form state ──
+  const [visitDate, setVisitDate] = useState(new Date().toISOString().slice(0, 10))
+  const [visitLocation, setVisitLocation] = useState('')
+  const [providerName, setProviderName] = useState('')
+  const [reasonForVisit, setReasonForVisit] = useState('Chiropractic Adjustment')
+  const [quickNotes, setQuickNotes] = useState('')
+  const [subjective, setSubjective] = useState('')
+  const [objective, setObjective] = useState('')
+  const [assessment, setAssessment] = useState('')
+  const [plan, setPlan] = useState('')
+  const [treatedAreas, setTreatedAreas] = useState('')
+  const [recommendations, setRecommendations] = useState('')
+  const [followUp, setFollowUp] = useState('')
+  const [generatingSoap, setGeneratingSoap] = useState(false)
+  const [autoEmailAfterSave, setAutoEmailAfterSave] = useState(false)
+  const [message, setMessage] = useState('')
+
+  // ── Build quick notes summary from findings ──
+  const buildQuickNotesFromFindings = useCallback((f: Findings) => {
+    const flagged: string[] = []
+    for (const [key, val] of Object.entries(f)) {
+      if (!val.left && !val.right) continue
+      const sides: string[] = []
+      if (val.left) sides.push('L')
+      if (val.right) sides.push('R')
+      const label = key.toUpperCase().replace('_', ' ')
+      flagged.push(`${label} (${sides.join('/')})`)
+    }
+    return flagged.length > 0
+      ? `Spine assessment: ${flagged.length} segment${flagged.length === 1 ? '' : 's'} flagged — ${flagged.join(', ')}`
+      : ''
+  }, [])
+
+  // ── Load horse data + auth ──
   useEffect(() => {
-    async function loadMeta() {
+    async function init() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) setUserId(user.id)
+
+      // Load practitioner name for provider field
+      if (user) {
+        const { data: prac } = await supabase
+          .from('practitioners')
+          .select('full_name')
+          .eq('id', user.id)
+          .single()
+        if (prac?.full_name) setProviderName(prac.full_name)
+      }
+
       const { data: horse } = await supabase
         .from('horses')
-        .select('name')
+        .select('name, species, discipline, owner_id')
         .eq('id', horseId)
         .single()
       if (horse) {
         setHorseName(horse.name)
+        setHorseData(horse)
       } else {
         try {
           const cached = await getCachedHorseById(horseId)
-          if (cached) setHorseName(cached.name)
+          if (cached) {
+            setHorseName(cached.name)
+            setHorseData({ name: cached.name, species: cached.species || null, discipline: cached.discipline || null, owner_id: cached.owner_id || null })
+          }
         } catch { /* ignore */ }
       }
 
@@ -166,7 +216,7 @@ function SpineInner() {
         } catch { /* ignore */ }
       }
     }
-    loadMeta()
+    init()
   }, [horseId])
 
   // ── Load existing assessment when selectedVisitId changes ────────────────
@@ -174,7 +224,7 @@ function SpineInner() {
     async function loadAssessment() {
       setLoading(true)
       setFindings({})
-      setNotes('')
+      setSpineNotes('')
       setLastSaved(null)
 
       let query = supabase
@@ -195,7 +245,7 @@ function SpineInner() {
         if (error.code === '42P01') setNoTable(true)
       } else if (data) {
         setFindings((data.findings as Findings) ?? {})
-        setNotes(data.notes ?? '')
+        setSpineNotes(data.notes ?? '')
         setLastSaved(data.assessed_at)
       }
 
@@ -204,40 +254,199 @@ function SpineInner() {
     loadAssessment()
   }, [horseId, selectedVisitId])
 
-  // ── Toggle ──────────────────────────────────────────────────────────────
+  // ── Toggle a spine segment and auto-update quick notes ──
   function toggle(segKey: string, side: 'left' | 'right') {
-    setFindings(prev => ({
-      ...prev,
-      [segKey]: {
-        left:  prev[segKey]?.left  ?? false,
-        right: prev[segKey]?.right ?? false,
-        [side]: !(prev[segKey]?.[side] ?? false),
-      },
-    }))
+    setFindings(prev => {
+      const updated = {
+        ...prev,
+        [segKey]: {
+          left:  prev[segKey]?.left  ?? false,
+          right: prev[segKey]?.right ?? false,
+          [side]: !(prev[segKey]?.[side] ?? false),
+        },
+      }
+      // Auto-populate quick notes with spine summary
+      const spineSummary = buildQuickNotesFromFindings(updated)
+      setQuickNotes(prev => {
+        // Replace existing spine assessment line or prepend
+        const lines = prev.split('\n').filter(l => !l.startsWith('Spine assessment:'))
+        if (spineSummary) {
+          return [spineSummary, ...lines.filter(l => l.trim())].join('\n')
+        }
+        return lines.filter(l => l.trim()).join('\n')
+      })
+      // Also update treated areas and objective
+      const flagged: string[] = []
+      for (const [key, val] of Object.entries(updated)) {
+        if (!val.left && !val.right) continue
+        const sides: string[] = []
+        if (val.left) sides.push('L')
+        if (val.right) sides.push('R')
+        const label = key.toUpperCase().replace('_', ' ')
+        flagged.push(`${label} (${sides.join('/')})`)
+      }
+      setTreatedAreas(flagged.join(', '))
+      return updated
+    })
   }
 
-  // ── Save ────────────────────────────────────────────────────────────────
-  async function save() {
+  // ── Generate SOAP ──
+  async function generateSoap() {
+    setMessage('')
+    if (!quickNotes.trim()) {
+      setMessage('Add quick notes first.')
+      return
+    }
+    try {
+      setGeneratingSoap(true)
+      const response = await fetch('/api/generate-soap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          quickNotes,
+          horseName: horseData?.name || '',
+          species: horseData?.species || 'equine',
+          discipline: horseData?.discipline || '',
+          anatomyContext: '',
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        setMessage(data.error || 'Failed to generate SOAP.')
+        return
+      }
+      setSubjective(data.subjective || '')
+      setObjective(data.objective || '')
+      setAssessment(data.assessment || '')
+      setPlan(data.plan || '')
+      setMessage('SOAP draft generated from spine assessment.')
+    } catch {
+      setMessage('Failed to generate SOAP.')
+    } finally {
+      setGeneratingSoap(false)
+    }
+  }
+
+  // ── Save everything (spine + visit) ──
+  async function saveAll() {
+    setSaving(true)
+    setSaveMsg('')
+    setMessage('')
+
+    // Validate
+    if (!visitDate) {
+      setMessage('Visit date is required.')
+      setSaving(false)
+      return
+    }
+
+    // 1. Save spine assessment
+    const { data: spineData, error: spineError } = await supabase
+      .from('spine_assessments')
+      .insert({
+        horse_id: horseId,
+        visit_id: null, // will link after visit is created
+        findings,
+        notes: spineNotes,
+        assessed_at: new Date().toISOString(),
+        practitioner_id: userId,
+      })
+      .select('id')
+      .single()
+
+    if (spineError) {
+      setSaveMsg('Error saving spine: ' + spineError.message)
+      setSaving(false)
+      return
+    }
+
+    // 2. Save visit
+    const visitPayload = {
+      horse_id: horseId,
+      owner_id: horseData?.owner_id || null,
+      visit_date: visitDate,
+      location: visitLocation || null,
+      provider_name: providerName || null,
+      reason_for_visit: reasonForVisit || null,
+      subjective: subjective || null,
+      objective: objective || null,
+      assessment: assessment || null,
+      plan: plan || null,
+      treated_areas: treatedAreas || null,
+      recommendations: recommendations || null,
+      follow_up: followUp || null,
+      practitioner_id: userId,
+    }
+
+    const { data: visitResult, error: visitError } = await supabase
+      .from('visits')
+      .insert([visitPayload])
+      .select('id')
+      .single()
+
+    if (visitError) {
+      setSaveMsg('Spine saved but error saving visit: ' + visitError.message)
+      setSaving(false)
+      return
+    }
+
+    const savedVisitId = visitResult.id
+
+    // 3. Link spine assessment to visit
+    if (spineData?.id) {
+      await supabase
+        .from('spine_assessments')
+        .update({ visit_id: savedVisitId })
+        .eq('id', spineData.id)
+    }
+
+    // 4. Link appointment if we came from one
+    if (appointmentId) {
+      await supabase
+        .from('appointments')
+        .update({ visit_id: savedVisitId, status: 'completed' })
+        .eq('id', appointmentId)
+    }
+
+    // 5. Auto-email if checked
+    if (autoEmailAfterSave && savedVisitId) {
+      try {
+        setMessage('Visit saved. Sending PDF to owner...')
+        const response = await fetch(`/api/visits/${savedVisitId}/email`, { method: 'POST' })
+        if (!response.ok) {
+          const data = await response.json().catch(() => null)
+          throw new Error(data?.error || 'Failed to email PDF.')
+        }
+        setMessage('Visit saved and PDF emailed.')
+      } catch (err: any) {
+        setMessage(`Visit saved, but email failed: ${err?.message || 'Unknown error'}`)
+      }
+    }
+
+    setSaving(false)
+    // Navigate back to patient page
+    router.push(`/horses/${horseId}?tab=appointments`)
+  }
+
+  // ── Save spine only (non-new-visit flow) ──
+  async function saveSpineOnly() {
     setSaving(true)
     setSaveMsg('')
 
     if (!navigator.onLine) {
-      // Store spine assessment in localStorage as a pending item
       try {
         const pending = JSON.parse(localStorage.getItem('pendingSpineAssessments') || '[]')
-        const localId = crypto.randomUUID()
         pending.push({
-          localId,
+          localId: crypto.randomUUID(),
           horse_id: horseId,
           visit_id: selectedVisitId || null,
           findings,
-          notes,
+          notes: spineNotes,
           assessed_at: new Date().toISOString(),
         })
         localStorage.setItem('pendingSpineAssessments', JSON.stringify(pending))
         setSaving(false)
-        const ts = new Date().toISOString()
-        setLastSaved(ts)
+        setLastSaved(new Date().toISOString())
         setSaveMsg('Saved offline — will sync when back online.')
         setTimeout(() => setSaveMsg(''), 4000)
       } catch {
@@ -248,29 +457,20 @@ function SpineInner() {
     }
 
     const { data: { user } } = await supabase.auth.getUser()
-    const { data, error } = await supabase.from('spine_assessments').insert({
-      horse_id:       horseId,
-      visit_id:       selectedVisitId || null,
+    const { error } = await supabase.from('spine_assessments').insert({
+      horse_id: horseId,
+      visit_id: selectedVisitId || null,
       findings,
-      notes,
-      assessed_at:    new Date().toISOString(),
+      notes: spineNotes,
+      assessed_at: new Date().toISOString(),
       practitioner_id: user?.id,
-    }).select('id').single()
+    })
 
     setSaving(false)
-
     if (error) {
       setSaveMsg('Error: ' + error.message)
     } else {
-      const ts = new Date().toISOString()
-      setLastSaved(ts)
-
-      if (isNewVisitFlow && data?.id) {
-        // Redirect back to patient page to pre-fill visit form with spine data
-        router.push(`/horses/${horseId}?fromSpine=${data.id}${appointmentId ? `&appointmentId=${appointmentId}` : ''}`)
-        return
-      }
-
+      setLastSaved(new Date().toISOString())
       setSaveMsg('Saved! This will appear on the visit PDF.')
       setTimeout(() => setSaveMsg(''), 4000)
     }
@@ -291,7 +491,6 @@ function SpineInner() {
       {/* ── Sticky header ── */}
       <div className="sticky top-0 z-20 border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-2xl px-4 py-4">
-          {/* Top row: Back + title */}
           <div className="flex items-center gap-3">
             <Link
               href={`/horses/${horseId}`}
@@ -301,27 +500,30 @@ function SpineInner() {
             </Link>
             <div className="min-w-0">
               <h1 className="text-lg font-semibold text-slate-900 leading-tight">
-                {urlSpecies === 'canine' ? 'Canine Spine Assessment' : 'Spine Assessment'}
+                {isNewVisitFlow ? 'New Visit' : urlSpecies === 'canine' ? 'Canine Spine Assessment' : 'Spine Assessment'}
               </h1>
               <p className="text-xs text-slate-500 truncate">
                 {horseName && `${horseName} · `}
-                {isNewVisitFlow ? 'Complete assessment, then continue to visit form' : selectedVisitId ? 'Linked to visit' : 'No visit selected'}
+                {isNewVisitFlow ? 'Spine assessment + visit notes' : selectedVisitId ? 'Linked to visit' : 'No visit selected'}
               </p>
             </div>
           </div>
 
-          {/* Action buttons row */}
           <div className="mt-3 flex items-center gap-2">
             <button
-              onClick={save}
+              onClick={isNewVisitFlow ? saveAll : saveSpineOnly}
               disabled={saving || noTable || loading}
               className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-40"
             >
-              {saving ? 'Saving…' : isNewVisitFlow ? 'Save & Continue to Visit' : 'Save'}
+              {saving ? 'Saving…' : isNewVisitFlow ? 'Save Visit' : 'Save Assessment'}
             </button>
             {flaggedCount > 0 && (
               <button
-                onClick={() => setFindings({})}
+                onClick={() => {
+                  setFindings({})
+                  setQuickNotes(prev => prev.split('\n').filter(l => !l.startsWith('Spine assessment:')).join('\n').trim())
+                  setTreatedAreas('')
+                }}
                 className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 transition"
               >
                 Clear All
@@ -330,27 +532,24 @@ function SpineInner() {
           </div>
         </div>
 
-        {/* Status bar */}
         <div className="mx-auto max-w-2xl px-4 pb-2">
           {saveMsg ? (
             <span className="text-sm font-medium text-emerald-600">{saveMsg}</span>
+          ) : message ? (
+            <span className={`text-sm font-medium ${message.toLowerCase().includes('error') || message.toLowerCase().includes('failed') ? 'text-red-600' : 'text-emerald-600'}`}>{message}</span>
           ) : lastSaved ? (
             <span className="text-xs text-slate-400">Last saved {formatDate(lastSaved)}</span>
           ) : null}
         </div>
       </div>
 
-      {/* ── No-table setup ── */}
       {noTable ? (
         <div className="mx-auto max-w-2xl px-4 py-8">
           <div className="rounded-3xl border border-amber-200 bg-amber-50 p-6">
             <h2 className="font-semibold text-amber-900">One-time setup needed</h2>
             <p className="mt-1 text-sm text-amber-800">
-              Run this SQL in your Supabase dashboard (SQL Editor), then refresh.
+              Run the spine_assessments table SQL in your Supabase dashboard, then refresh.
             </p>
-            <pre className="mt-4 overflow-x-auto rounded-2xl border border-amber-200 bg-white p-4 text-xs text-slate-700 leading-relaxed">
-              {SQL_SETUP}
-            </pre>
           </div>
         </div>
 
@@ -360,17 +559,21 @@ function SpineInner() {
       ) : (
         <div className="mx-auto max-w-2xl space-y-4 px-4 py-5">
 
-          {/* Visit selector */}
-          {isNewVisitFlow ? (
-            <div className="rounded-3xl bg-emerald-50 border border-emerald-200 px-5 py-4 shadow-sm">
-              <p className="text-sm font-semibold text-emerald-800">
-                New Visit — {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-              </p>
-              <p className="mt-1 text-xs text-emerald-600">
-                This assessment will be linked to the visit automatically after you save &amp; continue.
-              </p>
-            </div>
-          ) : (
+          {/* ══════════════════════════════════════════════════════════ */}
+          {/* ── SECTION 1: SPINE ASSESSMENT ── */}
+          {/* ══════════════════════════════════════════════════════════ */}
+
+          <div className="rounded-3xl bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-semibold text-slate-900">
+              {urlSpecies === 'canine' ? 'Canine Spine Assessment' : 'Spine Assessment'}
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Check boxes to flag subluxations. Findings auto-populate into your visit notes below.
+            </p>
+          </div>
+
+          {/* Visit selector — only when NOT in new visit flow */}
+          {!isNewVisitFlow && (
             <div className="rounded-3xl bg-white px-5 py-4 shadow-sm">
               <label className="mb-1.5 block text-sm font-semibold text-slate-700">
                 Link to Visit
@@ -393,11 +596,6 @@ function SpineInner() {
                   </option>
                 ))}
               </select>
-              {selectedVisitId && (
-                <p className="mt-1.5 text-xs text-slate-500">
-                  This assessment will appear in that visit&apos;s PDF export.
-                </p>
-              )}
             </div>
           )}
 
@@ -421,10 +619,9 @@ function SpineInner() {
             </div>
           )}
 
-          {/* ── Sections ── */}
+          {/* ── Spine Sections ── */}
           {SPINE_SECTIONS.map(section => (
             <div key={section.key} className="overflow-hidden rounded-3xl bg-white shadow-sm">
-
               <div className="flex items-center justify-between bg-slate-900 px-5 py-3">
                 <h2 className="text-sm font-semibold text-white">{section.label}</h2>
                 <div className="flex items-center gap-6 text-xs font-bold uppercase tracking-wide text-slate-400">
@@ -476,30 +673,219 @@ function SpineInner() {
             </div>
           ))}
 
-          {/* Notes */}
+          {/* Spine clinical notes */}
           <div className="rounded-3xl bg-white p-5 shadow-sm">
             <h2 className="mb-3 text-base font-semibold text-slate-900">Clinical Notes</h2>
             <textarea
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              rows={4}
+              value={spineNotes}
+              onChange={e => setSpineNotes(e.target.value)}
+              rows={3}
               placeholder="Additional observations, treatment notes…"
               className="w-full resize-none rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900"
             />
           </div>
 
-          {/* Bottom save */}
+          {/* ══════════════════════════════════════════════════════════ */}
+          {/* ── SECTION 2: VISIT NOTES (only in new visit flow) ── */}
+          {/* ══════════════════════════════════════════════════════════ */}
+
+          {isNewVisitFlow && (
+            <>
+              <div className="mt-2 rounded-3xl bg-white p-5 shadow-sm border-t-4 border-slate-900">
+                <h2 className="text-lg font-semibold text-slate-900">Visit Notes</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Spine findings have been auto-populated into your quick notes. Add details or generate SOAP notes.
+                </p>
+              </div>
+
+              <div className="rounded-3xl bg-white p-5 shadow-sm">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Field label="Visit Date">
+                    <input
+                      type="date"
+                      value={visitDate}
+                      onChange={(e) => setVisitDate(e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                    />
+                  </Field>
+
+                  <Field label="Location">
+                    <input
+                      value={visitLocation}
+                      onChange={(e) => setVisitLocation(e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                      placeholder="Barn / ranch location"
+                    />
+                  </Field>
+
+                  <div className="md:col-span-2">
+                    <Field label="Provider Name">
+                      <input
+                        value={providerName}
+                        onChange={(e) => setProviderName(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                        placeholder="Provider"
+                      />
+                    </Field>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <Field label="Reason for Visit">
+                      <input
+                        value={reasonForVisit}
+                        onChange={(e) => setReasonForVisit(e.target.value)}
+                        className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                        placeholder="Performance maintenance, stiffness, etc."
+                      />
+                    </Field>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <Field label="Quick Notes for AI SOAP Draft">
+                      <div className="mb-2 flex flex-wrap gap-1.5">
+                        {[
+                          { label: 'Post-competition', text: 'Post-competition soreness. Reduced range of motion through back and hindquarters. Mild tension through poll and withers. Responded well to adjustment.' },
+                          { label: 'Routine adjustment', text: 'Routine maintenance adjustment. Owner reports normal performance and behavior. Minor restrictions found at thoracolumbar junction. Full adjustment performed.' },
+                          { label: 'Poll tension', text: 'Poll tension and head tilt noted on arrival. Restricted cervical range of motion. Owner reports difficulty bending left. Atlas and C2 adjusted. Good response.' },
+                          { label: 'Hind-end asymmetry', text: 'Hind-end asymmetry and reduced impulsion reported by owner. SI joint restriction noted bilaterally, left more pronounced. Adjusted lumbar and sacral regions. Follow up in 2 weeks.' },
+                          { label: 'Back soreness', text: 'Back soreness after heavy work week. Reactive mid-thoracic region on palpation. Adjusted T8–T12. Recommended 2 light days and stretching.' },
+                          { label: 'New client', text: 'Initial assessment. Owner reports history of stiffness and reluctance to pick up right lead. Full spine evaluated. Multiple restrictions found. Comprehensive adjustment performed. Recommendations discussed.' },
+                          { label: 'Pre-event', text: 'Pre-competition tune-up. Horse in good overall condition. Minor restrictions at withers and poll. Light adjustment performed to optimise range of motion ahead of event.' },
+                          { label: 'Post-fall/injury', text: 'Follow-up after recent fall/injury. Area of concern assessed carefully. Compensatory patterns noted. Gentle adjustment within comfort tolerance. Reassess in 1 week.' },
+                        ].map((t) => (
+                          <button
+                            key={t.label}
+                            type="button"
+                            onClick={() => setQuickNotes(prev => prev ? prev + '\n' + t.text : t.text)}
+                            className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 hover:border-slate-900 hover:bg-slate-900 hover:text-white transition"
+                          >
+                            {t.label}
+                          </button>
+                        ))}
+                      </div>
+                      <textarea
+                        value={quickNotes}
+                        onChange={(e) => setQuickNotes(e.target.value)}
+                        className="min-h-32 w-full rounded-xl border border-slate-300 px-4 py-3"
+                        placeholder="Spine findings auto-populate here. Add more notes or tap a template…"
+                      />
+                    </Field>
+
+                    <div className="mt-3 flex items-center gap-2">
+                      <button
+                        onClick={generateSoap}
+                        disabled={generatingSoap}
+                        className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 disabled:opacity-50"
+                      >
+                        {generatingSoap ? 'Generating SOAP...' : 'Generate SOAP'}
+                      </button>
+                      {quickNotes && (
+                        <button
+                          type="button"
+                          onClick={() => setQuickNotes('')}
+                          className="rounded-xl border border-slate-200 px-3 py-3 text-xs text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <Field label="Subjective">
+                    <textarea
+                      value={subjective}
+                      onChange={(e) => setSubjective(e.target.value)}
+                      className="min-h-28 w-full rounded-xl border border-slate-300 px-4 py-3"
+                      placeholder="What the owner reports"
+                    />
+                  </Field>
+
+                  <Field label="Objective">
+                    <textarea
+                      value={objective}
+                      onChange={(e) => setObjective(e.target.value)}
+                      className="min-h-28 w-full rounded-xl border border-slate-300 px-4 py-3"
+                      placeholder="Observed findings"
+                    />
+                  </Field>
+
+                  <Field label="Assessment">
+                    <textarea
+                      value={assessment}
+                      onChange={(e) => setAssessment(e.target.value)}
+                      className="min-h-28 w-full rounded-xl border border-slate-300 px-4 py-3"
+                      placeholder="Clinical impression"
+                    />
+                  </Field>
+
+                  <Field label="Plan">
+                    <textarea
+                      value={plan}
+                      onChange={(e) => setPlan(e.target.value)}
+                      className="min-h-28 w-full rounded-xl border border-slate-300 px-4 py-3"
+                      placeholder="Treatment plan / next steps"
+                    />
+                  </Field>
+
+                  <Field label="Follow Up">
+                    <input
+                      value={followUp}
+                      onChange={(e) => setFollowUp(e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3"
+                      placeholder="2 weeks, PRN, monthly, etc."
+                    />
+                  </Field>
+
+                  <div className="md:col-span-2">
+                    <Field label="Recommendations">
+                      <textarea
+                        value={recommendations}
+                        onChange={(e) => setRecommendations(e.target.value)}
+                        className="min-h-28 w-full rounded-xl border border-slate-300 px-4 py-3"
+                        placeholder="Rest, stretches, light work, etc."
+                      />
+                    </Field>
+                  </div>
+
+                  <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <label className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={autoEmailAfterSave}
+                        onChange={(e) => setAutoEmailAfterSave(e.target.checked)}
+                        className="mt-1 h-4 w-4 rounded border-slate-300"
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">
+                          Auto-email PDF to owner after saving visit
+                        </p>
+                        <p className="mt-1 text-sm text-slate-600">
+                          Uses the owner email saved on this horse record.
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ── Bottom save button ── */}
           <div className="flex gap-3">
             <button
-              onClick={save}
+              onClick={isNewVisitFlow ? saveAll : saveSpineOnly}
               disabled={saving || noTable}
               className="flex-1 rounded-2xl bg-slate-900 py-4 text-base font-semibold text-white transition hover:bg-slate-700 disabled:opacity-40"
             >
-              {saving ? 'Saving…' : 'Save Assessment'}
+              {saving ? 'Saving…' : isNewVisitFlow ? 'Save Visit' : 'Save Assessment'}
             </button>
             {flaggedCount > 0 && (
               <button
-                onClick={() => setFindings({})}
+                onClick={() => {
+                  setFindings({})
+                  setQuickNotes(prev => prev.split('\n').filter(l => !l.startsWith('Spine assessment:')).join('\n').trim())
+                  setTreatedAreas('')
+                }}
                 className="rounded-2xl border border-slate-300 px-6 py-4 text-base font-medium text-slate-600 hover:bg-slate-100 transition"
               >
                 Clear All
@@ -517,7 +903,7 @@ function SpineInner() {
 export default function SpineAssessmentPage() {
   return (
     <Suspense fallback={<div className="p-8 text-center text-slate-400">Loading…</div>}>
-      <SpineInner />
+      <SpineVisitInner />
     </Suspense>
   )
 }

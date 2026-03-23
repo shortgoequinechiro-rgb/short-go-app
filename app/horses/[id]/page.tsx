@@ -1502,7 +1502,20 @@ export default function HorseDetailPage() {
     init()
   }, [horseId])
 
-  // ── Detect redirect from spine assessment (new visit flow) ──
+  // ── Handle ?tab= URL param (e.g. after saving from spine+visit page) ──
+  useEffect(() => {
+    const tabParam = searchParams.get('tab')
+    if (tabParam && ['info', 'visits', 'appointments', 'photos', 'records'].includes(tabParam)) {
+      setActiveTab(tabParam as typeof activeTab)
+      // Reload appointments data when redirected from visit save
+      if (tabParam === 'appointments') loadAppointments()
+      // Clear the URL param
+      window.history.replaceState({}, '', `/horses/${horseId}`)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
+  // ── Detect redirect from spine assessment (legacy edit flow) ──
   useEffect(() => {
     const fromSpineId = searchParams.get('fromSpine')
     const apptId = searchParams.get('appointmentId')
