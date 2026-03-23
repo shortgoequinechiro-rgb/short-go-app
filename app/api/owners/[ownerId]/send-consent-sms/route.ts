@@ -59,6 +59,8 @@ export async function POST(
   }
 
   if (owner.sms_consent_status !== 'opted_in') {
+    // Save the pending action so it auto-sends after opt-in
+    await supabase.from('owners').update({ pending_sms_action: 'consent' }).eq('id', ownerId)
     return NextResponse.json(
       { error: 'SMS_CONSENT_REQUIRED', needsConsent: true },
       { status: 403 }
