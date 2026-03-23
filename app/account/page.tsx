@@ -238,7 +238,11 @@ function ProfileTab({ practitioner, onSaved }: { practitioner: Practitioner; onS
           >
             <option value="equine">🐴 Equine only</option>
             <option value="canine">🐕 Canine only</option>
-            <option value="both">🐴🐕 Both equine &amp; canine</option>
+            <option value="feline">🐱 Feline only</option>
+            <option value="bovine">🐄 Bovine only</option>
+            <option value="porcine">🐷 Porcine only</option>
+            <option value="exotic">🦎 Exotic only</option>
+            <option value="all">All species</option>
           </select>
         </div>
       </div>

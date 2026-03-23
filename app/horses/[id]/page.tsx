@@ -13,6 +13,8 @@ import {
   getCachedOwners,
 } from '../../lib/offlineDb'
 
+type SpeciesType = 'equine' | 'canine' | 'feline' | 'bovine' | 'porcine' | 'exotic'
+
 type Owner = {
   id: string
   full_name: string
@@ -31,7 +33,7 @@ type Horse = {
   age: string | null
   discipline: string | null
   barn_location: string | null
-  species: 'equine' | 'canine' | null
+  species: SpeciesType | null
   archived: boolean
   medical_alerts?: string | null
   history_notes?: string | null
@@ -129,6 +131,55 @@ const emptyVisitForm = {
   followUp: '',
 }
 
+function speciesEmoji(s: string | null | undefined): string {
+  switch (s) {
+    case 'canine': return '🐕'
+    case 'feline': return '🐱'
+    case 'bovine': return '🐄'
+    case 'porcine': return '🐷'
+    case 'exotic': return '🦎'
+    default: return '🐴'
+  }
+}
+
+function speciesLabel(s: string | null | undefined): string {
+  switch (s) {
+    case 'canine': return 'Canine'
+    case 'feline': return 'Feline'
+    case 'bovine': return 'Bovine'
+    case 'porcine': return 'Porcine'
+    case 'exotic': return 'Exotic'
+    default: return 'Equine'
+  }
+}
+
+function getNamePlaceholder(species: string | null | undefined): string {
+  switch (species) {
+    case 'canine': return 'Dog name'
+    case 'feline': return 'Cat name'
+    case 'bovine': return 'Cow name'
+    case 'porcine': return 'Pig name'
+    case 'exotic': return 'Animal name'
+    default: return 'Horse name'
+  }
+}
+
+function getDisciplineLabel(species: string | null | undefined): string {
+  if (species === 'equine') return 'Discipline'
+  return 'Activity / Sport'
+}
+
+function getDisciplinePlaceholder(species: string | null | undefined): string {
+  if (species === 'equine') return 'Discipline'
+  if (species === 'canine') return 'Agility, hunting, sport, etc.'
+  return 'Activity / Sport'
+}
+
+function getBarnLocationPlaceholder(species: string | null | undefined): string {
+  if (species === 'canine') return 'City, kennel, or home'
+  return 'Barn location'
+}
+
 const REGION_LABELS: Record<string, string> = {
   pollAtlas: 'Poll / Atlas',
   withers: 'Withers',
@@ -184,7 +235,7 @@ export default function HorseDetailPage() {
   const [horseAgeEdit, setHorseAgeEdit] = useState('')
   const [horseDisciplineEdit, setHorseDisciplineEdit] = useState('')
   const [horseBarnLocationEdit, setHorseBarnLocationEdit] = useState('')
-  const [horseSpeciesEdit, setHorseSpeciesEdit] = useState<'equine' | 'canine'>('equine')
+  const [horseSpeciesEdit, setHorseSpeciesEdit] = useState<SpeciesType>('equine')
   const [horseOwnerIdEdit, setHorseOwnerIdEdit] = useState('')
   const [behavioralNotesEdit, setBehavioralNotesEdit] = useState('')
   const [savingBehavioralNotes, setSavingBehavioralNotes] = useState(false)
@@ -360,7 +411,7 @@ export default function HorseDetailPage() {
           setHorseAgeEdit(cached.age || '')
           setHorseDisciplineEdit(cached.discipline || '')
           setHorseBarnLocationEdit(cached.barn_location || '')
-          setHorseSpeciesEdit((cached.species as 'equine' | 'canine') || 'equine')
+          setHorseSpeciesEdit((cached.species as SpeciesType) || 'equine')
           setHorseOwnerIdEdit(cached.owner_id || '')
           return
         }
@@ -377,7 +428,7 @@ export default function HorseDetailPage() {
     setHorseAgeEdit(data.age || '')
     setHorseDisciplineEdit(data.discipline || '')
     setHorseBarnLocationEdit(data.barn_location || '')
-    setHorseSpeciesEdit((data.species as 'equine' | 'canine') || 'equine')
+    setHorseSpeciesEdit((data.species as SpeciesType) || 'equine')
     setHorseOwnerIdEdit(data.owner_id || '')
     setBehavioralNotesEdit(data.behavioral_notes || '')
 
@@ -705,7 +756,7 @@ export default function HorseDetailPage() {
     setHorseAgeEdit(horse?.age || '')
     setHorseDisciplineEdit(horse?.discipline || '')
     setHorseBarnLocationEdit(horse?.barn_location || '')
-    setHorseSpeciesEdit((horse?.species as 'equine' | 'canine') || 'equine')
+    setHorseSpeciesEdit((horse?.species as SpeciesType) || 'equine')
     setHorseOwnerIdEdit(horse?.owner_id || '')
   }
 
@@ -1737,7 +1788,7 @@ export default function HorseDetailPage() {
                   </div>
                 ) : (
                   <div className="flex flex-col items-center gap-1 text-slate-400">
-                    <span className="text-3xl">{horse?.species === 'canine' ? '🐕' : '🐴'}</span>
+                    <span className="text-3xl">{speciesEmoji(horse?.species)}</span>
                     <span className="text-[9px] font-medium">+ Photo</span>
                   </div>
                 )}
@@ -1773,11 +1824,16 @@ export default function HorseDetailPage() {
                 <h1 className="text-xl font-bold text-slate-900 md:text-3xl">
                   {horse?.name || 'Patient Record'}
                 </h1>
-                {horse?.species === 'canine' ? (
-                  <span className="rounded-xl bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">🐕 Canine</span>
-                ) : (
-                  <span className="rounded-xl bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800">🐴 Equine</span>
-                )}
+                <span className={`rounded-xl px-3 py-1 text-xs font-semibold ${
+                  horse?.species === 'canine' ? 'bg-amber-100 text-amber-800' :
+                  horse?.species === 'feline' ? 'bg-orange-100 text-orange-800' :
+                  horse?.species === 'bovine' ? 'bg-stone-100 text-stone-800' :
+                  horse?.species === 'porcine' ? 'bg-pink-100 text-pink-800' :
+                  horse?.species === 'exotic' ? 'bg-emerald-100 text-emerald-800' :
+                  'bg-blue-100 text-blue-800'
+                }`}>
+                  {speciesEmoji(horse?.species)} {speciesLabel(horse?.species)}
+                </span>
                 {horse?.behavioral_notes && (
                   <span className="rounded-xl bg-red-600 px-3 py-1 text-xs font-bold text-white shadow-sm">
                     ⚠️ Behavioral Alert
@@ -1985,11 +2041,18 @@ export default function HorseDetailPage() {
               {!editingHorse ? (
                 <div className="mt-4 space-y-3 text-sm text-slate-700">
                   <InfoRow label="Patient Name" value={horse?.name || '—'} />
-                  <InfoRow label="Species" value={horse?.species === 'canine' ? 'Canine (Dog)' : 'Equine (Horse)'} />
+                  <InfoRow label="Species" value={
+                    horse?.species === 'canine' ? 'Canine (Dog)' :
+                    horse?.species === 'feline' ? 'Feline (Cat)' :
+                    horse?.species === 'bovine' ? 'Bovine (Cow)' :
+                    horse?.species === 'porcine' ? 'Porcine (Pig)' :
+                    horse?.species === 'exotic' ? 'Exotic' :
+                    'Equine (Horse)'
+                  } />
                   <InfoRow label="Breed" value={horse?.breed || '—'} />
                   <InfoRow label="Sex" value={horse?.sex || '—'} />
                   <InfoRow label="Age" value={horse?.age || '—'} />
-                  <InfoRow label={horse?.species === 'canine' ? 'Activity / Sport' : 'Discipline'} value={horse?.discipline || '—'} />
+                  <InfoRow label={getDisciplineLabel(horse?.species)} value={horse?.discipline || '—'} />
                   <InfoRow label="Location" value={horse?.barn_location || '—'} />
                   <InfoRow label="Owner" value={horse?.owners?.full_name || '—'} />
                 </div>
@@ -2000,18 +2063,22 @@ export default function HorseDetailPage() {
                       value={horseNameEdit}
                       onChange={(e) => setHorseNameEdit(e.target.value)}
                       className="w-full rounded-xl border border-slate-300 px-4 py-3"
-                      placeholder={horseSpeciesEdit === 'canine' ? 'Dog name' : 'Horse name'}
+                      placeholder={getNamePlaceholder(horseSpeciesEdit)}
                     />
                   </Field>
 
                   <Field label="Species">
                     <select
                       value={horseSpeciesEdit}
-                      onChange={(e) => setHorseSpeciesEdit(e.target.value as 'equine' | 'canine')}
+                      onChange={(e) => setHorseSpeciesEdit(e.target.value as SpeciesType)}
                       className="w-full rounded-xl border border-slate-300 px-4 py-3"
                     >
                       <option value="equine">Equine (Horse)</option>
                       <option value="canine">Canine (Dog)</option>
+                      <option value="feline">Feline (Cat)</option>
+                      <option value="bovine">Bovine (Cow)</option>
+                      <option value="porcine">Porcine (Pig)</option>
+                      <option value="exotic">Exotic</option>
                     </select>
                   </Field>
 
@@ -2074,12 +2141,12 @@ export default function HorseDetailPage() {
                     />
                   </Field>
 
-                  <Field label={horseSpeciesEdit === 'canine' ? 'Activity / Sport' : 'Discipline'}>
+                  <Field label={getDisciplineLabel(horseSpeciesEdit)}>
                     <input
                       value={horseDisciplineEdit}
                       onChange={(e) => setHorseDisciplineEdit(e.target.value)}
                       className="w-full rounded-xl border border-slate-300 px-4 py-3"
-                      placeholder={horseSpeciesEdit === 'canine' ? 'Agility, hunting, sport, etc.' : 'Discipline'}
+                      placeholder={getDisciplinePlaceholder(horseSpeciesEdit)}
                     />
                   </Field>
 
@@ -2088,7 +2155,7 @@ export default function HorseDetailPage() {
                       value={horseBarnLocationEdit}
                       onChange={(e) => setHorseBarnLocationEdit(e.target.value)}
                       className="w-full rounded-xl border border-slate-300 px-4 py-3"
-                      placeholder={horseSpeciesEdit === 'canine' ? 'City, kennel, or home' : 'Barn location'}
+                      placeholder={getBarnLocationPlaceholder(horseSpeciesEdit)}
                     />
                   </Field>
 
@@ -2339,30 +2406,26 @@ export default function HorseDetailPage() {
                       Cancel Edit
                     </button>
 
-                    {horse?.species !== 'canine' && (
-                      <Link
-                        href={`/anatomy?visitId=${editingVisitId}&horseName=${encodeURIComponent(horse?.name || '')}`}
-                        className="rounded-xl border border-[#0f2040] bg-[#0f2040] px-4 py-2 text-sm text-white hover:bg-[#162d55] transition-colors"
-                      >
-                        Open Anatomy For This Visit
-                      </Link>
-                    )}
+                    <Link
+                      href={`/anatomy?visitId=${editingVisitId}&horseName=${encodeURIComponent(horse?.name || '')}`}
+                      className="rounded-xl border border-[#0f2040] bg-[#0f2040] px-4 py-2 text-sm text-white hover:bg-[#162d55] transition-colors"
+                    >
+                      Open Anatomy For This Visit
+                    </Link>
                   </div>
                 ) : (
                   <div className="flex flex-wrap gap-2">
-                    {horse?.species !== 'canine' && (
-                      <Link
-                        href={`/anatomy?horseName=${encodeURIComponent(horse?.name || '')}`}
-                        className="rounded-xl border border-[#0f2040] bg-[#0f2040] px-4 py-2 text-sm text-white hover:bg-[#162d55] transition-colors"
-                      >
-                        Open Anatomy Viewer
-                      </Link>
-                    )}
+                    <Link
+                      href={`/anatomy?horseName=${encodeURIComponent(horse?.name || '')}`}
+                      className="rounded-xl border border-[#0f2040] bg-[#0f2040] px-4 py-2 text-sm text-white hover:bg-[#162d55] transition-colors"
+                    >
+                      Open Anatomy Viewer
+                    </Link>
                   </div>
                 )}
               </div>
 
-              {horse?.species !== 'canine' && editingVisitId && activeVisitAnatomyCount > 0 ? (
+              {editingVisitId && activeVisitAnatomyCount > 0 ? (
                 <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <p className="text-sm font-semibold text-slate-900">
                     Using saved anatomy notes from this visit
@@ -2587,7 +2650,7 @@ export default function HorseDetailPage() {
                               {formatDate(visit.visit_date)}
                             </p>
 
-                            {horse?.species !== 'canine' && (
+                            {(
                               <div className="mt-2">
                                 {anatomyRegionCounts[visit.id] ? (
                                   <span className="inline-flex rounded-2xl bg-[#0f2040] px-3 py-1 text-xs font-medium text-white">
@@ -2602,7 +2665,7 @@ export default function HorseDetailPage() {
                               </div>
                             )}
 
-                            {horse?.species !== 'canine' && anatomyRegionNamesByVisit[visit.id]?.length ? (
+                            {anatomyRegionNamesByVisit[visit.id]?.length ? (
                               <div className="mt-2 flex flex-wrap gap-2">
                                 {anatomyRegionNamesByVisit[visit.id].map((regionName) => (
                                   <span
@@ -2617,7 +2680,7 @@ export default function HorseDetailPage() {
                           </div>
 
                           <div className="flex flex-wrap gap-2">
-                            {horse?.species !== 'canine' && (
+                            {(
                               <Link
                                 href={`/anatomy?visitId=${visit.id}&horseName=${encodeURIComponent(horse?.name || '')}`}
                                 className="rounded-xl border border-[#0f2040] bg-[#0f2040] px-3 py-2 text-sm text-white hover:bg-[#162d55] transition-colors"
@@ -2672,7 +2735,7 @@ export default function HorseDetailPage() {
                           </div>
                         </div>
 
-                        {horse?.species !== 'canine' && visitAnatomyItems.length > 0 ? (
+                        {visitAnatomyItems.length > 0 ? (
                           <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                             <div className="flex flex-wrap items-center justify-between gap-3">
                               <p className="text-sm font-semibold text-slate-900">

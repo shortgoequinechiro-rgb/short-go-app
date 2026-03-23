@@ -36,7 +36,7 @@ type Horse = {
   barn_location: string | null
   age: string | null
   sex: string | null
-  species: 'equine' | 'canine' | null
+  species: SpeciesType | null
   archived: boolean
   created_at: string
   profile_photo_path?: string | null
@@ -71,13 +71,59 @@ type TodayAppointment = {
   horses?: {
     id: string
     name: string
-    species?: 'equine' | 'canine' | null
+    species?: SpeciesType | null
     owners?: { full_name: string; phone: string | null } | null
   } | null
 }
 
 const RECENT_OWNER_IDS_KEY = 'shortgo_recent_owner_ids'
 const RECENT_HORSE_IDS_KEY = 'shortgo_recent_horse_ids'
+
+type SpeciesType = 'equine' | 'canine' | 'feline' | 'bovine' | 'porcine' | 'exotic'
+
+function speciesEmoji(s: string | null | undefined): string {
+  switch (s) {
+    case 'canine': return '🐕'
+    case 'feline': return '🐱'
+    case 'bovine': return '🐄'
+    case 'porcine': return '🐷'
+    case 'exotic': return '🦎'
+    default: return '🐴'
+  }
+}
+
+function speciesLabel(s: string | null | undefined): string {
+  switch (s) {
+    case 'canine': return 'Canine'
+    case 'feline': return 'Feline'
+    case 'bovine': return 'Bovine'
+    case 'porcine': return 'Porcine'
+    case 'exotic': return 'Exotic'
+    default: return 'Equine'
+  }
+}
+
+function getNamePlaceholder(species: string | null | undefined): string {
+  switch (species) {
+    case 'canine': return 'Dog name'
+    case 'feline': return 'Cat name'
+    case 'bovine': return 'Cow name'
+    case 'porcine': return 'Pig name'
+    case 'exotic': return 'Animal name'
+    default: return 'Horse name'
+  }
+}
+
+function getDisciplineLabel(species: string | null | undefined): string {
+  if (species === 'equine') return 'Discipline'
+  return 'Activity / Sport'
+}
+
+function getDisciplinePlaceholder(species: string | null | undefined): string {
+  if (species === 'equine') return 'Barrel, ranch, dressage…'
+  if (species === 'canine') return 'Agility, hunting, sport…'
+  return 'Activity / Sport'
+}
 
 function formatPhone(phone: string | null | undefined): string {
   if (!phone) return 'No phone'
@@ -128,7 +174,7 @@ export default function Home() {
   const [horseDiscipline, setHorseDiscipline] = useState('')
   const [horseAge, setHorseAge] = useState('')
   const [horseGender, setHorseGender] = useState('')
-  const [addSpecies, setAddSpecies] = useState<'equine' | 'canine'>('equine')
+  const [addSpecies, setAddSpecies] = useState<SpeciesType>('equine')
 
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedOwnerId, setSelectedOwnerId] = useState<string | null>(null)
@@ -146,7 +192,7 @@ export default function Home() {
   const [inlineHorseDiscipline, setInlineHorseDiscipline] = useState('')
   const [inlineHorseAge, setInlineHorseAge] = useState('')
   const [inlineHorseGender, setInlineHorseGender] = useState('')
-  const [inlineSpecies, setInlineSpecies] = useState<'equine' | 'canine'>('equine')
+  const [inlineSpecies, setInlineSpecies] = useState<SpeciesType>('equine')
 
   // Modal visibility
   const [showAddOwnerModal, setShowAddOwnerModal] = useState(false)
@@ -1870,11 +1916,15 @@ export default function Home() {
                               <label className="mb-1 block text-xs font-semibold text-slate-600">Species</label>
                               <select
                                 value={inlineSpecies}
-                                onChange={e => { setInlineSpecies(e.target.value as 'equine' | 'canine'); setInlineHorseGender('') }}
+                                onChange={e => { setInlineSpecies(e.target.value as SpeciesType); setInlineHorseGender('') }}
                                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
                               >
                                 <option value="equine">🐴 Equine</option>
                                 <option value="canine">🐕 Canine</option>
+                                <option value="feline">🐱 Feline</option>
+                                <option value="bovine">🐄 Bovine</option>
+                                <option value="porcine">🐷 Porcine</option>
+                                <option value="exotic">🦎 Exotic</option>
                               </select>
                             </div>
                             <div>
@@ -1883,7 +1933,7 @@ export default function Home() {
                                 value={inlineHorseName}
                                 onChange={e => setInlineHorseName(e.target.value)}
                                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm placeholder:text-slate-400"
-                                placeholder={inlineSpecies === 'canine' ? 'Dog name' : 'Horse name'}
+                                placeholder={getNamePlaceholder(inlineSpecies)}
                                 autoFocus
                               />
                             </div>
@@ -1900,12 +1950,12 @@ export default function Home() {
                               />
                             </div>
                             <div>
-                              <label className="mb-1 block text-xs font-semibold text-slate-600">{inlineSpecies === 'canine' ? 'Activity / Sport' : 'Discipline'}</label>
+                              <label className="mb-1 block text-xs font-semibold text-slate-600">{getDisciplineLabel(inlineSpecies)}</label>
                               <input
                                 value={inlineHorseDiscipline}
                                 onChange={e => setInlineHorseDiscipline(e.target.value)}
                                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm placeholder:text-slate-400"
-                                placeholder={inlineSpecies === 'canine' ? 'Agility, sport…' : 'Barrel, dressage…'}
+                                placeholder={getDisciplinePlaceholder(inlineSpecies)}
                               />
                             </div>
                           </div>
@@ -1978,7 +2028,7 @@ export default function Home() {
                                     />
                                   ) : (
                                     <div className="flex h-full w-full items-center justify-center text-2xl">
-                                      {horse.species === 'canine' ? '🐕' : '🐴'}
+                                      {speciesEmoji(horse.species)}
                                     </div>
                                   )}
                                 </div>
@@ -2221,7 +2271,7 @@ export default function Home() {
                           }`}>
                             {isSelected && '✓'}
                           </span>
-                          <span className="text-base">{patient.species === 'canine' ? '🐕' : '🐴'}</span>
+                          <span className="text-base">{speciesEmoji(patient.species)}</span>
                           <span className="font-medium text-slate-800">{patient.name}</span>
                           {patient.breed && <span className="ml-auto text-xs text-slate-400">{patient.breed}</span>}
                         </button>
@@ -2397,11 +2447,15 @@ export default function Home() {
               <Field label="Species">
                 <select
                   value={addSpecies}
-                  onChange={(e) => setAddSpecies(e.target.value as 'equine' | 'canine')}
+                  onChange={(e) => setAddSpecies(e.target.value as SpeciesType)}
                   className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
                 >
                   <option value="equine">🐴 Equine (Horse)</option>
                   <option value="canine">🐕 Canine (Dog)</option>
+                  <option value="feline">🐱 Feline (Cat)</option>
+                  <option value="bovine">🐄 Bovine (Cow)</option>
+                  <option value="porcine">🐷 Porcine (Pig)</option>
+                  <option value="exotic">🦎 Exotic</option>
                 </select>
               </Field>
 
@@ -2410,7 +2464,7 @@ export default function Home() {
                   value={horseName}
                   onChange={(e) => setHorseName(e.target.value)}
                   className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
-                  placeholder={addSpecies === 'canine' ? 'Dog name' : 'Horse name'}
+                  placeholder={getNamePlaceholder(addSpecies)}
                   autoFocus
                 />
               </Field>
@@ -2425,12 +2479,12 @@ export default function Home() {
                   />
                 </Field>
 
-                <Field label={addSpecies === 'canine' ? 'Activity / Sport' : 'Discipline'}>
+                <Field label={getDisciplineLabel(addSpecies)}>
                   <input
                     value={horseDiscipline}
                     onChange={(e) => setHorseDiscipline(e.target.value)}
                     className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
-                    placeholder={addSpecies === 'canine' ? 'Agility, hunting, sport…' : 'Barrel, ranch, dressage…'}
+                    placeholder={getDisciplinePlaceholder(addSpecies)}
                   />
                 </Field>
               </div>

@@ -6,6 +6,8 @@ import { useParams } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
 import { getCachedHorseById, getCachedVisitsByHorse } from '../../../lib/offlineDb'
 
+type SpeciesType = 'equine' | 'canine' | 'feline' | 'bovine' | 'porcine' | 'exotic'
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type SpineFinding = { left: boolean; right: boolean }
@@ -96,6 +98,108 @@ const CANINE_SPINE_SECTIONS = [
   },
 ]
 
+// ── Feline spine sections & segments ──────────────────────────────────────
+const FELINE_SPINE_SECTIONS = [
+  {
+    key: 'cranial', label: 'Cranial / Cervical',
+    segments: [
+      { key: 'occiput', label: 'Occiput' },
+      { key: 'c1',      label: 'C1 (Atlas)' },
+      { key: 'c2',      label: 'C2 (Axis)' },
+      { key: 'c3',      label: 'C3' },
+      { key: 'c4',      label: 'C4' },
+      { key: 'c5',      label: 'C5' },
+      { key: 'c6',      label: 'C6' },
+      { key: 'c7',      label: 'C7' },
+    ],
+  },
+  {
+    key: 'thoracic', label: 'Thoracic',
+    segments: Array.from({ length: 13 }, (_, i) => ({ key: `t${i+1}`, label: `T${i+1}` })),
+  },
+  {
+    key: 'lumbar', label: 'Lumbar',
+    segments: Array.from({ length: 7 }, (_, i) => ({ key: `l${i+1}`, label: `L${i+1}` })),
+  },
+  {
+    key: 'sacral', label: 'Sacral / Pelvic',
+    segments: [
+      { key: 'sacrum',    label: 'Sacrum' },
+      { key: 'si_joint',  label: 'SI Joint' },
+      { key: 'coccygeal', label: 'Coccygeal' },
+    ],
+  },
+]
+
+// ── Bovine spine sections & segments ──────────────────────────────────────
+const BOVINE_SPINE_SECTIONS = [
+  {
+    key: 'cranial', label: 'Cranial / Cervical',
+    segments: [
+      { key: 'occiput', label: 'Occiput' },
+      { key: 'c1',      label: 'C1 (Atlas)' },
+      { key: 'c2',      label: 'C2 (Axis)' },
+      { key: 'c3',      label: 'C3' },
+      { key: 'c4',      label: 'C4' },
+      { key: 'c5',      label: 'C5' },
+      { key: 'c6',      label: 'C6' },
+      { key: 'c7',      label: 'C7' },
+    ],
+  },
+  {
+    key: 'thoracic', label: 'Thoracic',
+    segments: Array.from({ length: 13 }, (_, i) => ({ key: `t${i+1}`, label: `T${i+1}` })),
+  },
+  {
+    key: 'lumbar', label: 'Lumbar',
+    segments: Array.from({ length: 6 }, (_, i) => ({ key: `l${i+1}`, label: `L${i+1}` })),
+  },
+  {
+    key: 'sacral', label: 'Sacral / Pelvic',
+    segments: [
+      { key: 'sacrum',    label: 'Sacrum' },
+      { key: 'si_joint',  label: 'SI Joint' },
+      { key: 'coccygeal', label: 'Coccygeal' },
+    ],
+  },
+]
+
+// ── Porcine spine sections & segments ──────────────────────────────────────
+const PORCINE_SPINE_SECTIONS = [
+  {
+    key: 'cranial', label: 'Cranial / Cervical',
+    segments: [
+      { key: 'occiput', label: 'Occiput' },
+      { key: 'c1',      label: 'C1 (Atlas)' },
+      { key: 'c2',      label: 'C2 (Axis)' },
+      { key: 'c3',      label: 'C3' },
+      { key: 'c4',      label: 'C4' },
+      { key: 'c5',      label: 'C5' },
+      { key: 'c6',      label: 'C6' },
+      { key: 'c7',      label: 'C7' },
+    ],
+  },
+  {
+    key: 'thoracic', label: 'Thoracic',
+    segments: Array.from({ length: 15 }, (_, i) => ({ key: `t${i+1}`, label: `T${i+1}` })),
+  },
+  {
+    key: 'lumbar', label: 'Lumbar',
+    segments: Array.from({ length: 7 }, (_, i) => ({ key: `l${i+1}`, label: `L${i+1}` })),
+  },
+  {
+    key: 'sacral', label: 'Sacral / Pelvic',
+    segments: [
+      { key: 'sacrum',    label: 'Sacrum' },
+      { key: 'si_joint',  label: 'SI Joint' },
+      { key: 'coccygeal', label: 'Coccygeal' },
+    ],
+  },
+]
+
+// ── Exotic / Generic spine sections ──────────────────────────────────────
+const EXOTIC_SPINE_SECTIONS = CANINE_SPINE_SECTIONS // Use canine as generic template
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmtDate(iso: string | null) {
@@ -119,14 +223,25 @@ export default function ProgressPage() {
   const { id: horseId } = useParams<{ id: string }>()
 
   const [horseName, setHorseName] = useState('')
-  const [horseSpecies, setHorseSpecies] = useState<'equine' | 'canine'>('equine')
+  const [horseSpecies, setHorseSpecies] = useState<SpeciesType>('equine')
   const [assessments, setAssessments] = useState<SpineAssessment[]>([])
   const [visits, setVisits] = useState<Visit[]>([])
   const [loading, setLoading] = useState(true)
   const [noTable, setNoTable] = useState(false)
   const [activeView, setActiveView] = useState<'heatmap' | 'timeline' | 'visits'>('heatmap')
 
-  const SPINE_SECTIONS = horseSpecies === 'canine' ? CANINE_SPINE_SECTIONS : EQUINE_SPINE_SECTIONS
+  function getSpineSections(species: SpeciesType) {
+    switch (species) {
+      case 'canine': return CANINE_SPINE_SECTIONS
+      case 'feline': return FELINE_SPINE_SECTIONS
+      case 'bovine': return BOVINE_SPINE_SECTIONS
+      case 'porcine': return PORCINE_SPINE_SECTIONS
+      case 'exotic': return EXOTIC_SPINE_SECTIONS
+      default: return EQUINE_SPINE_SECTIONS
+    }
+  }
+
+  const SPINE_SECTIONS = getSpineSections(horseSpecies)
   const ALL_SEGMENTS = SPINE_SECTIONS.flatMap(s => s.segments)
 
   useEffect(() => {
@@ -136,7 +251,7 @@ export default function ProgressPage() {
       const { data: horse } = await supabase.from('horses').select('name, species').eq('id', horseId).single()
       if (horse) {
         setHorseName(horse.name)
-        setHorseSpecies((horse.species as 'equine' | 'canine') || 'equine')
+        setHorseSpecies((horse.species as SpeciesType) || 'equine')
       } else {
         // Offline fallback for horse metadata
         try {
