@@ -1,11 +1,23 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../lib/supabase'
 
 export default function BillingPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center" style={{ background: 'linear-gradient(135deg, #0a1628 0%, #0f2040 60%, #162d55 100%)' }}>
+        <div className="text-white/40 text-sm">Loading...</div>
+      </div>
+    }>
+      <BillingContent />
+    </Suspense>
+  )
+}
+
+function BillingContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const success = searchParams.get('success')
