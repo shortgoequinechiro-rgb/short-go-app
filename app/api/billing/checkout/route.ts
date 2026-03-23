@@ -1,17 +1,28 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getStripe } from '../.././../lib/stripe'
+import { getStripe } from '../../../lib/stripe'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+const VALID_PRICE_IDS = [
+  process.env.STRIPE_PRICE_MONTHLY,
+  process.env.STRIPE_PRICE_ANNUAL,
+].filter(Boolean)
+
 export async function POST(req: Request) {
   try {
-    const { token } = await req.json()
+    const { token, priceId } = await req.json()
     if (!token) {
       return NextResponse.json({ error: 'No token provided' }, { status: 401 })
+    }
+
+    // Validate price ID — must be one of our configured prices
+    const selectedPrice = priceId || process.env.STRIPE_PRICE_MONTHLY
+    if (!VALID_PRICE_IDS.includes(selectedPrice)) {
+      return NextResponse.json({ error: 'Invalid price selected' }, { status: 400 })
     }
 
     // Verify the JWT and get user identity
@@ -47,18 +58,19 @@ export async function POST(req: Request) {
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
-    // Create Stripe Checkout session with 14-day trial
+    // Create Stripe Checkout session — no trial here.
+    // The 7-day free trial is handled locally (no card required).
+    // Users only reach Checkout when they're ready to subscribe.
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
       payment_method_types: ['card'],
-      line_items: [{ price: process.env.STRIPE_PRICE_ID!, quantity: 1 }],
+      line_items: [{ price: selectedPrice, quantity: 1 }],
       subscription_data: {
-        trial_period_days: 14,
         metadata: { supabase_user_id: user.id },
       },
       allow_promotion_codes: true,
-      success_url: `${appUrl}/billing?success=true`,
+      success_url: `${appUrl}/dashboard?subscription=success`,
       cancel_url: `${appUrl}/billing`,
       metadata: { supabase_user_id: user.id },
     })

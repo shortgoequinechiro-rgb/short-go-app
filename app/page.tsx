@@ -492,13 +492,14 @@ export default function LandingPage() {
                 </div>
                 <p className="text-white/40 text-sm mb-6">Trusted by animal chiropractors</p>
 
-                <div className="mb-6">
-                  <span className="text-5xl md:text-6xl font-black text-white">$59</span>
+                <div className="mb-2">
+                  <span className="text-5xl md:text-6xl font-black text-white">$49</span>
                   <span className="text-white/40 text-lg">/month</span>
                 </div>
+                <p className="text-white/30 text-sm mb-4">or $499/year <span className="text-emerald-400 font-semibold">(save 15%)</span></p>
 
                 <p className="text-[#c9a227] text-sm font-medium mb-8">
-                  14-day free trial · No credit card required
+                  7-day free trial · No credit card required
                 </p>
 
                 <div className="space-y-3 text-left mb-8">

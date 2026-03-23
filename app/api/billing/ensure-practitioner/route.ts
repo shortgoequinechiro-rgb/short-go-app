@@ -30,9 +30,9 @@ export async function POST(req: Request) {
       return NextResponse.json(existing)
     }
 
-    // Create new practitioner record with 14-day free trial
+    // Create new practitioner record with 7-day free trial
     const trialEnd = new Date()
-    trialEnd.setDate(trialEnd.getDate() + 14)
+    trialEnd.setDate(trialEnd.getDate() + 7)
 
     const { data: newPractitioner, error: insertError } = await supabaseAdmin
       .from('practitioners')

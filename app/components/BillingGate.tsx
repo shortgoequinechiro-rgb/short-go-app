@@ -80,13 +80,23 @@ export default function BillingGate({ children }: { children: React.ReactNode })
 
         // 2. Billing check — block access if trial expired or subscription is not active
         const status = practitioner.subscription_status as string
+        const now = new Date()
+
         const trialEnd = practitioner.trial_ends_at
           ? new Date(practitioner.trial_ends_at)
           : null
-        const trialExpired = trialEnd ? trialEnd < new Date() : false
+        const trialExpired = trialEnd ? trialEnd < now : false
+
+        // Grace period: 7 days after cancel or payment failure before full lockout
+        const graceEnd = practitioner.grace_period_ends_at
+          ? new Date(practitioner.grace_period_ends_at)
+          : null
+        const inGracePeriod = graceEnd ? graceEnd > now : false
 
         const hasAccess =
-          status === 'active' || (status === 'trialing' && !trialExpired)
+          status === 'active' ||
+          (status === 'trialing' && !trialExpired) ||
+          ((status === 'canceled' || status === 'past_due') && inGracePeriod)
 
         if (!hasAccess) {
           router.push('/billing')
