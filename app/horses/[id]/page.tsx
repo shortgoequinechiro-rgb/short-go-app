@@ -148,7 +148,7 @@ export default function HorseDetailPage() {
   const [userId, setUserId] = useState('')
   const [practitionerName, setPractitionerName] = useState('')
   const [message, setMessage] = useState('')
-  const [activeTab, setActiveTab] = useState<'info' | 'visits' | 'photos' | 'records'>('info')
+  const [activeTab, setActiveTab] = useState<'info' | 'visits' | 'appointments' | 'photos' | 'records'>('info')
   const [pendingSpineId, setPendingSpineId] = useState<string | null>(null)
 
   const [owners, setOwners] = useState<Owner[]>([])
@@ -156,7 +156,8 @@ export default function HorseDetailPage() {
   const [ownerOtherHorses, setOwnerOtherHorses] = useState<Horse[]>([])
   const [selectedOwnerHorseId, setSelectedOwnerHorseId] = useState('')
   const [consentOnFile, setConsentOnFile] = useState<{ id: string; signed_at: string; signed_name: string; signature_data: string | null; horses_acknowledged: string | null; notes: string | null; form_version: string | null } | null | undefined>(undefined)
-  const [upcomingAppointments, setUpcomingAppointments] = useState<{ id: string; appointment_date: string; appointment_time: string | null; reason: string | null; status: string }[]>([])
+  const [upcomingAppointments, setUpcomingAppointments] = useState<{ id: string; appointment_date: string; appointment_time: string | null; reason: string | null; status: string; visit_id: string | null }[]>([])
+  const [pastAppointments, setPastAppointments] = useState<{ id: string; appointment_date: string; appointment_time: string | null; reason: string | null; status: string; visit_id: string | null }[]>([])
   type IntakeForm = { id: string; submitted_at: string; signed_name: string | null; animal_name: string; reason_for_care: string | null; health_problems: string | null; medications_supplements: string | null; previous_chiro_care: boolean | null; referral_source: string[] | null; archived: boolean | null }
   const [intakeForms, setIntakeForms] = useState<IntakeForm[]>([])
   const [showArchivedIntake, setShowArchivedIntake] = useState(false)
@@ -1580,23 +1581,33 @@ export default function HorseDetailPage() {
     loadIntakeForms()
   }, [horseId])
 
-  // Load upcoming appointments for this horse
+  // Load appointments for this horse (upcoming + past)
   useEffect(() => {
     if (!horseId) return
     async function loadAppts() {
       const today = new Date().toISOString().split('T')[0]
       try {
-        const { data } = await supabase
+        // Upcoming: today or later, not cancelled
+        const { data: upcoming } = await supabase
           .from('appointments')
-          .select('id, appointment_date, appointment_time, reason, status')
+          .select('id, appointment_date, appointment_time, reason, status, visit_id')
           .eq('horse_id', horseId)
           .gte('appointment_date', today)
           .neq('status', 'cancelled')
           .order('appointment_date', { ascending: true })
-          .limit(3)
-        setUpcomingAppointments(data || [])
+        setUpcomingAppointments(upcoming || [])
+
+        // Past: before today OR completed/cancelled
+        const { data: past } = await supabase
+          .from('appointments')
+          .select('id, appointment_date, appointment_time, reason, status, visit_id')
+          .eq('horse_id', horseId)
+          .lt('appointment_date', today)
+          .order('appointment_date', { ascending: false })
+        setPastAppointments(past || [])
       } catch {
         setUpcomingAppointments([])
+        setPastAppointments([])
       }
     }
     loadAppts()
@@ -1953,7 +1964,7 @@ export default function HorseDetailPage() {
 
         {/* Tab navigation */}
         <div className="mt-6 flex gap-1 rounded-2xl bg-[#edf2f7] p-1.5 shadow-sm">
-          {(['info', 'visits', 'photos', 'records'] as const).map((tab) => (
+          {(['info', 'visits', 'appointments', 'photos', 'records'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -1963,7 +1974,7 @@ export default function HorseDetailPage() {
                   : 'text-slate-600 hover:bg-white hover:shadow-sm'
               }`}
             >
-              {tab === 'info' ? 'Info' : tab === 'visits' ? 'Visits' : tab === 'photos' ? 'Photos' : 'Records'}
+              {tab === 'info' ? 'Info' : tab === 'visits' ? 'Visits' : tab === 'appointments' ? 'Appts' : tab === 'photos' ? 'Photos' : 'Records'}
             </button>
           ))}
         </div>
@@ -2334,49 +2345,6 @@ export default function HorseDetailPage() {
         {activeTab === 'visits' && (
         <div className="mt-6 space-y-6">
 
-            {/* ── Upcoming Appointments Banner ── */}
-            <div className="rounded-3xl border border-blue-100 bg-white px-6 py-4 shadow-sm">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-base font-semibold text-slate-900">Upcoming Appointments</span>
-                  {upcomingAppointments.length > 0 && (
-                    <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">{upcomingAppointments.length}</span>
-                  )}
-                </div>
-                <Link
-                  href={`/appointments?horseId=${horseId}`}
-                  className="shrink-0 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 transition"
-                >
-                  + Book
-                </Link>
-              </div>
-              {upcomingAppointments.length === 0 ? (
-                <p className="mt-2 text-sm text-slate-400">No upcoming appointments. Book one to get started.</p>
-              ) : (
-                <div className="mt-3 space-y-2">
-                  {upcomingAppointments.map(a => {
-                    const [y, m, d] = a.appointment_date.split('-').map(Number)
-                    const dateStr = new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-                    const timeStr = a.appointment_time ? (() => { const [h, min] = a.appointment_time!.split(':').map(Number); const ampm = h >= 12 ? 'PM' : 'AM'; return ` · ${h % 12 || 12}:${String(min).padStart(2, '0')} ${ampm}` })() : ''
-                    return (
-                      <div key={a.id} className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-2.5">
-                        <div>
-                          <span className="text-sm font-medium text-slate-800">{dateStr}{timeStr}</span>
-                          {a.reason && <span className="ml-2 text-xs text-slate-500">{a.reason}</span>}
-                        </div>
-                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${a.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
-                          {a.status.charAt(0).toUpperCase() + a.status.slice(1)}
-                        </span>
-                      </div>
-                    )
-                  })}
-                  <Link href={`/appointments?horseId=${horseId}`} className="block text-xs text-center text-slate-400 hover:text-slate-600 pt-1">
-                    View all appointments →
-                  </Link>
-                </div>
-              )}
-            </div>
-
             {(editingVisitId || pendingSpineId) && (
             <div className="rounded-3xl bg-white p-6 shadow-md">
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -2629,6 +2597,7 @@ export default function HorseDetailPage() {
                     return (
                       <div
                         key={visit.id}
+                        id={`visit-${visit.id}`}
                         className="rounded-2xl border border-slate-200 p-4"
                       >
                         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -2797,6 +2766,124 @@ export default function HorseDetailPage() {
                 )}
               </div>
             </div>
+        </div>
+        )}
+
+        {/* Appointments Tab */}
+        {activeTab === 'appointments' && (
+        <div className="mt-6 space-y-6">
+
+          {/* ── Upcoming Appointments ── */}
+          <div className="rounded-3xl bg-white p-6 shadow-md">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-semibold text-slate-900">Upcoming</h2>
+                {upcomingAppointments.length > 0 && (
+                  <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-700">{upcomingAppointments.length}</span>
+                )}
+              </div>
+              <Link
+                href={`/appointments?horseId=${horseId}`}
+                className="shrink-0 rounded-xl bg-[#0f2040] px-4 py-2 text-sm font-semibold text-white hover:bg-[#162d55] transition"
+              >
+                + Book
+              </Link>
+            </div>
+
+            {upcomingAppointments.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-8 text-center">
+                <p className="text-sm text-slate-400">No upcoming appointments</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100 rounded-2xl border border-slate-100 bg-slate-50/50">
+                {upcomingAppointments.map(a => {
+                  const [y, m, d] = a.appointment_date.split('-').map(Number)
+                  const dateStr = new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+                  const timeStr = a.appointment_time ? (() => { const [h, min] = a.appointment_time!.split(':').map(Number); const ampm = h >= 12 ? 'PM' : 'AM'; return `${h % 12 || 12}:${String(min).padStart(2, '0')} ${ampm}` })() : 'TBD'
+                  return (
+                    <div key={a.id} className="flex items-center gap-3 px-4 py-3">
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-bold text-slate-900 tabular-nums">{timeStr}</span>
+                        <span className="mx-2 text-slate-300">·</span>
+                        <span className="text-sm text-slate-600">{dateStr}</span>
+                        {a.reason && <span className="ml-2 text-xs text-slate-400">{a.reason}</span>}
+                      </div>
+                      <span className={`shrink-0 flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        a.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        <span className={`inline-block h-1.5 w-1.5 rounded-full ${a.status === 'confirmed' ? 'bg-emerald-400' : 'bg-blue-400'}`} />
+                        {a.status.charAt(0).toUpperCase() + a.status.slice(1)}
+                      </span>
+                      <button
+                        onClick={() => router.push(`/horses/${horseId}/spine?newVisit=true&species=${horse?.species || 'equine'}`)}
+                        className="shrink-0 rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#162d55] transition"
+                      >
+                        Start Visit
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* ── Past Appointments ── */}
+          <div className="rounded-3xl bg-white p-6 shadow-md">
+            <h2 className="text-xl font-semibold text-slate-900 mb-4">Past Appointments</h2>
+
+            {pastAppointments.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-8 text-center">
+                <p className="text-sm text-slate-400">No past appointments</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100 rounded-2xl border border-slate-100 bg-slate-50/50">
+                {pastAppointments.map(a => {
+                  const [y, m, d] = a.appointment_date.split('-').map(Number)
+                  const dateStr = new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+                  const timeStr = a.appointment_time ? (() => { const [h, min] = a.appointment_time!.split(':').map(Number); const ampm = h >= 12 ? 'PM' : 'AM'; return `${h % 12 || 12}:${String(min).padStart(2, '0')} ${ampm}` })() : ''
+                  return (
+                    <div key={a.id} className="flex items-center gap-3 px-4 py-3">
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium text-slate-700">{dateStr}</span>
+                        {timeStr && <span className="ml-2 text-xs text-slate-400">{timeStr}</span>}
+                        {a.reason && (
+                          <>
+                            <span className="mx-2 text-slate-300">·</span>
+                            <span className="text-xs text-slate-500">{a.reason}</span>
+                          </>
+                        )}
+                      </div>
+                      <span className={`shrink-0 flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        a.status === 'completed' ? 'bg-slate-100 text-slate-500'
+                        : a.status === 'cancelled' ? 'bg-red-50 text-red-500'
+                        : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {a.status.charAt(0).toUpperCase() + a.status.slice(1)}
+                      </span>
+                      {a.visit_id ? (
+                        <button
+                          onClick={() => {
+                            setActiveTab('visits')
+                            // Small delay to let tab switch render, then scroll to the visit
+                            setTimeout(() => {
+                              const el = document.getElementById(`visit-${a.visit_id}`)
+                              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                            }, 200)
+                          }}
+                          className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition"
+                        >
+                          View Notes
+                        </button>
+                      ) : (
+                        <span className="shrink-0 text-xs text-slate-300">No notes</span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
         </div>
         )}
 
