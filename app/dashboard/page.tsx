@@ -1364,119 +1364,110 @@ export default function Home() {
                 </button>
               </div>
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {todayAppointments.map((appt) => {
-                  const statusColors: Record<string, string> = {
-                    scheduled: 'bg-blue-100 text-blue-700',
-                    confirmed: 'bg-emerald-100 text-emerald-700',
-                    completed: 'bg-slate-100 text-slate-500',
-                  }
-                  const fmtTime = (t: string | null) => {
-                    if (!t) return 'Time TBD'
-                    const [h, min] = t.split(':').map(Number)
-                    const ampm = h >= 12 ? 'PM' : 'AM'
-                    return `${h % 12 || 12}:${String(min).padStart(2, '0')} ${ampm}`
-                  }
+              <div>
+                {/* Column headers — hidden on small screens */}
+                <div className="hidden sm:grid sm:grid-cols-[5rem_1fr_7rem_6rem_5rem] items-center gap-3 px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  <span>Time</span>
+                  <span>Owner</span>
+                  <span>Details</span>
+                  <span>Status</span>
+                  <span></span>
+                </div>
 
-                  // Owner name — direct join takes priority over horse→owner
-                  const ownerName =
-                    appt.owners?.full_name ||
-                    appt.horses?.owners?.full_name ||
-                    '—'
-                  const ownerPhone =
-                    appt.owners?.phone ||
-                    appt.horses?.owners?.phone ||
-                    null
+                <div className="divide-y divide-slate-100 rounded-2xl border border-slate-100 bg-slate-50/50">
+                  {todayAppointments.map((appt) => {
+                    const statusDot: Record<string, string> = {
+                      scheduled: 'bg-blue-400',
+                      confirmed: 'bg-emerald-400',
+                      completed: 'bg-slate-300',
+                      cancelled: 'bg-red-300',
+                    }
+                    const statusLabel: Record<string, string> = {
+                      scheduled: 'Scheduled',
+                      confirmed: 'Confirmed',
+                      completed: 'Completed',
+                      cancelled: 'Cancelled',
+                    }
+                    const fmtTime = (t: string | null) => {
+                      if (!t) return 'TBD'
+                      const [h, min] = t.split(':').map(Number)
+                      const ampm = h >= 12 ? 'PM' : 'AM'
+                      return `${h % 12 || 12}:${String(min).padStart(2, '0')} ${ampm}`
+                    }
 
-                  // Animal count from duration (15 min each)
-                  const numAnimals = appt.duration_minutes
-                    ? Math.max(0, Math.round(appt.duration_minutes / 15))
-                    : 1
+                    const ownerName =
+                      appt.owners?.full_name ||
+                      appt.horses?.owners?.full_name ||
+                      '—'
 
-                  // Link to the owner's page if we have an owner_id, otherwise
-                  // fall back to the horse record or the appointments page.
-                  const cardHref =
-                    appt.owner_id
-                      ? `/owners/${appt.owner_id}`
-                      : appt.horses?.id
-                      ? `/horses/${appt.horses.id}`
-                      : '/appointments'
+                    const numAnimals = appt.duration_minutes
+                      ? Math.max(0, Math.round(appt.duration_minutes / 15))
+                      : 1
 
-                  return (
-                    <Link
-                      key={appt.id}
-                      href={cardHref}
-                      className={`group relative flex flex-col rounded-2xl border-l-4 bg-slate-50 p-4 transition hover:bg-white hover:shadow-md ${
-                        appt.status === 'confirmed' ? 'border-emerald-400' :
-                        appt.status === 'completed' ? 'border-slate-300' :
-                        'border-blue-400'
-                      }`}
-                    >
-                      {/* Time + status */}
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-lg font-bold text-slate-900">{fmtTime(appt.appointment_time)}</span>
-                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${statusColors[appt.status] || 'bg-slate-100 text-slate-500'}`}>
-                          {appt.status}
-                        </span>
-                      </div>
+                    const detailText = numAnimals > 0
+                      ? `${numAnimals} animal${numAnimals > 1 ? 's' : ''} · ${appt.duration_minutes || 15}m`
+                      : `Consult · ${appt.duration_minutes || 30}m`
 
-                      {/* Owner name — primary identity */}
-                      <p className="mt-2 font-semibold text-slate-900 leading-tight">{ownerName}</p>
+                    const rowHref =
+                      appt.owner_id
+                        ? `/owners/${appt.owner_id}`
+                        : appt.horses?.id
+                        ? `/horses/${appt.horses.id}`
+                        : '/appointments'
 
-                      {/* Animal count */}
-                      <p className="mt-0.5 text-sm text-slate-500">
-                        {numAnimals > 0
-                          ? `${numAnimals} animal${numAnimals > 1 ? 's' : ''}`
-                          : 'Consultation'}
-                        {appt.duration_minutes ? ` · ${appt.duration_minutes} min` : ''}
-                      </p>
+                    return (
+                      <Link
+                        key={appt.id}
+                        href={rowHref}
+                        className="group flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-3 transition hover:bg-white sm:grid sm:grid-cols-[5rem_1fr_7rem_6rem_5rem]"
+                      >
+                        {/* Time */}
+                        <span className="text-sm font-bold text-slate-900 tabular-nums">{fmtTime(appt.appointment_time)}</span>
 
-                      {/* Phone */}
-                      {ownerPhone && (
-                        <p className="text-xs text-slate-400">{ownerPhone}</p>
-                      )}
-
-                      {/* Reason + location tags */}
-                      {(appt.reason || appt.location) && (
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          {appt.reason && (
-                            <span className="rounded-full bg-white border border-slate-200 px-2.5 py-0.5 text-xs text-slate-600">{appt.reason}</span>
-                          )}
+                        {/* Owner + optional location */}
+                        <span className="min-w-0 truncate">
+                          <span className="text-sm font-semibold text-slate-800">{ownerName}</span>
                           {appt.location && (
-                            <span className="rounded-full bg-white border border-slate-200 px-2.5 py-0.5 text-xs text-slate-600">📍 {appt.location}</span>
+                            <span className="ml-2 text-xs text-slate-400">📍 {appt.location}</span>
                           )}
-                        </div>
-                      )}
+                        </span>
 
-                      {/* Start Visit button */}
-                      {appt.status !== 'completed' && appt.horses?.id && (
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            router.push(`/horses/${appt.horses!.id}/spine?newVisit=true&species=${appt.horses!.species || 'equine'}`)
-                          }}
-                          className="mt-3 w-full rounded-xl bg-[#0f2040] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#162d55]"
-                        >
-                          Start Visit
-                        </button>
-                      )}
+                        {/* Details */}
+                        <span className="text-xs text-slate-500">{detailText}</span>
 
-                      {/* "View" hint on hover */}
-                      <span className="mt-2 text-xs font-medium text-slate-400 opacity-0 transition-opacity group-hover:opacity-100">
-                        {appt.owner_id ? 'View owner & animals →' : 'View record →'}
-                      </span>
-                    </Link>
-                  )
-                })}
+                        {/* Status */}
+                        <span className="flex items-center gap-1.5">
+                          <span className={`inline-block h-2 w-2 rounded-full ${statusDot[appt.status] || 'bg-slate-300'}`} />
+                          <span className="text-xs font-medium text-slate-600">{statusLabel[appt.status] || appt.status}</span>
+                        </span>
 
-                {/* Add another appointment */}
+                        {/* Start Visit (if applicable) */}
+                        <span className="hidden sm:block">
+                          {appt.status !== 'completed' && appt.horses?.id && (
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                router.push(`/horses/${appt.horses!.id}/spine?newVisit=true&species=${appt.horses!.species || 'equine'}`)
+                              }}
+                              className="rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#162d55]"
+                            >
+                              Start
+                            </button>
+                          )}
+                        </span>
+                      </Link>
+                    )
+                  })}
+                </div>
+
+                {/* Book Appointment row */}
                 <button
                   onClick={openBookModal}
-                  className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-4 text-slate-400 transition hover:border-slate-400 hover:bg-slate-50 hover:text-slate-600"
+                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200 py-2.5 text-sm font-medium text-slate-400 transition hover:border-slate-400 hover:text-slate-600"
                 >
-                  <span className="text-2xl">+</span>
-                  <span className="mt-1 text-sm font-medium">Book Appointment</span>
+                  <span>+</span>
+                  <span>Book Appointment</span>
                 </button>
               </div>
             )}
