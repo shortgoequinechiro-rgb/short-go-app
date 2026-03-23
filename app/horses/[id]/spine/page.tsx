@@ -5,6 +5,11 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../../lib/supabase'
 import { getCachedHorseById, getCachedVisitsByHorse, offlineDb } from '../../../lib/offlineDb'
+import {
+  SUBJECTIVE_CHIPS, OBJECTIVE_CHIPS, ASSESSMENT_CHIPS, PLAN_CHIPS,
+  buildSubjectiveSentence, buildObjectiveSentence, buildAssessmentSentence, buildPlanSentence,
+  QuickAddChipsSection,
+} from '../../../components/QuickAddChips'
 
 // ── Equine spine sections & segments ──────────────────────────────────────
 const EQUINE_SPINE_SECTIONS = [
@@ -305,6 +310,66 @@ function SpineVisitInner() {
   const [generatingSoap, setGeneratingSoap] = useState(false)
   const [autoEmailAfterSave, setAutoEmailAfterSave] = useState(false)
   const [message, setMessage] = useState('')
+
+  // ── Quick Add chip selections ──
+  const [subjectiveChips, setSubjectiveChips] = useState<Set<string>>(new Set())
+  const [objectiveChips, setObjectiveChips] = useState<Set<string>>(new Set())
+  const [assessmentChips, setAssessmentChips] = useState<Set<string>>(new Set())
+  const [planChips, setPlanChips] = useState<Set<string>>(new Set())
+
+  // ── Collapsible spine sections ──
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
+
+  function toggleChip(setter: React.Dispatch<React.SetStateAction<Set<string>>>, chipId: string) {
+    setter(prev => {
+      const next = new Set(prev)
+      if (next.has(chipId)) next.delete(chipId)
+      else next.add(chipId)
+      return next
+    })
+  }
+
+  function toggleSpineSection(sectionKey: string) {
+    setCollapsedSections(prev => {
+      const next = new Set(prev)
+      if (next.has(sectionKey)) next.delete(sectionKey)
+      else next.add(sectionKey)
+      return next
+    })
+  }
+
+  // Build spine region summary for sentence builder (e.g. "cervical, thoracic, and pelvic regions")
+  function getSpineRegionSummary(): string {
+    const regionMap: Record<string, string> = {}
+    for (const section of SPINE_SECTIONS) {
+      for (const seg of section.segments) {
+        const f = findings[seg.key]
+        if (f?.left || f?.right) {
+          regionMap[section.key] = section.label.split('/')[0].trim().toLowerCase()
+        }
+      }
+    }
+    const regions = Object.values(regionMap)
+    if (regions.length === 0) return ''
+    if (regions.length === 1) return `${regions[0]} region`
+    if (regions.length === 2) return `${regions[0]} and ${regions[1]} regions`
+    return regions.slice(0, -1).join(', ') + ', and ' + regions[regions.length - 1] + ' regions'
+  }
+
+  // Generate all SOAP fields from chip selections (rule-based, no AI)
+  function generateFromSelections() {
+    const spineRegions = getSpineRegionSummary()
+    const sub = buildSubjectiveSentence(subjectiveChips)
+    const obj = buildObjectiveSentence(objectiveChips, spineRegions)
+    const asx = buildAssessmentSentence(assessmentChips)
+    const pln = buildPlanSentence(planChips)
+
+    if (sub) setSubjective(sub)
+    if (obj) setObjective(obj)
+    if (asx) setAssessment(asx)
+    if (pln) setPlan(pln)
+    setMessage('SOAP fields populated from selections.')
+  }
 
   // ── Build quick notes summary from findings ──
   const buildQuickNotesFromFindings = useCallback((f: Findings) => {
@@ -887,6 +952,15 @@ function SpineVisitInner() {
                       className="min-h-28 w-full rounded-xl border border-slate-300 px-4 py-3"
                       placeholder="What the owner reports — history, complaints, concerns"
                     />
+                    <QuickAddChipsSection
+                      categories={SUBJECTIVE_CHIPS}
+                      selectedIds={subjectiveChips}
+                      onToggle={(id) => toggleChip(setSubjectiveChips, id)}
+                      onClearSection={() => setSubjectiveChips(new Set())}
+                      generatedText={buildSubjectiveSentence(subjectiveChips)}
+                      onFill={() => setSubjective(buildSubjectiveSentence(subjectiveChips))}
+                      sectionLabel="Subjective"
+                    />
                   </Field>
                 </div>
               </div>
@@ -919,68 +993,125 @@ function SpineVisitInner() {
             </div>
           </div>
 
-          {/* Flagged summary */}
+          {/* Flagged summary with segment labels */}
           {flaggedCount > 0 && (
-            <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-3">
-              <span className="text-sm font-semibold text-amber-700">
-                {flaggedCount} segment{flaggedCount !== 1 ? 's' : ''} flagged
-              </span>
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-3">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-semibold text-amber-700">
+                  {flaggedCount} segment{flaggedCount !== 1 ? 's' : ''} flagged
+                </span>
+              </div>
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {Object.entries(findings)
+                  .filter(([, f]) => f.left || f.right)
+                  .map(([key, f]) => {
+                    const sides: string[] = []
+                    if (f.left) sides.push('L')
+                    if (f.right) sides.push('R')
+                    return (
+                      <span
+                        key={key}
+                        className="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800"
+                      >
+                        {key.toUpperCase().replace('_', ' ')} ({sides.join('/')})
+                      </span>
+                    )
+                  })}
+              </div>
             </div>
           )}
 
-          {/* ── Spine Sections ── */}
-          {SPINE_SECTIONS.map(section => (
-            <div key={section.key} className="overflow-hidden rounded-3xl bg-white shadow-sm">
-              <div className="flex items-center justify-between bg-slate-900 px-5 py-3">
-                <h2 className="text-sm font-semibold text-white">{section.label}</h2>
-                <div className="flex items-center gap-6 text-xs font-bold uppercase tracking-wide text-slate-400">
-                  <span>L</span>
-                  <span>R</span>
-                </div>
-              </div>
+          {/* ── Spine Sections (collapsible) ── */}
+          {SPINE_SECTIONS.map(section => {
+            const isCollapsed = collapsedSections.has(section.key)
+            const sectionFlagged = section.segments.filter(seg => {
+              const f = findings[seg.key]
+              return f?.left || f?.right
+            })
+            const sectionFlaggedLabels = sectionFlagged.map(seg => {
+              const f = findings[seg.key]
+              const sides: string[] = []
+              if (f?.left) sides.push('L')
+              if (f?.right) sides.push('R')
+              return `${seg.label} (${sides.join('/')})`
+            })
 
-              <div className="divide-y divide-slate-100">
-                {section.segments.map((seg, idx) => {
-                  const f = findings[seg.key]
-                  const hasIssue = f?.left || f?.right
-
-                  return (
-                    <div
-                      key={seg.key}
-                      className={[
-                        'flex items-center justify-between px-5 py-3 transition',
-                        idx % 2 === 1 ? 'bg-slate-50' : 'bg-white',
-                        hasIssue ? 'border-l-[3px] border-amber-400' : '',
-                      ].join(' ')}
-                    >
-                      <span className={`text-sm ${hasIssue ? 'font-semibold text-slate-900' : 'text-slate-600'}`}>
-                        {seg.label}
+            return (
+              <div key={section.key} className="overflow-hidden rounded-3xl bg-white shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => toggleSpineSection(section.key)}
+                  className="flex w-full items-center justify-between bg-slate-900 px-5 py-3 text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-400">{isCollapsed ? '▶' : '▼'}</span>
+                    <h2 className="text-sm font-semibold text-white">{section.label}</h2>
+                    {sectionFlagged.length > 0 && (
+                      <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-slate-900">
+                        {sectionFlagged.length}
                       </span>
-
-                      <div className="flex items-center gap-6">
-                        <label className="flex cursor-pointer items-center">
-                          <input
-                            type="checkbox"
-                            checked={f?.left ?? false}
-                            onChange={() => toggle(seg.key, 'left')}
-                            className="h-5 w-5 cursor-pointer rounded border-slate-300 accent-slate-900"
-                          />
-                        </label>
-                        <label className="flex cursor-pointer items-center">
-                          <input
-                            type="checkbox"
-                            checked={f?.right ?? false}
-                            onChange={() => toggle(seg.key, 'right')}
-                            className="h-5 w-5 cursor-pointer rounded border-slate-300 accent-slate-900"
-                          />
-                        </label>
-                      </div>
+                    )}
+                  </div>
+                  {!isCollapsed && (
+                    <div className="flex items-center gap-6 text-xs font-bold uppercase tracking-wide text-slate-400">
+                      <span>L</span>
+                      <span>R</span>
                     </div>
-                  )
-                })}
+                  )}
+                </button>
+
+                {/* Collapsed summary of flagged segments */}
+                {isCollapsed && sectionFlaggedLabels.length > 0 && (
+                  <div className="bg-amber-50 px-5 py-2 text-xs text-amber-700 font-medium">
+                    Flagged: {sectionFlaggedLabels.join(', ')}
+                  </div>
+                )}
+
+                {!isCollapsed && (
+                  <div className="divide-y divide-slate-100">
+                    {section.segments.map((seg, idx) => {
+                      const f = findings[seg.key]
+                      const hasIssue = f?.left || f?.right
+
+                      return (
+                        <div
+                          key={seg.key}
+                          className={[
+                            'flex items-center justify-between px-5 py-3 transition',
+                            idx % 2 === 1 ? 'bg-slate-50' : 'bg-white',
+                            hasIssue ? 'border-l-[3px] border-amber-400' : '',
+                          ].join(' ')}
+                        >
+                          <span className={`text-sm ${hasIssue ? 'font-semibold text-slate-900' : 'text-slate-600'}`}>
+                            {seg.label}
+                          </span>
+
+                          <div className="flex items-center gap-6">
+                            <label className="flex cursor-pointer items-center">
+                              <input
+                                type="checkbox"
+                                checked={f?.left ?? false}
+                                onChange={() => toggle(seg.key, 'left')}
+                                className="h-5 w-5 cursor-pointer rounded border-slate-300 accent-slate-900"
+                              />
+                            </label>
+                            <label className="flex cursor-pointer items-center">
+                              <input
+                                type="checkbox"
+                                checked={f?.right ?? false}
+                                onChange={() => toggle(seg.key, 'right')}
+                                className="h-5 w-5 cursor-pointer rounded border-slate-300 accent-slate-900"
+                              />
+                            </label>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            )
+          })}
 
           {/* Spine clinical notes */}
           <div className="rounded-3xl bg-white p-5 shadow-sm">
@@ -1011,6 +1142,15 @@ function SpineVisitInner() {
                       className="min-h-28 w-full rounded-xl border border-slate-300 px-4 py-3"
                       placeholder="Observed findings, palpation results"
                     />
+                    <QuickAddChipsSection
+                      categories={OBJECTIVE_CHIPS}
+                      selectedIds={objectiveChips}
+                      onToggle={(id) => toggleChip(setObjectiveChips, id)}
+                      onClearSection={() => setObjectiveChips(new Set())}
+                      generatedText={buildObjectiveSentence(objectiveChips, getSpineRegionSummary())}
+                      onFill={() => setObjective(buildObjectiveSentence(objectiveChips, getSpineRegionSummary()))}
+                      sectionLabel="Objective"
+                    />
                   </Field>
                 </div>
 
@@ -1023,6 +1163,15 @@ function SpineVisitInner() {
                       className="min-h-28 w-full rounded-xl border border-slate-300 px-4 py-3"
                       placeholder="Clinical impression"
                     />
+                    <QuickAddChipsSection
+                      categories={ASSESSMENT_CHIPS}
+                      selectedIds={assessmentChips}
+                      onToggle={(id) => toggleChip(setAssessmentChips, id)}
+                      onClearSection={() => setAssessmentChips(new Set())}
+                      generatedText={buildAssessmentSentence(assessmentChips)}
+                      onFill={() => setAssessment(buildAssessmentSentence(assessmentChips))}
+                      sectionLabel="Assessment"
+                    />
                   </Field>
                 </div>
 
@@ -1034,6 +1183,15 @@ function SpineVisitInner() {
                       onChange={(e) => setPlan(e.target.value)}
                       className="min-h-28 w-full rounded-xl border border-slate-300 px-4 py-3"
                       placeholder="Treatment plan / next steps"
+                    />
+                    <QuickAddChipsSection
+                      categories={PLAN_CHIPS}
+                      selectedIds={planChips}
+                      onToggle={(id) => toggleChip(setPlanChips, id)}
+                      onClearSection={() => setPlanChips(new Set())}
+                      generatedText={buildPlanSentence(planChips)}
+                      onFill={() => setPlan(buildPlanSentence(planChips))}
+                      sectionLabel="Plan"
                     />
                   </Field>
                 </div>
@@ -1090,7 +1248,18 @@ function SpineVisitInner() {
                     />
                   </Field>
 
-                  <div className="mt-3 flex items-center gap-2">
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {/* Generate from chip selections (rule-based) */}
+                    {(subjectiveChips.size > 0 || objectiveChips.size > 0 || assessmentChips.size > 0 || planChips.size > 0) && (
+                      <button
+                        type="button"
+                        onClick={generateFromSelections}
+                        className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700 transition shadow-sm"
+                      >
+                        Generate SOAP from Selections
+                      </button>
+                    )}
+                    {/* Generate with AI (from quick notes) */}
                     <button
                       onClick={generateSoap}
                       disabled={generatingSoap}
