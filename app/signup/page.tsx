@@ -177,7 +177,7 @@ export default function SignupPage() {
           <div className="mb-5 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1">
             <span className="text-emerald-500 text-xs font-bold">✓</span>
             <span className="text-xs font-semibold text-emerald-700">
-              14-day free trial · No credit card required
+              7-day free trial · No credit card required
             </span>
           </div>
 
@@ -317,7 +317,7 @@ export default function SignupPage() {
           </p>
 
           <p className="mt-4 text-center text-xs text-slate-400 leading-relaxed">
-            After your 14-day trial, plans start at $59/month.
+            After your 7-day trial, plans start at $49/month.
           </p>
         </div>
 

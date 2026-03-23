@@ -387,13 +387,16 @@ function BillingTab({ practitioner }: { practitioner: Practitioner }) {
   const hasStripeCustomer = Boolean(practitioner.stripe_customer_id)
   const needsSubscription = !practitioner || trialExpired || status === 'canceled' || status === 'incomplete' || status === 'past_due'
 
-  async function handleSubscribe() {
+  async function handleSubscribe(plan: 'monthly' | 'annual' = 'monthly') {
     setActionLoading(true); setError('')
     const { data: { session } } = await supabase.auth.getSession()
+    const priceId = plan === 'annual'
+      ? process.env.NEXT_PUBLIC_STRIPE_PRICE_ANNUAL
+      : process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY
     const res = await fetch('/api/billing/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: session?.access_token }),
+      body: JSON.stringify({ token: session?.access_token, priceId }),
     })
     const data = await res.json()
     if (data.url) { window.location.href = data.url }
@@ -426,7 +429,7 @@ function BillingTab({ practitioner }: { practitioner: Practitioner }) {
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-blue-400 mb-1">Current Plan</p>
             <p className="text-xl font-bold text-white tracking-wide">STRIDE Pro</p>
-            <p className="text-sm text-blue-300 mt-0.5">$59 / month</p>
+            <p className="text-sm text-blue-300 mt-0.5">$49/month or $499/year</p>
           </div>
           <StatusBadge status={status} />
         </div>
@@ -436,7 +439,7 @@ function BillingTab({ practitioner }: { practitioner: Practitioner }) {
           <div className="rounded-xl bg-blue-500/10 border border-blue-500/30 px-4 py-3 mb-4">
             <p className="text-sm text-blue-200">
               <span className="font-semibold">{daysLeft} day{daysLeft !== 1 ? 's' : ''} left</span> in your free trial.
-              Add a payment method before it ends to keep access.
+              Choose a plan before it ends to keep access.
             </p>
           </div>
         )}
@@ -467,13 +470,22 @@ function BillingTab({ practitioner }: { practitioner: Practitioner }) {
 
         <div className="space-y-2">
           {needsSubscription ? (
-            <button
-              onClick={handleSubscribe}
-              disabled={actionLoading}
-              className="w-full rounded-xl bg-[#c9a227] py-3 text-sm font-semibold text-[#0f2040] transition hover:bg-[#b89020] disabled:opacity-50"
-            >
-              {actionLoading ? 'Redirecting to checkout…' : status === 'canceled' ? 'Re-subscribe — $59/month' : 'Start Free Trial — $59/month after'}
-            </button>
+            <>
+              <button
+                onClick={() => handleSubscribe('monthly')}
+                disabled={actionLoading}
+                className="w-full rounded-xl bg-[#c9a227] py-3 text-sm font-semibold text-[#0f2040] transition hover:bg-[#b89020] disabled:opacity-50"
+              >
+                {actionLoading ? 'Redirecting to checkout…' : 'Subscribe — $49/month'}
+              </button>
+              <button
+                onClick={() => handleSubscribe('annual')}
+                disabled={actionLoading}
+                className="w-full rounded-xl border border-[#c9a227] py-3 text-sm font-semibold text-[#c9a227] transition hover:bg-[#c9a227]/10 disabled:opacity-50"
+              >
+                {actionLoading ? 'Redirecting…' : 'Subscribe — $499/year (save 15%)'}
+              </button>
+            </>
           ) : (
             hasStripeCustomer && (
               <button
@@ -486,13 +498,22 @@ function BillingTab({ practitioner }: { practitioner: Practitioner }) {
             )
           )}
           {status === 'trialing' && !trialExpired && (
-            <button
-              onClick={handleSubscribe}
-              disabled={actionLoading}
-              className="w-full rounded-xl border border-white/20 py-2.5 text-sm font-medium text-white transition hover:bg-white/10 disabled:opacity-50"
-            >
-              {actionLoading ? 'Redirecting…' : 'Add Payment Method Now'}
-            </button>
+            <>
+              <button
+                onClick={() => handleSubscribe('monthly')}
+                disabled={actionLoading}
+                className="w-full rounded-xl border border-white/20 py-2.5 text-sm font-medium text-white transition hover:bg-white/10 disabled:opacity-50"
+              >
+                {actionLoading ? 'Redirecting…' : 'Add Payment — $49/month'}
+              </button>
+              <button
+                onClick={() => handleSubscribe('annual')}
+                disabled={actionLoading}
+                className="w-full rounded-xl border border-white/20 py-2.5 text-sm font-medium text-white transition hover:bg-white/10 disabled:opacity-50"
+              >
+                {actionLoading ? 'Redirecting…' : 'Add Payment — $499/year (save 15%)'}
+              </button>
+            </>
           )}
         </div>
 

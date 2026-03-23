@@ -8,8 +8,8 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// Required: read raw body for Stripe signature verification
-export const config = { api: { bodyParser: false } }
+// In App Router, the body is NOT auto-parsed — req.text() returns the raw body.
+// No config export needed (that's a Pages Router pattern).
 
 /** Look up a practitioner row by their Stripe customer ID */
 async function getPractitionerByCustomer(customerId: string): Promise<string | null> {
@@ -103,11 +103,16 @@ export async function POST(req: Request) {
         const userId = await getPractitionerByCustomer(sub.customer as string)
         if (!userId) break
 
+        // 7-day grace period before full lockout
+        const gracePeriodEnd = new Date()
+        gracePeriodEnd.setDate(gracePeriodEnd.getDate() + 7)
+
         await supabaseAdmin
           .from('practitioners')
           .update({
             subscription_status: 'canceled',
             subscription_id: null,
+            grace_period_ends_at: gracePeriodEnd.toISOString(),
             updated_at: new Date().toISOString(),
           })
           .eq('id', userId)
@@ -120,10 +125,15 @@ export async function POST(req: Request) {
         const userId = await getPractitionerByCustomer(invoice.customer as string)
         if (!userId) break
 
+        // 7-day grace period before full lockout
+        const gracePeriodEnd = new Date()
+        gracePeriodEnd.setDate(gracePeriodEnd.getDate() + 7)
+
         await supabaseAdmin
           .from('practitioners')
           .update({
             subscription_status: 'past_due',
+            grace_period_ends_at: gracePeriodEnd.toISOString(),
             updated_at: new Date().toISOString(),
           })
           .eq('id', userId)
@@ -143,6 +153,7 @@ export async function POST(req: Request) {
           .from('practitioners')
           .update({
             subscription_status: 'active',
+            grace_period_ends_at: null,
             updated_at: new Date().toISOString(),
           })
           .eq('id', userId)
