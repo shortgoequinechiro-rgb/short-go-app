@@ -148,17 +148,14 @@ export default function HorseDetailPage() {
   const [userId, setUserId] = useState('')
   const [practitionerName, setPractitionerName] = useState('')
   const [message, setMessage] = useState('')
-  const [activeTab, setActiveTab] = useState<'info' | 'visits' | 'appointments' | 'photos' | 'records'>('info')
+  const [activeTab, setActiveTab] = useState<'info' | 'visits' | 'photos' | 'records'>('info')
   const [pendingSpineId, setPendingSpineId] = useState<string | null>(null)
-  const [pendingAppointmentId, setPendingAppointmentId] = useState<string | null>(null)
 
   const [owners, setOwners] = useState<Owner[]>([])
   const [horse, setHorse] = useState<Horse | null>(null)
   const [ownerOtherHorses, setOwnerOtherHorses] = useState<Horse[]>([])
   const [selectedOwnerHorseId, setSelectedOwnerHorseId] = useState('')
   const [consentOnFile, setConsentOnFile] = useState<{ id: string; signed_at: string; signed_name: string; signature_data: string | null; horses_acknowledged: string | null; notes: string | null; form_version: string | null } | null | undefined>(undefined)
-  const [upcomingAppointments, setUpcomingAppointments] = useState<{ id: string; appointment_date: string; appointment_time: string | null; reason: string | null; status: string; visit_id: string | null }[]>([])
-  const [pastAppointments, setPastAppointments] = useState<{ id: string; appointment_date: string; appointment_time: string | null; reason: string | null; status: string; visit_id: string | null; visits: { subjective: string | null; objective: string | null; assessment: string | null; plan: string | null; treated_areas: string | null; recommendations: string | null; follow_up: string | null; reason_for_visit: string | null } | null }[]>([])
   type IntakeForm = { id: string; submitted_at: string; signed_name: string | null; animal_name: string; reason_for_care: string | null; health_problems: string | null; medications_supplements: string | null; previous_chiro_care: boolean | null; referral_source: string[] | null; archived: boolean | null }
   const [intakeForms, setIntakeForms] = useState<IntakeForm[]>([])
   const [showArchivedIntake, setShowArchivedIntake] = useState(false)
@@ -1006,16 +1003,6 @@ export default function HorseDetailPage() {
       setPendingSpineId(null)
     }
 
-    // Link appointment to the saved visit and mark it completed
-    if (pendingAppointmentId && savedVisitId) {
-      await supabase
-        .from('appointments')
-        .update({ visit_id: savedVisitId, status: 'completed' })
-        .eq('id', pendingAppointmentId)
-      setPendingAppointmentId(null)
-      // Refresh appointments so the Appointments tab shows updated data
-      await loadAppointments()
-    }
 
     if (autoEmailAfterSave && savedVisitId) {
       try {
@@ -1505,11 +1492,8 @@ export default function HorseDetailPage() {
   // ── Handle ?tab= URL param (e.g. after saving from spine+visit page) ──
   useEffect(() => {
     const tabParam = searchParams.get('tab')
-    if (tabParam && ['info', 'visits', 'appointments', 'photos', 'records'].includes(tabParam)) {
+    if (tabParam && ['info', 'visits', 'photos', 'records'].includes(tabParam)) {
       setActiveTab(tabParam as typeof activeTab)
-      // Reload appointments data when redirected from visit save
-      if (tabParam === 'appointments') loadAppointments()
-      // Clear the URL param
       window.history.replaceState({}, '', `/horses/${horseId}`)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1518,7 +1502,6 @@ export default function HorseDetailPage() {
   // ── Detect redirect from spine assessment (legacy edit flow) ──
   useEffect(() => {
     const fromSpineId = searchParams.get('fromSpine')
-    const apptId = searchParams.get('appointmentId')
     if (!fromSpineId || checkingAuth) return
 
     async function prefillFromSpine() {
@@ -1556,7 +1539,6 @@ export default function HorseDetailPage() {
       setObjective(objectiveSummary)
       if (spineData.notes) setQuickNotes(spineData.notes)
       setPendingSpineId(fromSpineId)
-      if (apptId) setPendingAppointmentId(apptId)
       setActiveTab('visits')
 
       // Clear the URL param so refreshing doesn't re-trigger
@@ -1608,44 +1590,6 @@ export default function HorseDetailPage() {
     loadIntakeForms()
   }, [horseId])
 
-  // Load appointments for this horse (upcoming + past)
-  async function loadAppointments() {
-    if (!horseId) return
-    const today = new Date().toISOString().split('T')[0]
-    try {
-      // Upcoming: today or later, not cancelled/completed
-      const { data: upcoming } = await supabase
-        .from('appointments')
-        .select('id, appointment_date, appointment_time, reason, status, visit_id')
-        .eq('horse_id', horseId)
-        .gte('appointment_date', today)
-        .not('status', 'in', '("cancelled","completed")')
-        .order('appointment_date', { ascending: true })
-      setUpcomingAppointments(upcoming || [])
-
-      // Past: before today OR completed (any date) — join visit data
-      const { data: past } = await supabase
-        .from('appointments')
-        .select('id, appointment_date, appointment_time, reason, status, visit_id, visits(subjective, objective, assessment, plan, treated_areas, recommendations, follow_up, reason_for_visit)')
-        .eq('horse_id', horseId)
-        .or(`appointment_date.lt.${today},status.eq.completed`)
-        .order('appointment_date', { ascending: false })
-      // Supabase returns visits as array for FK join; normalize to single object or null
-      const normalized = (past || []).map((a: any) => ({
-        ...a,
-        visits: Array.isArray(a.visits) ? (a.visits[0] || null) : (a.visits || null),
-      }))
-      setPastAppointments(normalized as typeof pastAppointments)
-    } catch {
-      setUpcomingAppointments([])
-      setPastAppointments([])
-    }
-  }
-
-  useEffect(() => {
-    loadAppointments()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [horseId])
 
   // Load horse contacts
   async function loadContacts() {
@@ -1998,7 +1942,7 @@ export default function HorseDetailPage() {
 
         {/* Tab navigation */}
         <div className="mt-6 flex gap-1 rounded-2xl bg-[#edf2f7] p-1.5 shadow-sm">
-          {(['info', 'visits', 'appointments', 'photos', 'records'] as const).map((tab) => (
+          {(['info', 'visits', 'photos', 'records'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -2008,7 +1952,7 @@ export default function HorseDetailPage() {
                   : 'text-slate-600 hover:bg-white hover:shadow-sm'
               }`}
             >
-              {tab === 'info' ? 'Info' : tab === 'visits' ? 'Visits' : tab === 'appointments' ? 'Appts' : tab === 'photos' ? 'Photos' : 'Records'}
+              {tab === 'info' ? 'Info' : tab === 'visits' ? 'Visits' : tab === 'photos' ? 'Photos' : 'Records'}
             </button>
           ))}
         </div>
@@ -2800,162 +2744,6 @@ export default function HorseDetailPage() {
                 )}
               </div>
             </div>
-        </div>
-        )}
-
-        {/* Appointments Tab */}
-        {activeTab === 'appointments' && (
-        <div className="mt-6 space-y-6">
-
-          {/* ── Upcoming Appointments ── */}
-          <div className="rounded-3xl bg-white p-6 shadow-md">
-            <div className="flex items-center justify-between gap-3 mb-4">
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-semibold text-slate-900">Upcoming</h2>
-                {upcomingAppointments.length > 0 && (
-                  <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-700">{upcomingAppointments.length}</span>
-                )}
-              </div>
-              <Link
-                href={`/appointments?horseId=${horseId}`}
-                className="shrink-0 rounded-xl bg-[#0f2040] px-4 py-2 text-sm font-semibold text-white hover:bg-[#162d55] transition"
-              >
-                + Book
-              </Link>
-            </div>
-
-            {upcomingAppointments.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-8 text-center">
-                <p className="text-sm text-slate-400">No upcoming appointments</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-100 rounded-2xl border border-slate-100 bg-slate-50/50">
-                {upcomingAppointments.map(a => {
-                  const [y, m, d] = a.appointment_date.split('-').map(Number)
-                  const dateStr = new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-                  const timeStr = a.appointment_time ? (() => { const [h, min] = a.appointment_time!.split(':').map(Number); const ampm = h >= 12 ? 'PM' : 'AM'; return `${h % 12 || 12}:${String(min).padStart(2, '0')} ${ampm}` })() : 'TBD'
-                  return (
-                    <div key={a.id} className="flex items-center gap-3 px-4 py-3">
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm font-bold text-slate-900 tabular-nums">{timeStr}</span>
-                        <span className="mx-2 text-slate-300">·</span>
-                        <span className="text-sm text-slate-600">{dateStr}</span>
-                        {a.reason && <span className="ml-2 text-xs text-slate-400">{a.reason}</span>}
-                      </div>
-                      <span className={`shrink-0 flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        a.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
-                      }`}>
-                        <span className={`inline-block h-1.5 w-1.5 rounded-full ${a.status === 'confirmed' ? 'bg-emerald-400' : 'bg-blue-400'}`} />
-                        {a.status.charAt(0).toUpperCase() + a.status.slice(1)}
-                      </span>
-                      <button
-                        onClick={() => router.push(`/horses/${horseId}/spine?newVisit=true&species=${horse?.species || 'equine'}&appointmentId=${a.id}`)}
-                        className="shrink-0 rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#162d55] transition"
-                      >
-                        Start Visit
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* ── Past Appointments ── */}
-          <div className="rounded-3xl bg-white p-6 shadow-md">
-            <h2 className="text-xl font-semibold text-slate-900 mb-4">Past Appointments</h2>
-
-            {pastAppointments.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-8 text-center">
-                <p className="text-sm text-slate-400">No past appointments</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-100 rounded-2xl border border-slate-100 bg-slate-50/50">
-                {pastAppointments.map(a => {
-                  const [y, m, d] = a.appointment_date.split('-').map(Number)
-                  const dateStr = new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
-                  const timeStr = a.appointment_time ? (() => { const [h, min] = a.appointment_time!.split(':').map(Number); const ampm = h >= 12 ? 'PM' : 'AM'; return `${h % 12 || 12}:${String(min).padStart(2, '0')} ${ampm}` })() : ''
-                  const v = a.visits
-                  return (
-                    <details key={a.id} className="group">
-                      <summary className="flex cursor-pointer items-center gap-3 px-4 py-3 list-none [&::-webkit-details-marker]:hidden hover:bg-white transition">
-                        <div className="flex-1 min-w-0">
-                          <span className="text-sm font-medium text-slate-700">{dateStr}</span>
-                          {timeStr && <span className="ml-2 text-xs text-slate-400">{timeStr}</span>}
-                          {(a.reason || v?.reason_for_visit) && (
-                            <>
-                              <span className="mx-2 text-slate-300">·</span>
-                              <span className="text-xs text-slate-500">{a.reason || v?.reason_for_visit}</span>
-                            </>
-                          )}
-                        </div>
-                        <span className={`shrink-0 flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          a.status === 'completed' ? 'bg-emerald-50 text-emerald-600'
-                          : a.status === 'cancelled' ? 'bg-red-50 text-red-500'
-                          : 'bg-slate-100 text-slate-500'
-                        }`}>
-                          {a.status.charAt(0).toUpperCase() + a.status.slice(1)}
-                        </span>
-                        {v ? (
-                          <span className="shrink-0 text-xs text-slate-400 group-open:rotate-180 transition-transform">▼</span>
-                        ) : (
-                          <span className="shrink-0 text-xs text-slate-300">No notes</span>
-                        )}
-                      </summary>
-
-                      {v && (
-                        <div className="border-t border-slate-100 bg-white px-4 py-4 space-y-3">
-                          {v.treated_areas && (
-                            <div>
-                              <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Treated Areas</span>
-                              <p className="mt-0.5 text-sm text-slate-700">{v.treated_areas}</p>
-                            </div>
-                          )}
-                          {v.subjective && (
-                            <div>
-                              <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Subjective</span>
-                              <p className="mt-0.5 text-sm text-slate-700 whitespace-pre-wrap">{v.subjective}</p>
-                            </div>
-                          )}
-                          {v.objective && (
-                            <div>
-                              <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Objective</span>
-                              <p className="mt-0.5 text-sm text-slate-700 whitespace-pre-wrap">{v.objective}</p>
-                            </div>
-                          )}
-                          {v.assessment && (
-                            <div>
-                              <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Assessment</span>
-                              <p className="mt-0.5 text-sm text-slate-700 whitespace-pre-wrap">{v.assessment}</p>
-                            </div>
-                          )}
-                          {v.plan && (
-                            <div>
-                              <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Plan</span>
-                              <p className="mt-0.5 text-sm text-slate-700 whitespace-pre-wrap">{v.plan}</p>
-                            </div>
-                          )}
-                          {v.recommendations && (
-                            <div>
-                              <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Recommendations</span>
-                              <p className="mt-0.5 text-sm text-slate-700 whitespace-pre-wrap">{v.recommendations}</p>
-                            </div>
-                          )}
-                          {v.follow_up && (
-                            <div>
-                              <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Follow Up</span>
-                              <p className="mt-0.5 text-sm text-slate-700">{v.follow_up}</p>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </details>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-
         </div>
         )}
 
