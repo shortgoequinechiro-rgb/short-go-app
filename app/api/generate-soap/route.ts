@@ -11,7 +11,8 @@ export async function POST(req: Request) {
 
     const quickNotes = body.quickNotes?.trim() || ''
     const horseName = body.horseName?.trim() || 'Patient'
-    const species: 'equine' | 'canine' = body.species === 'canine' ? 'canine' : 'equine'
+    const species: 'equine' | 'canine' | 'feline' | 'bovine' | 'porcine' | 'exotic' =
+      ['canine', 'feline', 'bovine', 'porcine', 'exotic'].includes(body.species) ? body.species : 'equine'
     const discipline = body.discipline?.trim() || (species === 'canine' ? 'Unknown activity' : 'Unknown discipline')
     const anatomyContext = body.anatomyContext?.trim() || ''
 
@@ -28,11 +29,20 @@ ${anatomyContext}
 `
       : 'No saved anatomy region notes were provided for this visit.\n'
 
+    const speciesLabels: Record<string, string> = {
+      equine: 'Horse (Equine)',
+      canine: 'Dog (Canine)',
+      feline: 'Cat (Feline)',
+      bovine: 'Bovine',
+      porcine: 'Porcine',
+      exotic: 'Exotic',
+    }
+
     const prompt = `
-You are helping draft a ${species === 'canine' ? 'canine' : 'equine'} chiropractic SOAP note.
+You are helping draft a ${species} chiropractic SOAP note.
 
 Patient name: ${horseName}
-Species: ${species === 'canine' ? 'Dog (Canine)' : 'Horse (Equine)'}
+Species: ${speciesLabels[species]}
 ${species === 'canine' ? 'Activity / Sport' : 'Discipline'}: ${discipline}
 
 Quick notes from provider:
@@ -48,7 +58,7 @@ plan
 
 Rules:
 - Keep it professional, concise, and clinically useful.
-- Use ${species === 'canine' ? 'canine' : 'equine'} chiropractic language when appropriate.
+- Use ${species} chiropractic language and terminology when appropriate.
 - If anatomy region notes are provided, incorporate them naturally into objective and assessment when relevant.
 - Do not invent diagnoses with excessive certainty.
 - Do not include markdown fences.

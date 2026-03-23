@@ -93,6 +93,138 @@ const CANINE_SPINE_SECTIONS = [
   },
 ]
 
+// ── Feline spine sections & segments ──────────────────────────────────────
+const FELINE_SPINE_SECTIONS = [
+  {
+    key: 'cranial',
+    label: 'Cranial / Cervical',
+    segments: [
+      { key: 'occiput', label: 'Occiput' },
+      { key: 'c1',      label: 'C1  (Atlas)' },
+      { key: 'c2',      label: 'C2  (Axis)' },
+      { key: 'c3',      label: 'C3' },
+      { key: 'c4',      label: 'C4' },
+      { key: 'c5',      label: 'C5' },
+      { key: 'c6',      label: 'C6' },
+      { key: 'c7',      label: 'C7' },
+    ],
+  },
+  {
+    key: 'thoracic',
+    label: 'Thoracic',
+    segments: Array.from({ length: 13 }, (_, i) => ({
+      key: `t${i + 1}`,
+      label: `T${i + 1}`,
+    })),
+  },
+  {
+    key: 'lumbar',
+    label: 'Lumbar',
+    segments: Array.from({ length: 7 }, (_, i) => ({
+      key: `l${i + 1}`,
+      label: `L${i + 1}`,
+    })),
+  },
+  {
+    key: 'sacral',
+    label: 'Sacral / Pelvic',
+    segments: [
+      { key: 'sacrum',    label: 'Sacrum' },
+      { key: 'si_joint',  label: 'SI Joint' },
+      { key: 'coccygeal', label: 'Coccygeal' },
+    ],
+  },
+]
+
+// ── Bovine spine sections & segments ──────────────────────────────────────
+const BOVINE_SPINE_SECTIONS = [
+  {
+    key: 'cranial',
+    label: 'Cranial / Cervical',
+    segments: [
+      { key: 'occiput', label: 'Occiput' },
+      { key: 'c1',      label: 'C1  (Atlas)' },
+      { key: 'c2',      label: 'C2  (Axis)' },
+      { key: 'c3',      label: 'C3' },
+      { key: 'c4',      label: 'C4' },
+      { key: 'c5',      label: 'C5' },
+      { key: 'c6',      label: 'C6' },
+      { key: 'c7',      label: 'C7' },
+    ],
+  },
+  {
+    key: 'thoracic',
+    label: 'Thoracic',
+    segments: Array.from({ length: 13 }, (_, i) => ({
+      key: `t${i + 1}`,
+      label: `T${i + 1}`,
+    })),
+  },
+  {
+    key: 'lumbar',
+    label: 'Lumbar',
+    segments: Array.from({ length: 6 }, (_, i) => ({
+      key: `l${i + 1}`,
+      label: `L${i + 1}`,
+    })),
+  },
+  {
+    key: 'sacral',
+    label: 'Sacral / Pelvic',
+    segments: [
+      { key: 'sacrum',    label: 'Sacrum' },
+      { key: 'si_joint',  label: 'SI Joint' },
+      { key: 'coccygeal', label: 'Coccygeal' },
+    ],
+  },
+]
+
+// ── Porcine spine sections & segments ──────────────────────────────────────
+const PORCINE_SPINE_SECTIONS = [
+  {
+    key: 'cranial',
+    label: 'Cranial / Cervical',
+    segments: [
+      { key: 'occiput', label: 'Occiput' },
+      { key: 'c1',      label: 'C1  (Atlas)' },
+      { key: 'c2',      label: 'C2  (Axis)' },
+      { key: 'c3',      label: 'C3' },
+      { key: 'c4',      label: 'C4' },
+      { key: 'c5',      label: 'C5' },
+      { key: 'c6',      label: 'C6' },
+      { key: 'c7',      label: 'C7' },
+    ],
+  },
+  {
+    key: 'thoracic',
+    label: 'Thoracic',
+    segments: Array.from({ length: 15 }, (_, i) => ({
+      key: `t${i + 1}`,
+      label: `T${i + 1}`,
+    })),
+  },
+  {
+    key: 'lumbar',
+    label: 'Lumbar',
+    segments: Array.from({ length: 7 }, (_, i) => ({
+      key: `l${i + 1}`,
+      label: `L${i + 1}`,
+    })),
+  },
+  {
+    key: 'sacral',
+    label: 'Sacral / Pelvic',
+    segments: [
+      { key: 'sacrum',    label: 'Sacrum' },
+      { key: 'si_joint',  label: 'SI Joint' },
+      { key: 'coccygeal', label: 'Coccygeal' },
+    ],
+  },
+]
+
+// ── Exotic / Generic spine sections ──────────────────────────────────────
+const EXOTIC_SPINE_SECTIONS = CANINE_SPINE_SECTIONS // Use canine as generic template
+
 type SegmentFinding = { left: boolean; right: boolean }
 type Findings = Record<string, SegmentFinding>
 
@@ -116,7 +248,31 @@ function SpineVisitInner() {
   const urlSpecies       = searchParams.get('species') ?? 'equine'
   const isNewVisitFlow   = searchParams.get('newVisit') === 'true'
   const appointmentId    = searchParams.get('appointmentId')
-  const SPINE_SECTIONS   = urlSpecies === 'canine' ? CANINE_SPINE_SECTIONS : EQUINE_SPINE_SECTIONS
+
+  function getSpineSections(species: string) {
+    switch (species) {
+      case 'canine': return CANINE_SPINE_SECTIONS
+      case 'feline': return FELINE_SPINE_SECTIONS
+      case 'bovine': return BOVINE_SPINE_SECTIONS
+      case 'porcine': return PORCINE_SPINE_SECTIONS
+      case 'exotic': return EXOTIC_SPINE_SECTIONS
+      default: return EQUINE_SPINE_SECTIONS
+    }
+  }
+
+  function getSpeciesLabel(species: string): string {
+    switch (species) {
+      case 'canine': return 'Canine'
+      case 'feline': return 'Feline'
+      case 'bovine': return 'Bovine'
+      case 'porcine': return 'Porcine'
+      case 'exotic': return 'Exotic'
+      default: return 'Equine'
+    }
+  }
+
+  const SPINE_SECTIONS = getSpineSections(urlSpecies)
+  const speciesLabel = getSpeciesLabel(urlSpecies)
 
   // ── Spine assessment state ──
   const [horseName,       setHorseName]       = useState('')
@@ -502,7 +658,7 @@ function SpineVisitInner() {
             </Link>
             <div className="min-w-0">
               <h1 className="text-lg font-semibold text-slate-900 leading-tight">
-                {isNewVisitFlow ? 'New Visit' : urlSpecies === 'canine' ? 'Canine Spine Assessment' : 'Spine Assessment'}
+                {isNewVisitFlow ? 'New Visit' : `${urlSpecies !== 'equine' ? speciesLabel + ' ' : ''}Spine Assessment`}
               </h1>
               <p className="text-xs text-slate-500 truncate">
                 {horseName && `${horseName} · `}
@@ -566,7 +722,7 @@ function SpineVisitInner() {
             <>
               <div className="rounded-3xl bg-white p-5 shadow-sm">
                 <h2 className="text-lg font-semibold text-slate-900">
-                  {urlSpecies === 'canine' ? 'Canine Spine Assessment' : 'Spine Assessment'}
+                  {`${urlSpecies !== 'equine' ? speciesLabel + ' ' : ''}Spine Assessment`}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
                   Check boxes to flag subluxations.
@@ -683,7 +839,7 @@ function SpineVisitInner() {
           {isNewVisitFlow && (
             <div className="rounded-3xl bg-white p-5 shadow-sm border-t-4 border-slate-900">
               <h2 className="text-lg font-semibold text-slate-900">
-                {urlSpecies === 'canine' ? 'Canine Spine Assessment' : 'Spine Assessment'}
+                {`${urlSpecies !== 'equine' ? speciesLabel + ' ' : ''}Spine Assessment`}
               </h2>
               <p className="mt-1 text-sm text-slate-500">
                 Check boxes to flag subluxations. Findings auto-populate into treated areas.

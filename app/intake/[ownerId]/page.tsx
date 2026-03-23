@@ -10,6 +10,8 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
+type SpeciesType = 'equine' | 'canine' | 'feline' | 'bovine' | 'porcine' | 'exotic'
+
 type Owner = {
   id: string
   full_name: string
@@ -29,7 +31,7 @@ type Practitioner = {
 type PatientAnimal = {
   id: string
   name: string
-  species: 'equine' | 'canine' | null
+  species: SpeciesType | null
   breed: string | null
   age: string | null
   sex: string | null
@@ -39,7 +41,7 @@ type PatientAnimal = {
 type AnimalEntry = {
   localKey: string
   selectedHorseId: string
-  species: 'equine' | 'canine'
+  species: SpeciesType
   name: string
   age: string
   breed: string
@@ -67,6 +69,10 @@ const REFERRAL_OPTIONS = [
 const GENDER_OPTIONS: Record<string, string[]> = {
   equine: ['Mare', 'Gelding', 'Stallion'],
   canine: ['Female', 'Male', 'Female (Spayed)', 'Male (Neutered)'],
+  feline: ['Female', 'Male', 'Female (Spayed)', 'Male (Neutered)'],
+  bovine: ['Cow', 'Bull', 'Steer', 'Heifer'],
+  porcine: ['Gilt', 'Sow', 'Boar', 'Barrow'],
+  exotic: ['Female', 'Male', 'Unknown'],
 }
 
 function blankAnimal(): AnimalEntry {
@@ -191,7 +197,7 @@ export default function IntakeFormPage() {
     })
   }
 
-  function handleSpeciesChange(localKey: string, species: 'equine' | 'canine') {
+  function handleSpeciesChange(localKey: string, species: SpeciesType) {
     updateAnimal(localKey, { species, gender: '' })
   }
 
@@ -652,7 +658,7 @@ function AnimalSection({
   ownerHorses: PatientAnimal[]
   onUpdate: (updates: Partial<AnimalEntry>) => void
   onSelectHorse: (horseId: string) => void
-  onSpeciesChange: (species: 'equine' | 'canine') => void
+  onSpeciesChange: (species: SpeciesType) => void
   onRemove: () => void
 }) {
   const title = total === 1 ? 'Animal Information' : `Animal ${index + 1}`
@@ -698,10 +704,14 @@ function AnimalSection({
         )}
 
         <Field label="Species">
-          <div className="flex gap-4 mt-2">
+          <div className="flex flex-wrap gap-4 mt-2">
             {[
               { value: 'equine', label: '🐴 Horse / Equine' },
               { value: 'canine', label: '🐕 Dog / Canine' },
+              { value: 'feline', label: '🐱 Cat / Feline' },
+              { value: 'bovine', label: '🐄 Cow / Bovine' },
+              { value: 'porcine', label: '🐷 Pig / Porcine' },
+              { value: 'exotic', label: '🦎 Exotic' },
             ].map(opt => (
               <label key={opt.value} className="flex cursor-pointer items-center gap-2">
                 <input
@@ -709,7 +719,7 @@ function AnimalSection({
                   name={`species-${animal.localKey}`}
                   value={opt.value}
                   checked={animal.species === opt.value}
-                  onChange={() => onSpeciesChange(opt.value as 'equine' | 'canine')}
+                  onChange={() => onSpeciesChange(opt.value as SpeciesType)}
                   className="h-4 w-4 accent-slate-800"
                 />
                 <span className="text-sm text-slate-700">{opt.label}</span>

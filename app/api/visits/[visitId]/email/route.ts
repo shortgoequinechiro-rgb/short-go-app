@@ -359,7 +359,14 @@ async function buildVisitPdf(visitId: string) {
     }
 
     const generatedText = `Generated: ${new Date().toLocaleDateString()}`
-    const speciesLabel = horse?.species === 'canine' ? 'Canine' : 'Horse'
+    const speciesMap: Record<string, string> = {
+      canine: 'Canine',
+      feline: 'Feline',
+      bovine: 'Bovine',
+      porcine: 'Porcine',
+      exotic: 'Exotic',
+    }
+    const speciesLabel = speciesMap[horse?.species as string] || 'Horse'
     const horseText = `${speciesLabel}: ${horse?.name || '—'}`
     drawTextLine(generatedText, pageWidth - margin - 120, y - 2, 9, false, colors.muted)
     drawTextLine(horseText, pageWidth - margin - 120, y - 18, 9, true, colors.text)

@@ -12,6 +12,19 @@ import {
   getCachedHorses,
 } from '../lib/offlineDb'
 
+type SpeciesType = 'equine' | 'canine' | 'feline' | 'bovine' | 'porcine' | 'exotic'
+
+function speciesEmoji(s: string | null | undefined): string {
+  switch (s) {
+    case 'canine': return '🐕'
+    case 'feline': return '🐱'
+    case 'bovine': return '🐄'
+    case 'porcine': return '🐷'
+    case 'exotic': return '🦎'
+    default: return '🐴'
+  }
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Appointment = {
@@ -26,7 +39,7 @@ type Appointment = {
   status: 'scheduled' | 'confirmed' | 'completed' | 'cancelled'
   provider_name: string | null
   notes: string | null
-  horses?: { name: string; species?: 'equine' | 'canine' | null; owners?: { full_name: string } | null } | null
+  horses?: { name: string; species?: SpeciesType | null; owners?: { full_name: string } | null } | null
   owners?: { full_name: string } | null
 }
 
@@ -290,7 +303,7 @@ function ApptPopup({
       {/* Header */}
       <div className="flex items-start justify-between p-4 pb-2">
         <div className="flex items-center gap-2">
-          <span className="text-lg">{species === 'canine' ? '🐕' : '🐴'}</span>
+          <span className="text-lg">{speciesEmoji(species)}</span>
           <div>
             <div className="font-semibold text-white text-sm">{patientName}</div>
             <div className="text-xs text-blue-300">{ownerName}</div>
@@ -446,7 +459,7 @@ function ApptPopup({
 type HorseOption = {
   id: string
   name: string
-  species: 'equine' | 'canine' | null
+  species: SpeciesType | null
   owner_id: string | null
   owners?: { full_name: string } | null
 }
@@ -735,7 +748,7 @@ function QuickBookModal({
                         key={id}
                         className="inline-flex items-center gap-1 rounded-full border border-[#c9a227]/50 bg-[#c9a227]/10 px-2.5 py-0.5 text-xs text-[#c9a227]"
                       >
-                        {h.species === 'canine' ? '🐕' : '🐴'} {h.name}
+                        {speciesEmoji(h.species)} {h.name}
                         <button
                           type="button"
                           onClick={() => togglePatient(id)}
@@ -777,7 +790,7 @@ function QuickBookModal({
                             <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] font-bold transition ${
                               checked ? 'border-[#c9a227] bg-[#c9a227] text-[#0f2040]' : 'border-white/30 bg-transparent text-transparent'
                             }`}>✓</span>
-                            <span>{h.species === 'canine' ? '🐕' : '🐴'}</span>
+                            <span>{speciesEmoji(h.species)}</span>
                             <span className="font-medium">{h.name}</span>
                           </button>
                         )
@@ -973,7 +986,7 @@ function EditApptModal({
             {form.horseId ? (
               <div className="flex items-center justify-between rounded-lg border border-[#c9a227] bg-[#081120] px-3 py-2">
                 <span className="text-sm text-white">
-                  {selectedHorse?.species === 'canine' ? '🐕 ' : '🐴 '}
+                  {speciesEmoji(selectedHorse?.species)}
                   {selectedHorse?.name}
                   <span className="ml-1 text-xs text-blue-300">— {selectedHorse?.owners?.full_name ?? ''}</span>
                 </span>
@@ -1535,7 +1548,7 @@ export default function CalendarPage() {
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-xl flex-shrink-0">{species === 'canine' ? '🐕' : '🐴'}</span>
+                        <span className="text-xl flex-shrink-0">{speciesEmoji(species)}</span>
                         <div className="min-w-0">
                           <div className="font-semibold text-white truncate">{patientName}</div>
                           <div className="text-xs text-blue-300 truncate">{ownerName}</div>
@@ -1940,8 +1953,7 @@ export default function CalendarPage() {
                     >
                       <div className="px-1 py-0.5 leading-tight">
                         <div className="text-[10px] font-bold text-white truncate">
-                          {species === 'canine' ? '🐕 ' : species === 'equine' ? '🐴 ' : ''}
-                          {patientName || ownerName || 'Appointment'}
+                          {speciesEmoji(species)} {patientName || ownerName || 'Appointment'}
                         </div>
                         {height > 30 && ownerName && patientName && (
                           <div className="text-[9px] text-white/80 truncate">{ownerName}</div>

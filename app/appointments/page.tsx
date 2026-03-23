@@ -13,6 +13,8 @@ import {
   getCachedOwners,
 } from '../lib/offlineDb'
 
+type SpeciesType = 'equine' | 'canine' | 'feline' | 'bovine' | 'porcine' | 'exotic'
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Appointment = {
@@ -38,7 +40,7 @@ type Horse = {
   id: string
   name: string
   owner_id: string | null
-  species?: 'equine' | 'canine' | null
+  species?: SpeciesType | null
   owners?: { full_name: string } | null
 }
 

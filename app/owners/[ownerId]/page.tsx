@@ -6,6 +6,19 @@ import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 import { getCachedOwnerById, getCachedHorsesByOwner, getCachedVisitsByHorse } from '../../lib/offlineDb'
 
+type SpeciesType = 'equine' | 'canine' | 'feline' | 'bovine' | 'porcine' | 'exotic'
+
+function speciesEmoji(s: string | null | undefined): string {
+  switch (s) {
+    case 'canine': return '🐕'
+    case 'feline': return '🐱'
+    case 'bovine': return '🐄'
+    case 'porcine': return '🐷'
+    case 'exotic': return '🦎'
+    default: return '🐴'
+  }
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Owner = {
@@ -19,7 +32,7 @@ type Owner = {
 type Animal = {
   id: string
   name: string
-  species: 'equine' | 'canine' | null
+  species: SpeciesType | null
   breed: string | null
   age: string | null
   sex: string | null
@@ -200,7 +213,7 @@ export default function OwnerPage() {
         try {
           const cached = await getCachedHorsesByOwner(ownerId)
           animalList = cached.filter(h => !h.archived).map(h => ({
-            id: h.id, name: h.name, species: h.species as 'equine' | 'canine' | null,
+            id: h.id, name: h.name, species: h.species as SpeciesType | null,
             breed: h.breed, age: h.age, sex: h.sex, discipline: h.discipline,
             barn_location: h.barn_location, archived: h.archived,
           }))
@@ -681,7 +694,7 @@ export default function OwnerPage() {
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2">
                   {animals.map(animal => {
-                    const emoji = animal.species === 'canine' ? '🐕' : '🐴'
+                    const emoji = speciesEmoji(animal.species)
                     const visits = visitCounts[animal.id] || 0
 
                     return (
