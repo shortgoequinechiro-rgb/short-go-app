@@ -23,6 +23,10 @@ export async function POST(
     return NextResponse.json({ error: 'Twilio is not configured.' }, { status: 500 })
   }
 
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return NextResponse.json({ error: 'Server misconfiguration: missing SUPABASE_SERVICE_ROLE_KEY.' }, { status: 500 })
+  }
+
   const supabase = getAdminSupabase()
 
   const { data: owner, error } = await supabase
@@ -32,7 +36,8 @@ export async function POST(
     .single()
 
   if (error || !owner) {
-    return NextResponse.json({ error: 'Owner not found.' }, { status: 404 })
+    const detail = error?.message || 'No owner row returned'
+    return NextResponse.json({ error: `Owner not found: ${detail}` }, { status: 404 })
   }
 
   if (!owner.phone) {
