@@ -224,6 +224,7 @@ function AppointmentsContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const preselectedHorseId = searchParams.get('horseId') || ''
+  const preselectedOwnerId = searchParams.get('ownerId') || ''
 
   const today = todayISO()
   const [checkingAuth, setCheckingAuth] = useState(true)
@@ -448,6 +449,18 @@ function AppointmentsContent() {
     }
   }, [preselectedHorseId])
 
+  // Pre-fill owner from URL (e.g. coming from owner detail page)
+  useEffect(() => {
+    if (preselectedOwnerId && owners.length > 0 && !showForm) {
+      const owner = owners.find(o => o.id === preselectedOwnerId)
+      if (owner) {
+        setOwnerSearch(owner.full_name)
+        setForm(f => ({ ...f, owner_id: preselectedOwnerId, appointment_date: today }))
+        setShowForm(true)
+      }
+    }
+  }, [preselectedOwnerId, owners])
+
   // ── Calendar grid ───────────────────────────────────────────────────────────
 
   const calDays = useMemo(() => {
@@ -557,7 +570,7 @@ function AppointmentsContent() {
   function openEditForm(appt: Appointment) {
     setEditingId(appt.id)
     const dur = appt.duration_minutes || 15
-    const numAnimals = Math.max(1, Math.round(dur / 15))
+    const numAnimals = Math.max(0, Math.round(dur / 15))
     // Populate owner search box with the owner's name
     const ownerObj = owners.find(o => o.id === appt.owner_id)
     setOwnerSearch(ownerObj?.full_name || appt.owners?.full_name || '')
@@ -918,7 +931,15 @@ function AppointmentsContent() {
                       setForm(f => ({ ...f, owner_id: '' }))
                       setShowOwnerSuggestions(true)
                     }}
-                    onFocus={() => setShowOwnerSuggestions(true)}
+                    onFocus={e => {
+                      // If an owner is already selected, clear the search so the full list shows
+                      if (form.owner_id) {
+                        setOwnerSearch('')
+                        setForm(f => ({ ...f, owner_id: '' }))
+                      }
+                      setShowOwnerSuggestions(true)
+                      e.target.select()
+                    }}
                     onBlur={() => setTimeout(() => setShowOwnerSuggestions(false), 150)}
                     placeholder="Type to search owner…"
                     autoComplete="off"
@@ -968,10 +989,11 @@ function AppointmentsContent() {
                   value={form.num_animals}
                   onChange={e => {
                     const n = Number(e.target.value)
-                    setForm(f => ({ ...f, num_animals: n, duration_minutes: n * 15 }))
+                    setForm(f => ({ ...f, num_animals: n, duration_minutes: n === 0 ? 30 : n * 15 }))
                   }}
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900"
                 >
+                  <option value={0}>No animals — consultation only (30 min)</option>
                   {[1,2,3,4,5,6,7,8,9,10].map(n => (
                     <option key={n} value={n}>{n} animal{n > 1 ? 's' : ''} — {n * 15} min</option>
                   ))}
@@ -981,7 +1003,7 @@ function AppointmentsContent() {
               {/* Duration auto-display */}
               <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                 <span>⏱</span>
-                <span>Total duration: <strong className="text-slate-900">{form.duration_minutes} min</strong> ({form.num_animals} animal{form.num_animals > 1 ? 's' : ''} × 15 min each)</span>
+                <span>Total duration: <strong className="text-slate-900">{form.duration_minutes} min</strong>{form.num_animals > 0 ? ` (${form.num_animals} animal${form.num_animals > 1 ? 's' : ''} × 15 min each)` : ' (consultation)'}</span>
               </div>
 
               {/* Date + Time */}
@@ -1140,7 +1162,7 @@ function AppointmentCard({
   const horseName = appt.horses?.name || null
   const ownerName = appt.owners?.full_name || appt.horses?.owners?.full_name || '—'
   const ownerEmail = appt.owners?.email || appt.horses?.owners?.email
-  const numAnimals = appt.duration_minutes ? Math.max(1, Math.round(appt.duration_minutes / 15)) : null
+  const numAnimals = appt.duration_minutes ? Math.max(0, Math.round(appt.duration_minutes / 15)) : null
   const canEmail = !!ownerEmail && appt.status !== 'cancelled'
 
   return (
@@ -1165,8 +1187,11 @@ function AppointmentCard({
                 : horseName}
             </p>
           )}
-          {numAnimals && !horseName && (
+          {numAnimals !== null && numAnimals > 0 && !horseName && (
             <p className="text-sm text-slate-500 mt-0.5">{numAnimals} animal{numAnimals > 1 ? 's' : ''}</p>
+          )}
+          {numAnimals === 0 && !horseName && (
+            <p className="text-sm text-slate-400 mt-0.5">Consultation only</p>
           )}
         </div>
         <div className="text-right flex-shrink-0">

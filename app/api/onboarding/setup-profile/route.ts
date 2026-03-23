@@ -6,39 +6,42 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+/**
+ * Save practitioner profile right after signup, even before email confirmation.
+ * Uses the user ID (returned by supabase.auth.signUp) + service role key.
+ */
 export async function POST(req: Request) {
   try {
     const body = await req.json()
     const {
-      token, full_name, practice_name, animals_served, location,
+      user_id, email, full_name, practice_name,
       credentials, city, state, country, website, phone,
     } = body
 
-    if (!token) {
-      return NextResponse.json({ error: 'No token provided' }, { status: 401 })
+    if (!user_id) {
+      return NextResponse.json({ error: 'No user_id provided' }, { status: 400 })
     }
 
     if (!practice_name?.trim()) {
       return NextResponse.json({ error: 'Practice name is required' }, { status: 400 })
     }
 
-    // Verify JWT and get user identity
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Verify this user actually exists in auth.users
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.admin.getUserById(user_id)
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Invalid user' }, { status: 401 })
     }
 
-    // Upsert the practitioner record (handles both new and existing accounts)
+    // Upsert the practitioner record
     const { error: upsertError } = await supabaseAdmin
       .from('practitioners')
       .upsert({
         id: user.id,
-        email: user.email,
+        email: email || user.email,
         full_name: full_name?.trim() || null,
         credentials: credentials?.trim() || null,
         practice_name: practice_name.trim(),
-        animals_served: animals_served || 'both',
-        location: location?.trim() || null,
+        animals_served: 'both',
         city: city?.trim() || null,
         state: state?.trim() || null,
         country: country?.trim() || null,
@@ -49,13 +52,13 @@ export async function POST(req: Request) {
       })
 
     if (upsertError) {
-      console.error('onboarding/complete upsert error:', upsertError)
+      console.error('setup-profile upsert error:', upsertError)
       return NextResponse.json({ error: 'Failed to save practice profile' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('onboarding/complete error:', error)
+    console.error('setup-profile error:', error)
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }
