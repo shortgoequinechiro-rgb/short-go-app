@@ -8,13 +8,13 @@ import { requireAuth, supabaseAdmin } from '../../../lib/auth'
  */
 export async function PUT(
   req: Request,
-  { params }: { params: { serviceId: string } }
+  { params }: { params: Promise<{ serviceId: string }> }
 ) {
   try {
     const { user, error } = await requireAuth(req)
     if (error) return error
 
-    const { serviceId } = params
+    const { serviceId } = await params
     const updates = await req.json()
 
     // Verify the service belongs to the practitioner
@@ -78,13 +78,13 @@ export async function PUT(
  */
 export async function DELETE(
   req: Request,
-  { params }: { params: { serviceId: string } }
+  { params }: { params: Promise<{ serviceId: string }> }
 ) {
   try {
     const { user, error } = await requireAuth(req)
     if (error) return error
 
-    const { serviceId } = params
+    const { serviceId } = await params
 
     // Verify the service belongs to the practitioner
     const { data: existingService, error: fetchError } = await supabaseAdmin

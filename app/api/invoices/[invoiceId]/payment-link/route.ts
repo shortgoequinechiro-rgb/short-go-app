@@ -4,12 +4,12 @@ import { getStripe } from '../../../../lib/stripe';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { invoiceId: string } }
+  { params }: { params: Promise<{ invoiceId: string }> }
 ) {
   try {
     const { user, error } = await requireAuth(request);
     if (error) return error;
-    const { invoiceId } = params;
+    const { invoiceId } = await params;
 
     // Fetch invoice
     const { data: invoice, error: fetchError } = await supabaseAdmin

@@ -3,12 +3,12 @@ import { requireAuth, supabaseAdmin } from '../../../lib/auth';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { invoiceId: string } }
+  { params }: { params: Promise<{ invoiceId: string }> }
 ) {
   try {
     const { user, error } = await requireAuth(request);
     if (error) return error;
-    const { invoiceId } = params;
+    const { invoiceId } = await params;
 
     const { data: invoice, error: fetchError } = await supabaseAdmin
       .from('invoices')
@@ -53,8 +53,8 @@ export async function GET(
 
     const result = {
       ...invoice,
-      owner_name: (invoice.owner as Record<string, string> | null)?.full_name || (Array.isArray(invoice.owner) ? invoice.owner[0]?.full_name : undefined),
-      horse_name: (invoice.horse as Record<string, string> | null)?.name || (Array.isArray(invoice.horse) ? invoice.horse[0]?.name : undefined),
+      owner_name: (invoice.owner as unknown as Record<string, string> | null)?.full_name || (Array.isArray(invoice.owner) ? invoice.owner[0]?.full_name : undefined),
+      horse_name: (invoice.horse as unknown as Record<string, string> | null)?.name || (Array.isArray(invoice.horse) ? invoice.horse[0]?.name : undefined),
       owner: undefined,
       horse: undefined,
     };
@@ -70,12 +70,12 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { invoiceId: string } }
+  { params }: { params: Promise<{ invoiceId: string }> }
 ) {
   try {
     const { user, error } = await requireAuth(request);
     if (error) return error;
-    const { invoiceId } = params;
+    const { invoiceId } = await params;
     const body = await request.json();
 
     const { status, notes, due_date, line_items } = body;
@@ -207,8 +207,8 @@ export async function PUT(
 
     const result = {
       ...updatedInvoice,
-      owner_name: (updatedInvoice.owner as Record<string, string> | null)?.full_name || (Array.isArray(updatedInvoice.owner) ? updatedInvoice.owner[0]?.full_name : undefined),
-      horse_name: (updatedInvoice.horse as Record<string, string> | null)?.name || (Array.isArray(updatedInvoice.horse) ? updatedInvoice.horse[0]?.name : undefined),
+      owner_name: (updatedInvoice.owner as unknown as Record<string, string> | null)?.full_name || (Array.isArray(updatedInvoice.owner) ? updatedInvoice.owner[0]?.full_name : undefined),
+      horse_name: (updatedInvoice.horse as unknown as Record<string, string> | null)?.name || (Array.isArray(updatedInvoice.horse) ? updatedInvoice.horse[0]?.name : undefined),
       owner: undefined,
       horse: undefined,
     };

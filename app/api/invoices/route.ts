@@ -65,8 +65,8 @@ export async function GET(request: NextRequest) {
 
     const invoices = data.map((invoice: Record<string, unknown>) => ({
       ...invoice,
-      owner_name: (invoice.owner as Record<string, string> | null)?.full_name,
-      horse_name: (invoice.horse as Record<string, string> | null)?.name,
+      owner_name: (invoice.owner as unknown as Record<string, string> | null)?.full_name,
+      horse_name: (invoice.horse as unknown as Record<string, string> | null)?.name,
       owner: undefined,
       horse: undefined,
     }));
@@ -195,8 +195,8 @@ export async function POST(request: NextRequest) {
 
     const result = {
       ...completeInvoice,
-      owner_name: (completeInvoice.owner as Record<string, string> | null)?.full_name || (Array.isArray(completeInvoice.owner) ? completeInvoice.owner[0]?.full_name : undefined),
-      horse_name: (completeInvoice.horse as Record<string, string> | null)?.name || (Array.isArray(completeInvoice.horse) ? completeInvoice.horse[0]?.name : undefined),
+      owner_name: (completeInvoice.owner as unknown as Record<string, string> | null)?.full_name || (Array.isArray(completeInvoice.owner) ? completeInvoice.owner[0]?.full_name : undefined),
+      horse_name: (completeInvoice.horse as unknown as Record<string, string> | null)?.name || (Array.isArray(completeInvoice.horse) ? completeInvoice.horse[0]?.name : undefined),
       owner: undefined,
       horse: undefined,
     };

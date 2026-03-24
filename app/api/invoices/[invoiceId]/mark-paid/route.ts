@@ -3,12 +3,12 @@ import { requireAuth, supabaseAdmin } from '../../../../lib/auth';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { invoiceId: string } }
+  { params }: { params: Promise<{ invoiceId: string }> }
 ) {
   try {
     const { user, error } = await requireAuth(request);
     if (error) return error;
-    const { invoiceId } = params;
+    const { invoiceId } = await params;
     const body = await request.json();
 
     const { payment_method, payment_reference } = body;
@@ -95,8 +95,8 @@ export async function POST(
 
     const result = {
       ...updatedInvoice,
-      owner_name: (updatedInvoice.owner as Record<string, string> | null)?.full_name || (Array.isArray(updatedInvoice.owner) ? updatedInvoice.owner[0]?.full_name : undefined),
-      horse_name: (updatedInvoice.horse as Record<string, string> | null)?.name || (Array.isArray(updatedInvoice.horse) ? updatedInvoice.horse[0]?.name : undefined),
+      owner_name: (updatedInvoice.owner as unknown as Record<string, string> | null)?.full_name || (Array.isArray(updatedInvoice.owner) ? updatedInvoice.owner[0]?.full_name : undefined),
+      horse_name: (updatedInvoice.horse as unknown as Record<string, string> | null)?.name || (Array.isArray(updatedInvoice.horse) ? updatedInvoice.horse[0]?.name : undefined),
       owner: undefined,
       horse: undefined,
     };
