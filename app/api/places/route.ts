@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
+import { requireAuth } from '../../lib/auth'
 
 export async function GET(req: Request) {
+  const { user, error: authError } = await requireAuth(req)
+  if (authError) return authError
+
   const { searchParams } = new URL(req.url)
   const input = searchParams.get('input')?.trim()
 

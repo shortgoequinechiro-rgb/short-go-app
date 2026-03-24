@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuth } from '../../../../lib/auth'
 import twilio from 'twilio'
 
 function getAdminSupabase() {
@@ -13,6 +14,9 @@ export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ ownerId: string }> }
 ) {
+  const { user, error: authError } = await requireAuth(_req)
+  if (authError) return authError
+
   const { ownerId } = await params
 
   const accountSid = process.env.TWILIO_ACCOUNT_SID

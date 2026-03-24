@@ -4,8 +4,9 @@ import path from 'path'
 const authFile = path.join(__dirname, '..', '.auth', 'user.json')
 
 setup('authenticate', async ({ page }) => {
-  const email = process.env.E2E_USER_EMAIL || 'charlesdunn2006@gmail.com'
-  const password = process.env.E2E_USER_PASSWORD || 'Kgrace0603!'
+  const email = process.env.E2E_USER_EMAIL
+  const password = process.env.E2E_USER_PASSWORD
+  if (!email || !password) throw new Error('E2E_USER_EMAIL and E2E_USER_PASSWORD env vars are required')
 
   await page.goto('/login')
   await page.waitForLoadState('networkidle')

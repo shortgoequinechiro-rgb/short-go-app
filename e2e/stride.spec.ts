@@ -6,8 +6,9 @@ import { test, expect, Page } from '@playwright/test'
 
 // Attempt to login; returns true if succeeded, false if network/auth blocked
 async function tryLogin(page: Page): Promise<boolean> {
-  const email = process.env.E2E_USER_EMAIL || 'charlesdunn2006@gmail.com'
-  const password = process.env.E2E_USER_PASSWORD || 'Kgrace0603!'
+  const email = process.env.E2E_USER_EMAIL
+  const password = process.env.E2E_USER_PASSWORD
+  if (!email || !password) { test.skip(); return false }
   await page.goto('/login')
   await page.waitForLoadState('networkidle')
   await page.locator('input[type="email"]').fill(email)

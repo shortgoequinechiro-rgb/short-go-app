@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { createClient } from '@supabase/supabase-js'
+import { requireAuth } from '../../../../lib/auth'
 
 function getAdminSupabase() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -99,6 +100,9 @@ export async function POST(
   { params }: { params: Promise<{ appointmentId: string }> }
 ) {
   try {
+    const { user, error: authError } = await requireAuth(req)
+    if (authError) return authError
+
     const { appointmentId } = await params
     const body = await req.json()
     const type: 'confirmation' | 'reminder' = body.type || 'confirmation'

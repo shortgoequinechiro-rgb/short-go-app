@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { PDFDocument, StandardFonts, rgb, type PDFImage } from 'pdf-lib'
 import { Resend } from 'resend'
 import { createClient } from '@supabase/supabase-js'
+import { requireAuth } from '../../../../lib/auth'
 import fs from 'fs'
 import path from 'path'
 
@@ -605,6 +606,9 @@ export async function POST(
   { params }: { params: Promise<{ visitId: string }> }
 ) {
   try {
+    const { user, error: authError } = await requireAuth(_req)
+    if (authError) return authError
+
     const { visitId } = await params
 
     const resendApiKey = process.env.RESEND_API_KEY

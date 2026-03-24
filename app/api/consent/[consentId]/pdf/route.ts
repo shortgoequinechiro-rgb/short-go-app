@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import { createClient } from '@supabase/supabase-js'
+import { requireAuth } from '../../../../lib/auth'
 import fs from 'fs'
 import path from 'path'
 
@@ -100,6 +101,9 @@ export async function GET(
   { params }: { params: Promise<{ consentId: string }> }
 ) {
   try {
+    const { user, error: authError } = await requireAuth(_req)
+    if (authError) return authError
+
     const { consentId } = await params
     const supabase = getAdminSupabase()
 

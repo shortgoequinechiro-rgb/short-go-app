@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { createClient } from '@supabase/supabase-js'
+import { requireAuth } from '../../../../lib/auth'
 import OpenAI from 'openai'
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 
@@ -245,6 +246,9 @@ export async function GET(
   { params }: { params: Promise<{ visitId: string }> }
 ) {
   try {
+    const { user, error: authError } = await requireAuth(_req)
+    if (authError) return authError
+
     const { visitId } = await params
     const { summaryText, subject, ownerEmail, ownerName, practiceName, doctorName } = await buildSummary(visitId)
     return NextResponse.json({ summaryText, subject, ownerEmail, ownerName, practiceName, doctorName })
@@ -260,6 +264,9 @@ export async function POST(
   { params }: { params: Promise<{ visitId: string }> }
 ) {
   try {
+    const { user, error: authError } = await requireAuth(_req)
+    if (authError) return authError
+
     const { visitId } = await params
 
     const resendApiKey = process.env.RESEND_API_KEY
