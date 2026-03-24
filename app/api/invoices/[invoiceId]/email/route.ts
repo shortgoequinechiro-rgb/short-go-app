@@ -198,6 +198,21 @@ export async function POST(
       )
     }
 
+    // Log the communication
+    const emailId = emailResponse.data?.id || null
+    await supabaseAdmin.from('communication_log').insert({
+      practitioner_id: user.id,
+      owner_id: invoice.owner_id,
+      invoice_id: invoiceId,
+      channel: 'email',
+      message_type: 'invoice',
+      recipient: owner.email,
+      subject: `Invoice ${invoice.invoice_number} from ${practitioner.practice_name || 'Stride Chiropractic'}`,
+      body_preview: `Invoice for $${(invoice.total_cents / 100).toFixed(2)}`,
+      status: 'sent',
+      external_id: emailId,
+    })
+
     // Update invoice status to 'sent' if currently 'draft'
     if (invoice.status === 'draft') {
       await supabaseAdmin
