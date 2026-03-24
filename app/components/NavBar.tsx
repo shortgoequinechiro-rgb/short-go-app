@@ -62,10 +62,12 @@ export default function NavBar() {
   const isAnatomy = pathname?.startsWith('/anatomy')
   const isHorse = pathname?.startsWith('/horses')
   const isCalendar = pathname?.startsWith('/calendar')
+  const isInvoices = pathname?.startsWith('/invoices')
   const isAccount = pathname?.startsWith('/account') || pathname?.startsWith('/billing')
 
   const navLinks = [
     { href: '/calendar', label: '📅 Scheduler', hidden: isCalendar },
+    { href: '/invoices', label: '💰 Invoices', hidden: isInvoices },
     { href: '/account', label: 'Account', hidden: isAccount },
   ]
 

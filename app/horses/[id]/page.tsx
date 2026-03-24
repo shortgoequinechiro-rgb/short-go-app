@@ -1589,12 +1589,17 @@ export default function HorseDetailPage() {
   }, [horseId])
 
   // ── Handle ?tab= URL param (e.g. after saving from spine+visit page) ──
+  const [invoicePromptVisitId, setInvoicePromptVisitId] = useState<string | null>(null)
   useEffect(() => {
     const tabParam = searchParams.get('tab')
+    const savedId = searchParams.get('savedVisitId')
     if (tabParam && ['info', 'visits', 'photos', 'records'].includes(tabParam)) {
       setActiveTab(tabParam as typeof activeTab)
-      window.history.replaceState({}, '', `/horses/${horseId}`)
     }
+    if (savedId) {
+      setInvoicePromptVisitId(savedId)
+    }
+    window.history.replaceState({}, '', `/horses/${horseId}`)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
@@ -2439,6 +2444,32 @@ export default function HorseDetailPage() {
         {/* Visits Tab */}
         {activeTab === 'visits' && (
         <div className="mt-6 space-y-6">
+
+            {/* Invoice prompt after saving a visit */}
+            {invoicePromptVisitId && (
+              <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-emerald-900">Visit saved!</p>
+                    <p className="mt-0.5 text-sm text-emerald-700">Would you like to create an invoice for this visit?</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Link
+                      href={`/invoices/create?visitId=${invoicePromptVisitId}&horseId=${horseId}&ownerId=${horse?.owner_id || ''}`}
+                      className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition"
+                    >
+                      Create Invoice
+                    </Link>
+                    <button
+                      onClick={() => setInvoicePromptVisitId(null)}
+                      className="rounded-xl border border-emerald-300 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100 transition"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {(editingVisitId || pendingSpineId) && (
             <div className="rounded-3xl bg-white p-6 shadow-md">
