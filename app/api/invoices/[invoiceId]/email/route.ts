@@ -64,7 +64,7 @@ export async function POST(
 
     // Fetch practitioner info
     const { data: practitioner, error: practitionerError } = await supabaseAdmin
-      .from('users')
+      .from('practitioners')
       .select('full_name, practice_name, location')
       .eq('id', invoice.practitioner_id)
       .single()
