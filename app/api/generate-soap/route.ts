@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { requireAuth } from '../../lib/auth'
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -7,6 +8,9 @@ const client = new OpenAI({
 
 export async function POST(req: Request) {
   try {
+    const { user, error: authError } = await requireAuth(req)
+    if (authError) return authError
+
     const body = await req.json()
 
     const quickNotes = body.quickNotes?.trim() || ''
