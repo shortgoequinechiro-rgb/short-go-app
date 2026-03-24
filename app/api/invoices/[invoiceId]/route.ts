@@ -232,3 +232,66 @@ export async function PUT(
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ invoiceId: string }> }
+) {
+  try {
+    const { user, error } = await requireAuth(request);
+    if (error) return error;
+    const { invoiceId } = await params;
+
+    // Verify ownership
+    const { data: invoice, error: fetchError } = await supabaseAdmin
+      .from('invoices')
+      .select('id, practitioner_id, status')
+      .eq('id', invoiceId)
+      .single();
+
+    if (fetchError || !invoice) {
+      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+    }
+
+    if (invoice.practitioner_id !== user.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    // Only allow deleting draft or cancelled invoices
+    if (invoice.status === 'paid') {
+      return NextResponse.json(
+        { error: 'Cannot delete a paid invoice' },
+        { status: 400 }
+      );
+    }
+
+    // Delete line items first (foreign key constraint)
+    await supabaseAdmin
+      .from('invoice_line_items')
+      .delete()
+      .eq('invoice_id', invoiceId);
+
+    // Delete communication logs for this invoice
+    await supabaseAdmin
+      .from('communication_log')
+      .delete()
+      .eq('invoice_id', invoiceId);
+
+    // Delete the invoice
+    const { error: deleteError } = await supabaseAdmin
+      .from('invoices')
+      .delete()
+      .eq('id', invoiceId);
+
+    if (deleteError) {
+      return NextResponse.json({ error: deleteError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
