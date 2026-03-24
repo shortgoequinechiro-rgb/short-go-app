@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, supabaseAdmin } from '../../lib/auth';
-import { createNotification } from '../../lib/notifications';
 
 export async function GET(request: NextRequest) {
   try {
@@ -206,14 +205,6 @@ export async function POST(request: NextRequest) {
       owner: undefined,
       horse: undefined,
     };
-
-    // Create notification
-    await createNotification(
-      user.id,
-      'invoice_created',
-      'Invoice Created',
-      `Invoice ${invoiceNumber} for ${result.owner_name || 'Unknown'}`
-    );
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
