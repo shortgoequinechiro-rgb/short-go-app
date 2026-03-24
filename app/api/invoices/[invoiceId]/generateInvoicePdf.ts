@@ -49,7 +49,7 @@ export async function generateInvoicePdf(
   const timesRomanBoldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
 
   const page = pdfDoc.addPage([612, 792])
-  const { width, height } = page.getSize()
+  const { height } = page.getSize()
 
   let yPosition = height - 50
 

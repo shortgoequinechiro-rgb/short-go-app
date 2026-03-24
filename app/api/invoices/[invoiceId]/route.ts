@@ -53,8 +53,8 @@ export async function GET(
 
     const result = {
       ...invoice,
-      owner_name: (invoice.owner as any)?.full_name || (Array.isArray(invoice.owner) ? invoice.owner[0]?.full_name : undefined),
-      horse_name: (invoice.horse as any)?.name || (Array.isArray(invoice.horse) ? invoice.horse[0]?.name : undefined),
+      owner_name: (invoice.owner as Record<string, string> | null)?.full_name || (Array.isArray(invoice.owner) ? invoice.owner[0]?.full_name : undefined),
+      horse_name: (invoice.horse as Record<string, string> | null)?.name || (Array.isArray(invoice.horse) ? invoice.horse[0]?.name : undefined),
       owner: undefined,
       horse: undefined,
     };
@@ -96,7 +96,7 @@ export async function PUT(
     }
 
     // Build update object
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
     };
 
@@ -123,7 +123,7 @@ export async function PUT(
 
       // Calculate new totals
       const subtotalCents = line_items.reduce(
-        (sum: number, item: any) => sum + item.quantity * item.unit_price_cents,
+        (sum: number, item: { quantity: number; unit_price_cents: number }) => sum + item.quantity * item.unit_price_cents,
         0
       );
       updateData.subtotal_cents = subtotalCents;
@@ -140,7 +140,7 @@ export async function PUT(
       }
 
       // Insert new line items
-      const lineItemsData = line_items.map((item: any) => ({
+      const lineItemsData = line_items.map((item: { service_id: string; description: string; quantity: number; unit_price_cents: number }) => ({
         invoice_id: invoiceId,
         service_id: item.service_id,
         description: item.description,
@@ -207,8 +207,8 @@ export async function PUT(
 
     const result = {
       ...updatedInvoice,
-      owner_name: (updatedInvoice.owner as any)?.full_name || (Array.isArray(updatedInvoice.owner) ? updatedInvoice.owner[0]?.full_name : undefined),
-      horse_name: (updatedInvoice.horse as any)?.name || (Array.isArray(updatedInvoice.horse) ? updatedInvoice.horse[0]?.name : undefined),
+      owner_name: (updatedInvoice.owner as Record<string, string> | null)?.full_name || (Array.isArray(updatedInvoice.owner) ? updatedInvoice.owner[0]?.full_name : undefined),
+      horse_name: (updatedInvoice.horse as Record<string, string> | null)?.name || (Array.isArray(updatedInvoice.horse) ? updatedInvoice.horse[0]?.name : undefined),
       owner: undefined,
       horse: undefined,
     };

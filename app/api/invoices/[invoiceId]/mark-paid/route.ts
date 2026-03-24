@@ -95,8 +95,8 @@ export async function POST(
 
     const result = {
       ...updatedInvoice,
-      owner_name: (updatedInvoice.owner as any)?.full_name || (Array.isArray(updatedInvoice.owner) ? updatedInvoice.owner[0]?.full_name : undefined),
-      horse_name: (updatedInvoice.horse as any)?.name || (Array.isArray(updatedInvoice.horse) ? updatedInvoice.horse[0]?.name : undefined),
+      owner_name: (updatedInvoice.owner as Record<string, string> | null)?.full_name || (Array.isArray(updatedInvoice.owner) ? updatedInvoice.owner[0]?.full_name : undefined),
+      horse_name: (updatedInvoice.horse as Record<string, string> | null)?.name || (Array.isArray(updatedInvoice.horse) ? updatedInvoice.horse[0]?.name : undefined),
       owner: undefined,
       horse: undefined,
     };

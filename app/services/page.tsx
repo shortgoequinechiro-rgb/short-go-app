@@ -19,7 +19,6 @@ export default function ServicesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showAddForm, setShowAddForm] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
@@ -104,7 +103,6 @@ export default function ServicesPage() {
 
       if (!res.ok) throw new Error('Failed to update service')
       await fetchServices()
-      setEditingId(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error updating service')
     }

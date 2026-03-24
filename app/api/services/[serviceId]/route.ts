@@ -43,7 +43,7 @@ export async function PUT(
     }
 
     // Build update object with only provided fields
-    const updateData: any = {}
+    const updateData: Record<string, unknown> = {}
     if ('name' in updates) updateData.name = updates.name
     if ('description' in updates) updateData.description = updates.description
     if ('price_cents' in updates) updateData.price_cents = updates.price_cents

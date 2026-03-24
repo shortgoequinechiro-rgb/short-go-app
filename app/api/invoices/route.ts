@@ -63,10 +63,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: queryError.message }, { status: 500 });
     }
 
-    const invoices = data.map((invoice: any) => ({
+    const invoices = data.map((invoice: Record<string, unknown>) => ({
       ...invoice,
-      owner_name: invoice.owner?.full_name,
-      horse_name: invoice.horse?.name,
+      owner_name: (invoice.owner as Record<string, string> | null)?.full_name,
+      horse_name: (invoice.horse as Record<string, string> | null)?.name,
       owner: undefined,
       horse: undefined,
     }));
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
 
     // Calculate totals
     const subtotalCents = line_items.reduce(
-      (sum: number, item: any) => sum + item.quantity * item.unit_price_cents,
+      (sum: number, item: { quantity: number; unit_price_cents: number }) => sum + item.quantity * item.unit_price_cents,
       0
     );
     const totalCents = subtotalCents;
@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create line items
-    const lineItemsData = line_items.map((item: any) => ({
+    const lineItemsData = line_items.map((item: { service_id: string; description: string; quantity: number; unit_price_cents: number }) => ({
       invoice_id: invoice.id,
       service_id: item.service_id,
       description: item.description,
@@ -195,8 +195,8 @@ export async function POST(request: NextRequest) {
 
     const result = {
       ...completeInvoice,
-      owner_name: (completeInvoice.owner as any)?.full_name || (Array.isArray(completeInvoice.owner) ? completeInvoice.owner[0]?.full_name : undefined),
-      horse_name: (completeInvoice.horse as any)?.name || (Array.isArray(completeInvoice.horse) ? completeInvoice.horse[0]?.name : undefined),
+      owner_name: (completeInvoice.owner as Record<string, string> | null)?.full_name || (Array.isArray(completeInvoice.owner) ? completeInvoice.owner[0]?.full_name : undefined),
+      horse_name: (completeInvoice.horse as Record<string, string> | null)?.name || (Array.isArray(completeInvoice.horse) ? completeInvoice.horse[0]?.name : undefined),
       owner: undefined,
       horse: undefined,
     };
