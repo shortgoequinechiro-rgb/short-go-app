@@ -167,9 +167,9 @@ test.describe('Dashboard', () => {
     await page.waitForLoadState('networkidle')
     await page.waitForTimeout(2000)
 
-    // Should have stat cards
-    await expect(page.locator('text=Clients')).toBeVisible({ timeout: 10000 })
-    await expect(page.locator('text=Patients')).toBeVisible()
+    // Should have core dashboard sections
+    await expect(page.locator('text=Client Dashboard')).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('text=Find Records')).toBeVisible()
   })
 
   test('navbar is visible with navigation', async ({ page }) => {
