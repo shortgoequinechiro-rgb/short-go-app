@@ -63,14 +63,21 @@ export async function POST(
     }
 
     // Fetch practitioner info
-    const { data: practitioner, error: practitionerError } = await supabaseAdmin
+    const { data: practitionerRaw, error: practitionerError } = await supabaseAdmin
       .from('practitioners')
       .select('full_name, practice_name, location')
       .eq('id', invoice.practitioner_id)
       .single()
 
-    if (practitionerError || !practitioner) {
+    if (practitionerError || !practitionerRaw) {
       return NextResponse.json({ error: 'Practitioner not found' }, { status: 404 })
+    }
+
+    // Ensure no null values for PDF generation
+    const practitioner = {
+      full_name: practitionerRaw.full_name || 'Practitioner',
+      practice_name: practitionerRaw.practice_name || 'Stride Chiropractic',
+      location: practitionerRaw.location || '',
     }
 
     // Map line items for PDF (convert cents to dollars for display)
