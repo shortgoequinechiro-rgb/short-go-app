@@ -1,0 +1,214 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth, supabaseAdmin } from '../../lib/auth';
+
+export async function GET(request: NextRequest) {
+  try {
+    const { user, error } = await requireAuth(request);
+    if (error) return error;
+
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get('status');
+    const ownerId = searchParams.get('owner_id');
+    const from = searchParams.get('from');
+    const to = searchParams.get('to');
+
+    let query = supabaseAdmin
+      .from('invoices')
+      .select(
+        `
+        id,
+        invoice_number,
+        invoice_date,
+        due_date,
+        status,
+        subtotal_cents,
+        total_cents,
+        notes,
+        stripe_payment_link_id,
+        stripe_payment_url,
+        created_at,
+        updated_at,
+        owner:owners(full_name, email),
+        horse:horses(name),
+        line_items:invoice_line_items(
+          id,
+          service_id,
+          description,
+          quantity,
+          unit_price_cents
+        )
+      `
+      )
+      .eq('practitioner_id', user.id);
+
+    if (status) {
+      query = query.eq('status', status);
+    }
+
+    if (ownerId) {
+      query = query.eq('owner_id', ownerId);
+    }
+
+    if (from) {
+      query = query.gte('invoice_date', from);
+    }
+
+    if (to) {
+      query = query.lte('invoice_date', to);
+    }
+
+    const { data, error: queryError } = await query.order('invoice_date', { ascending: false });
+
+    if (queryError) {
+      return NextResponse.json({ error: queryError.message }, { status: 500 });
+    }
+
+    const invoices = data.map((invoice: any) => ({
+      ...invoice,
+      owner_name: invoice.owner?.full_name,
+      horse_name: invoice.horse?.name,
+      owner: undefined,
+      horse: undefined,
+    }));
+
+    return NextResponse.json(invoices);
+  } catch (e) {
+    if (e instanceof Error && e.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const { user, error } = await requireAuth(request);
+    if (error) return error;
+    const body = await request.json();
+
+    const { visit_id, owner_id, horse_id, line_items, notes, due_date } = body;
+
+    if (!owner_id || !horse_id || !line_items || !Array.isArray(line_items) || line_items.length === 0) {
+      return NextResponse.json(
+        { error: 'Missing required fields: owner_id, horse_id, line_items' },
+        { status: 400 }
+      );
+    }
+
+    // Generate invoice number as INV-{YYYYMM}-{sequential}
+    const now = new Date();
+    const yearMonth = now.toISOString().slice(0, 7).replace('-', '');
+
+    const { data: existingInvoices, error: countError } = await supabaseAdmin
+      .from('invoices')
+      .select('id', { count: 'exact' })
+      .eq('practitioner_id', user.id)
+      .like('invoice_number', `INV-${yearMonth}-%`);
+
+    if (countError) {
+      return NextResponse.json({ error: countError.message }, { status: 500 });
+    }
+
+    const sequential = (existingInvoices?.length || 0) + 1;
+    const invoiceNumber = `INV-${yearMonth}-${String(sequential).padStart(4, '0')}`;
+
+    // Calculate totals
+    const subtotalCents = line_items.reduce(
+      (sum: number, item: any) => sum + item.quantity * item.unit_price_cents,
+      0
+    );
+    const totalCents = subtotalCents;
+
+    // Create invoice
+    const { data: invoice, error: invoiceError } = await supabaseAdmin
+      .from('invoices')
+      .insert([
+        {
+          practitioner_id: user.id,
+          visit_id,
+          owner_id,
+          horse_id,
+          invoice_number: invoiceNumber,
+          invoice_date: new Date().toISOString().split('T')[0],
+          due_date,
+          status: 'draft',
+          subtotal_cents: subtotalCents,
+          total_cents: totalCents,
+          notes,
+        },
+      ])
+      .select()
+      .single();
+
+    if (invoiceError) {
+      return NextResponse.json({ error: invoiceError.message }, { status: 500 });
+    }
+
+    // Create line items
+    const lineItemsData = line_items.map((item: any) => ({
+      invoice_id: invoice.id,
+      service_id: item.service_id,
+      description: item.description,
+      quantity: item.quantity,
+      unit_price_cents: item.unit_price_cents,
+    }));
+
+    const { error: lineItemsError } = await supabaseAdmin
+      .from('invoice_line_items')
+      .insert(lineItemsData);
+
+    if (lineItemsError) {
+      return NextResponse.json({ error: lineItemsError.message }, { status: 500 });
+    }
+
+    // Fetch the complete invoice with relations
+    const { data: completeInvoice, error: fetchError } = await supabaseAdmin
+      .from('invoices')
+      .select(
+        `
+        id,
+        invoice_number,
+        invoice_date,
+        due_date,
+        status,
+        subtotal_cents,
+        total_cents,
+        notes,
+        created_at,
+        owner:owners(full_name, email),
+        horse:horses(name),
+        line_items:invoice_line_items(
+          id,
+          service_id,
+          description,
+          quantity,
+          unit_price_cents
+        )
+      `
+      )
+      .eq('id', invoice.id)
+      .single();
+
+    if (fetchError) {
+      return NextResponse.json({ error: fetchError.message }, { status: 500 });
+    }
+
+    const result = {
+      ...completeInvoice,
+      owner_name: (completeInvoice.owner as any)?.full_name || (Array.isArray(completeInvoice.owner) ? completeInvoice.owner[0]?.full_name : undefined),
+      horse_name: (completeInvoice.horse as any)?.name || (Array.isArray(completeInvoice.horse) ? completeInvoice.horse[0]?.name : undefined),
+      owner: undefined,
+      horse: undefined,
+    };
+
+    return NextResponse.json(result, { status: 201 });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (error instanceof SyntaxError) {
+      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    }
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

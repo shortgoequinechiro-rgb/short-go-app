@@ -849,8 +849,8 @@ function SpineVisitInner() {
     }
 
     setSaving(false)
-    // Navigate back to patient page
-    router.push(`/horses/${horseId}?tab=visits`)
+    // Navigate to patient page with option to create invoice
+    router.push(`/horses/${horseId}?tab=visits&savedVisitId=${savedVisitId}`)
   }
 
   // ── Save spine only (non-new-visit flow) ──
