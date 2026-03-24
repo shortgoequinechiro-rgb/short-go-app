@@ -391,7 +391,7 @@ function SpineVisitInner() {
       // 1. Fetch most recent visit
       const { data: prevVisits } = await supabase
         .from('visits')
-        .select('id, subjective, objective, assessment, plan, reason_for_visit, treated_areas, recommendations, follow_up, location, provider_name, quick_notes')
+        .select('id, subjective, objective, assessment, plan, reason_for_visit, treated_areas, recommendations, follow_up, location, provider_name')
         .eq('horse_id', horseId)
         .order('visit_date', { ascending: false })
         .limit(1)
@@ -417,7 +417,6 @@ function SpineVisitInner() {
       if (prev.follow_up) { setFollowUp(prev.follow_up); clonedCount++; clonedFields.push('follow up') }
       if (prev.location) { setVisitLocation(prev.location); clonedCount++; clonedFields.push('location') }
       if (prev.provider_name) { setProviderName(prev.provider_name); clonedCount++; clonedFields.push('provider name') }
-      if (prev.quick_notes) { setQuickNotes(prev.quick_notes); clonedCount++; clonedFields.push('quick notes') }
 
       // 2. Also clone spine findings from the previous visit
       if (prev.id) {
@@ -696,7 +695,7 @@ function SpineVisitInner() {
           objective: objective || null,
           assessment: assessment || null,
           plan: plan || null,
-          quickNotes: quickNotes || null,
+          quickNotes: null,
           createdAt: new Date().toISOString(),
         })
 
@@ -710,7 +709,7 @@ function SpineVisitInner() {
           objective: objective || null,
           assessment: assessment || null,
           plan: plan || null,
-          quick_notes: quickNotes || null,
+          quick_notes: null,
           practitioner_id: userId || '',
           cachedAt: Date.now(),
         })
@@ -766,7 +765,6 @@ function SpineVisitInner() {
       treated_areas: treatedAreas || null,
       recommendations: recommendations || null,
       follow_up: followUp || null,
-      quick_notes: quickNotes || null,
       practitioner_id: userId,
     }
 
