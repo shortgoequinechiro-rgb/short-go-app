@@ -426,53 +426,77 @@ function SpineVisitInner() {
       if (prev.visit_type) { setVisitType(prev.visit_type); clonedCount++; clonedFields.push('visit type') }
       if (prev.quick_notes) { setQuickNotes(prev.quick_notes); clonedCount++; clonedFields.push('quick notes') }
 
-      // 2. Also clone spine findings from the previous visit
+      // 2. Clone spine findings — try by visit_id first, fall back to most recent for this horse
+      let spineResult = null
       if (prev.id) {
-        const { data: spineData } = await supabase
+        const { data } = await supabase
           .from('spine_assessments')
           .select('findings, notes')
           .eq('visit_id', prev.id)
           .order('assessed_at', { ascending: false })
           .limit(1)
+        if (data && data.length > 0) spineResult = data[0]
+      }
+      // Fallback: if no spine linked to visit, get the most recent for this horse
+      if (!spineResult) {
+        const { data } = await supabase
+          .from('spine_assessments')
+          .select('findings, notes')
+          .eq('horse_id', horseId)
+          .order('assessed_at', { ascending: false })
+          .limit(1)
+        if (data && data.length > 0) spineResult = data[0]
+      }
 
-        if (spineData && spineData.length > 0) {
-          const spine = spineData[0]
-          if (spine.findings && typeof spine.findings === 'object') {
-            setFindings(spine.findings as Findings)
-            // Also update quick notes & treated areas from spine
-            const spineSummary = buildQuickNotesFromFindings(spine.findings as Findings)
+      if (spineResult) {
+        if (spineResult.findings && typeof spineResult.findings === 'object') {
+          const f = spineResult.findings as Findings
+          // Check if findings actually has any flagged segments
+          const hasFlagged = Object.values(f).some(v => v.left || v.right)
+          if (hasFlagged) {
+            setFindings(f)
+            // Build quick notes from spine
+            const spineSummary = buildQuickNotesFromFindings(f)
             if (spineSummary) {
               setQuickNotes(prev_qn => {
                 const lines = (prev_qn || '').split('\n').filter(l => !l.startsWith('Spine assessment:'))
                 return [spineSummary, ...lines.filter(l => l.trim())].join('\n')
               })
             }
-            // Build treated areas from spine if not already set from visit
-            if (!prev.treated_areas) {
-              const flagged: string[] = []
-              for (const [key, val] of Object.entries(spine.findings as Findings)) {
-                if (!val.left && !val.right) continue
-                const sides: string[] = []
-                if (val.left) sides.push('L')
-                if (val.right) sides.push('R')
-                const label = key.toUpperCase().replace('_', ' ')
-                flagged.push(`${label} (${sides.join('/')})`)
-              }
-              if (flagged.length > 0) {
-                setTreatedAreas(flagged.join(', '))
-              }
+            // Build treated areas from spine
+            const flagged: string[] = []
+            for (const [key, val] of Object.entries(f)) {
+              if (!val.left && !val.right) continue
+              const sides: string[] = []
+              if (val.left) sides.push('L')
+              if (val.right) sides.push('R')
+              const label = key.toUpperCase().replace('_', ' ')
+              flagged.push(`${label} (${sides.join('/')})`)
+            }
+            if (flagged.length > 0) {
+              setTreatedAreas(flagged.join(', '))
             }
             clonedCount++
             clonedFields.push('spine findings')
           }
-          if (spine.notes) { setSpineNotes(spine.notes); clonedCount++; clonedFields.push('spine notes') }
         }
+        if (spineResult.notes) { setSpineNotes(spineResult.notes); clonedCount++; clonedFields.push('spine notes') }
       }
 
+      // Build a helpful message showing what was and wasn't found
+      const emptyFields: string[] = []
+      if (!prev.subjective) emptyFields.push('subjective')
+      if (!prev.objective) emptyFields.push('objective')
+      if (!prev.assessment) emptyFields.push('assessment')
+      if (!prev.plan) emptyFields.push('plan')
+      if (!prev.quick_notes) emptyFields.push('quick notes')
+
       if (clonedCount === 0) {
-        setMessage('Previous visit found but all fields were empty. Try filling in manually.')
+        setMessage('Previous visit found but all fields were empty. Generate SOAP notes on the previous visit first, then clone will carry them over.')
+      } else if (emptyFields.length > 0) {
+        setMessage(`Cloned ${clonedCount} field${clonedCount !== 1 ? 's' : ''} (${clonedFields.join(', ')}). Empty on previous visit: ${emptyFields.join(', ')}.`)
       } else {
-        setMessage(`Cloned ${clonedCount} field${clonedCount !== 1 ? 's' : ''} from previous visit (${clonedFields.join(', ')}). Scroll down to review.`)
+        setMessage(`Cloned ${clonedCount} field${clonedCount !== 1 ? 's' : ''} from previous visit (${clonedFields.join(', ')}).`)
       }
     } catch {
       setMessage('Failed to clone previous visit.')
