@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import twilio from 'twilio'
+import { createNotification } from '../../../lib/notifications'
 
 /**
  * Twilio incoming SMS webhook.
@@ -69,6 +70,14 @@ export async function POST(req: NextRequest) {
       p_responded_at: new Date().toISOString(),
     })
 
+    // Create notification for practitioner
+    await createNotification(
+      owner.practitioner_id || '',
+      'sms_received',
+      'SMS Received',
+      `From ${owner.full_name || from}: Opted in to SMS`
+    )
+
     // Auto-send any pending form
     const pendingAction = owner.pending_sms_action
     if (pendingAction === 'intake' || pendingAction === 'consent') {
@@ -94,8 +103,27 @@ export async function POST(req: NextRequest) {
       p_status: 'opted_out',
       p_responded_at: new Date().toISOString(),
     })
+
+    // Create notification for practitioner
+    await createNotification(
+      owner.practitioner_id || '',
+      'sms_received',
+      'SMS Received',
+      `From ${owner.full_name || from}: Opted out of SMS`
+    )
+
     return twimlResponse(
       "You've been unsubscribed from Short Go Equine Chiropractic texts. You will not receive any more messages. Reply YES to re-subscribe."
+    )
+  }
+
+  // For any other message, create notification
+  if (body) {
+    await createNotification(
+      owner.practitioner_id || '',
+      'sms_received',
+      'SMS Received',
+      `From ${owner.full_name || from}: ${body.substring(0, 50)}${body.length > 50 ? '...' : ''}`
     )
   }
 

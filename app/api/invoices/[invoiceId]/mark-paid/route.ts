@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, supabaseAdmin } from '../../../../lib/auth';
+import { createNotification } from '../../../../lib/notifications';
 
 export async function POST(
   request: NextRequest,
@@ -54,6 +55,21 @@ export async function POST(
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
+
+    // Fetch the invoice number for notification
+    const { data: invoiceData } = await supabaseAdmin
+      .from('invoices')
+      .select('invoice_number')
+      .eq('id', invoiceId)
+      .single();
+
+    // Create notification
+    await createNotification(
+      user.id,
+      'invoice_paid',
+      'Payment Received',
+      `Invoice ${invoiceData?.invoice_number || 'N/A'} paid via ${payment_method}`
+    );
 
     // Fetch updated invoice with relations
     const { data: updatedInvoice, error: fetchUpdatedError } = await supabaseAdmin
