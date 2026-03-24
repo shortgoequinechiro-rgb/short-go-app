@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       )
       .eq('practitioner_id', user.id);
 
-    if (status) {
+    if (status && status !== 'all') {
       query = query.eq('status', status);
     }
 

@@ -9,29 +9,29 @@ interface LineItem {
   id: string;
   description: string;
   quantity: number;
-  unitPrice: number;
+  unit_price_cents: number;
 }
 
 interface Invoice {
   id: string;
-  invoiceNumber: string;
-  date: string;
-  dueDate: string;
+  invoice_number: string;
+  invoice_date: string;
+  due_date: string;
   status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
-  ownerName: string;
-  ownerEmail: string;
-  horseName: string;
-  lineItems: LineItem[];
-  subtotal: number;
-  tax: number;
-  total: number;
+  owner_name: string;
+  owner_email?: string;
+  horse_name: string;
+  line_items: LineItem[];
+  subtotal_cents: number;
+  tax_cents?: number;
+  total_cents: number;
   notes?: string;
-  paymentMethod?: string;
-  paymentDate?: string;
-  paymentReference?: string;
+  payment_method?: string;
+  paid_at?: string;
+  payment_reference?: string;
 }
 
-const statusColors = {
+const statusColors: Record<string, string> = {
   draft: 'bg-slate-500 text-white',
   sent: 'bg-blue-500 text-white',
   paid: 'bg-emerald-500 text-white',
@@ -39,7 +39,7 @@ const statusColors = {
   cancelled: 'bg-red-500 text-white',
 };
 
-const statusLabels = {
+const statusLabels: Record<string, string> = {
   draft: 'Draft',
   sent: 'Sent',
   paid: 'Paid',
@@ -102,12 +102,22 @@ export default function InvoiceDetailPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
 
-      const res = await fetch(`/api/invoices/${invoiceId}/send`, {
+      const res = await fetch(`/api/invoices/${invoiceId}/email`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${session?.access_token}` }
       });
 
       if (!res.ok) throw new Error('Failed to send invoice');
+
+      // Update status to sent
+      await fetch(`/api/invoices/${invoiceId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({ status: 'sent' })
+      });
 
       await fetchInvoice();
     } catch (err) {
@@ -127,8 +137,8 @@ export default function InvoiceDetailPage() {
           Authorization: `Bearer ${session?.access_token}`
         },
         body: JSON.stringify({
-          paymentMethod,
-          paymentReference: paymentReference || undefined
+          payment_method: paymentMethod,
+          payment_reference: paymentReference || undefined
         })
       });
 
@@ -175,7 +185,7 @@ export default function InvoiceDetailPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
 
-      const res = await fetch(`/api/invoices/${invoiceId}/resend`, {
+      const res = await fetch(`/api/invoices/${invoiceId}/email`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${session?.access_token}` }
       });
@@ -220,30 +230,32 @@ export default function InvoiceDetailPage() {
       <div className="rounded-3xl bg-white p-5 shadow-sm mb-4">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">{invoice.invoiceNumber}</h1>
+            <h1 className="text-3xl font-bold text-slate-900">{invoice.invoice_number}</h1>
             <p className="text-slate-600 mt-1">
-              Date: {new Date(invoice.date).toLocaleDateString()}
+              Date: {new Date(invoice.invoice_date).toLocaleDateString()}
             </p>
           </div>
           <span className={`px-4 py-2 rounded-full text-sm font-semibold ${statusColors[invoice.status]}`}>
             {statusLabels[invoice.status]}
           </span>
         </div>
-        <p className="text-slate-600">
-          Due: {new Date(invoice.dueDate).toLocaleDateString()}
-        </p>
+        {invoice.due_date && (
+          <p className="text-slate-600">
+            Due: {new Date(invoice.due_date).toLocaleDateString()}
+          </p>
+        )}
       </div>
 
       {/* Owner & Patient Info */}
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div className="rounded-3xl bg-white p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-slate-600 mb-3 uppercase">Owner</h3>
-          <p className="text-lg font-medium text-slate-900">{invoice.ownerName}</p>
-          <p className="text-slate-600">{invoice.ownerEmail}</p>
+          <p className="text-lg font-medium text-slate-900">{invoice.owner_name}</p>
+          {invoice.owner_email && <p className="text-slate-600">{invoice.owner_email}</p>}
         </div>
         <div className="rounded-3xl bg-white p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-slate-600 mb-3 uppercase">Horse/Patient</h3>
-          <p className="text-lg font-medium text-slate-900">{invoice.horseName}</p>
+          <p className="text-lg font-medium text-slate-900">{invoice.horse_name}</p>
         </div>
       </div>
 
@@ -261,13 +273,13 @@ export default function InvoiceDetailPage() {
               </tr>
             </thead>
             <tbody>
-              {invoice.lineItems.map((item) => (
+              {invoice.line_items?.map((item) => (
                 <tr key={item.id} className="border-b border-slate-100">
                   <td className="py-3 px-0 text-slate-700">{item.description}</td>
                   <td className="py-3 px-2 text-right text-slate-700">{item.quantity}</td>
-                  <td className="py-3 px-2 text-right text-slate-700">${(item.unitPrice / 100).toFixed(2)}</td>
+                  <td className="py-3 px-2 text-right text-slate-700">${(item.unit_price_cents / 100).toFixed(2)}</td>
                   <td className="py-3 px-0 text-right font-medium text-slate-900">
-                    ${((item.quantity * item.unitPrice) / 100).toFixed(2)}
+                    ${((item.quantity * item.unit_price_cents) / 100).toFixed(2)}
                   </td>
                 </tr>
               ))}
@@ -281,17 +293,17 @@ export default function InvoiceDetailPage() {
         <div className="space-y-3">
           <div className="flex justify-between text-slate-700">
             <span>Subtotal</span>
-            <span>${(invoice.subtotal / 100).toFixed(2)}</span>
+            <span>${(invoice.subtotal_cents / 100).toFixed(2)}</span>
           </div>
-          {invoice.tax > 0 && (
+          {(invoice.tax_cents ?? 0) > 0 && (
             <div className="flex justify-between text-slate-700">
               <span>Tax</span>
-              <span>${(invoice.tax / 100).toFixed(2)}</span>
+              <span>${((invoice.tax_cents ?? 0) / 100).toFixed(2)}</span>
             </div>
           )}
           <div className="border-t border-slate-200 pt-3 flex justify-between text-lg font-semibold text-slate-900">
             <span>{invoice.status === 'paid' ? 'Total Paid' : 'Total Due'}</span>
-            <span>${(invoice.total / 100).toFixed(2)}</span>
+            <span>${(invoice.total_cents / 100).toFixed(2)}</span>
           </div>
         </div>
       </div>
@@ -302,16 +314,17 @@ export default function InvoiceDetailPage() {
           <h3 className="text-lg font-semibold text-emerald-900 mb-3">Payment Details</h3>
           <div className="space-y-2 text-emerald-800">
             <p>
-              <span className="font-medium">Method:</span> {invoice.paymentMethod || 'N/A'}
+              <span className="font-medium">Method:</span>{' '}
+              <span className="capitalize">{invoice.payment_method || 'N/A'}</span>
             </p>
-            {invoice.paymentDate && (
+            {invoice.paid_at && (
               <p>
-                <span className="font-medium">Date:</span> {new Date(invoice.paymentDate).toLocaleDateString()}
+                <span className="font-medium">Date:</span> {new Date(invoice.paid_at).toLocaleDateString()}
               </p>
             )}
-            {invoice.paymentReference && (
+            {invoice.payment_reference && (
               <p>
-                <span className="font-medium">Reference:</span> {invoice.paymentReference}
+                <span className="font-medium">Reference:</span> {invoice.payment_reference}
               </p>
             )}
           </div>
@@ -344,12 +357,12 @@ export default function InvoiceDetailPage() {
               >
                 {paymentLinkLoading ? 'Generating...' : 'Get Payment Link'}
               </button>
-              <Link
-                href={`/invoices/${invoiceId}/edit`}
-                className="block w-full bg-slate-200 hover:bg-slate-300 text-slate-900 font-semibold py-3 rounded-xl transition text-center"
+              <button
+                onClick={() => setShowMarkPaidModal(true)}
+                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-3 rounded-xl transition"
               >
-                Edit
-              </Link>
+                Mark as Paid
+              </button>
             </>
           )}
 
@@ -380,7 +393,7 @@ export default function InvoiceDetailPage() {
           {invoice.status === 'paid' && (
             <a
               href={`/api/invoices/${invoiceId}/pdf`}
-              download={`${invoice.invoiceNumber}.pdf`}
+              download={`${invoice.invoice_number}.pdf`}
               className="block w-full bg-slate-500 hover:bg-slate-600 text-white font-semibold py-3 rounded-xl transition text-center"
             >
               Download PDF

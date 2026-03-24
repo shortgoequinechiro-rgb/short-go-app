@@ -125,6 +125,14 @@ export default function NavBar() {
                 📅 Scheduler
               </Link>
             )}
+            {!isInvoices && (
+              <Link
+                href="/invoices"
+                className="whitespace-nowrap rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/20"
+              >
+                💰 Invoices
+              </Link>
+            )}
             {!isAccount && (
               <Link
                 href="/account"
