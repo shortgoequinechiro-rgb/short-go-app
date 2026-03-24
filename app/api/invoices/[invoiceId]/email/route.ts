@@ -97,7 +97,7 @@ export async function POST(
     // Format line items summary for email
     const lineItemsSummary = invoice.line_items
       .map(
-        (item: any) =>
+        (item: { description: string; quantity: number; total: number }) =>
           `<li>${item.description} (Qty: ${item.quantity}) - $${item.total.toFixed(2)}</li>`
       )
       .join('')

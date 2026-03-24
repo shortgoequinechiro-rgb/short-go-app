@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import Link from 'next/link';
 
@@ -72,11 +72,7 @@ export default function InvoiceDetailPage() {
     }
   }, [searchParams]);
 
-  useEffect(() => {
-    fetchInvoice();
-  }, [invoiceId]);
-
-  const fetchInvoice = async () => {
+  const fetchInvoice = useCallback(async () => {
     try {
       setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
@@ -96,7 +92,11 @@ export default function InvoiceDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [invoiceId]);
+
+  useEffect(() => {
+    fetchInvoice();
+  }, [fetchInvoice]);
 
   const handleSendInvoice = async () => {
     try {

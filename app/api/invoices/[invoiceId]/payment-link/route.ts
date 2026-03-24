@@ -58,7 +58,7 @@ export async function POST(
     });
 
     // Update invoice with payment link details
-    const updateData: any = {
+    const updateData: Record<string, string> = {
       stripe_payment_link_id: paymentLink.id,
       stripe_payment_url: paymentLink.url,
       updated_at: new Date().toISOString(),
