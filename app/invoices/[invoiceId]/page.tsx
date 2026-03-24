@@ -1,12 +1,13 @@
 'use client';
 
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import Link from 'next/link';
 
 interface LineItem {
   id: string;
+  service_id?: string;
   description: string;
   quantity: number;
   unit_price_cents: number;
@@ -51,6 +52,7 @@ const statusLabels: Record<string, string> = {
 export default function InvoiceDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const invoiceId = params.invoiceId as string;
 
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -67,6 +69,18 @@ export default function InvoiceDetailPage() {
   const [successMessage, setSuccessMessage] = useState('');
   const [emailSending, setEmailSending] = useState(false);
   const [smsSending, setSmsSending] = useState(false);
+
+  // Edit mode state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editNotes, setEditNotes] = useState('');
+  const [editDueDate, setEditDueDate] = useState('');
+  const [editStatus, setEditStatus] = useState('');
+  const [editLineItems, setEditLineItems] = useState<LineItem[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  // Delete state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const showSuccess = (msg: string) => {
     setSuccessMessage(msg);
@@ -208,6 +222,123 @@ export default function InvoiceDetailPage() {
     }
   };
 
+  const startEditing = () => {
+    if (!invoice) return;
+    setEditNotes(invoice.notes || '');
+    setEditDueDate(invoice.due_date ? invoice.due_date.split('T')[0] : '');
+    setEditStatus(invoice.status);
+    setEditLineItems(invoice.line_items.map(item => ({ ...item })));
+    setIsEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setIsEditing(false);
+    setError(null);
+  };
+
+  const handleUpdateLineItem = (index: number, field: keyof LineItem, value: string | number) => {
+    setEditLineItems(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const handleRemoveLineItem = (index: number) => {
+    setEditLineItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddLineItem = () => {
+    setEditLineItems(prev => [...prev, { id: `new-${Date.now()}`, description: '', quantity: 1, unit_price_cents: 0 }]);
+  };
+
+  const handleSaveEdits = async () => {
+    try {
+      setSaving(true);
+      setError(null);
+      const { data: { session } } = await supabase.auth.getSession();
+
+      // Validate line items
+      if (editLineItems.length === 0) {
+        setError('Invoice must have at least one line item.');
+        setSaving(false);
+        return;
+      }
+      for (const item of editLineItems) {
+        if (!item.description.trim()) {
+          setError('All line items must have a description.');
+          setSaving(false);
+          return;
+        }
+        if (item.quantity <= 0) {
+          setError('Quantity must be greater than zero.');
+          setSaving(false);
+          return;
+        }
+      }
+
+      const body: Record<string, unknown> = {};
+      if (editNotes !== (invoice?.notes || '')) body.notes = editNotes;
+      if (editDueDate !== (invoice?.due_date ? invoice.due_date.split('T')[0] : '')) body.due_date = editDueDate || null;
+      if (editStatus !== invoice?.status) body.status = editStatus;
+
+      // Always send line items so totals recalculate
+      body.line_items = editLineItems.map(item => ({
+        service_id: item.service_id || null,
+        description: item.description,
+        quantity: item.quantity,
+        unit_price_cents: item.unit_price_cents,
+      }));
+
+      const res = await fetch(`/api/invoices/${invoiceId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to update invoice');
+      }
+
+      setIsEditing(false);
+      showSuccess('Invoice updated!');
+      await fetchInvoice();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save changes');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      setDeleting(true);
+      setError(null);
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const res = await fetch(`/api/invoices/${invoiceId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to delete invoice');
+      }
+
+      router.push('/invoices');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete invoice');
+      setShowDeleteModal(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-6">
@@ -254,14 +385,81 @@ export default function InvoiceDetailPage() {
               Date: {new Date(invoice.invoice_date).toLocaleDateString()}
             </p>
           </div>
-          <span className={`px-4 py-2 rounded-full text-sm font-semibold ${statusColors[invoice.status]}`}>
-            {statusLabels[invoice.status]}
-          </span>
+          <div className="flex items-center gap-2">
+            {isEditing ? (
+              <select
+                value={editStatus}
+                onChange={(e) => setEditStatus(e.target.value)}
+                className="px-3 py-2 rounded-full text-sm font-semibold border border-slate-300 text-slate-900"
+              >
+                <option value="draft">Draft</option>
+                <option value="sent">Sent</option>
+                <option value="overdue">Overdue</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            ) : (
+              <span className={`px-4 py-2 rounded-full text-sm font-semibold ${statusColors[invoice.status]}`}>
+                {statusLabels[invoice.status]}
+              </span>
+            )}
+          </div>
         </div>
-        {invoice.due_date && (
-          <p className="text-slate-600">
-            Due: {new Date(invoice.due_date).toLocaleDateString()}
-          </p>
+
+        {isEditing ? (
+          <div>
+            <label className="text-sm font-medium text-slate-700 block mb-1">Due Date</label>
+            <input
+              type="date"
+              value={editDueDate}
+              onChange={(e) => setEditDueDate(e.target.value)}
+              className="px-3 py-2 border border-slate-300 rounded-lg text-slate-900 text-sm"
+            />
+          </div>
+        ) : (
+          invoice.due_date && (
+            <p className="text-slate-600">
+              Due: {new Date(invoice.due_date).toLocaleDateString()}
+            </p>
+          )
+        )}
+
+        {/* Edit / Delete buttons */}
+        {!isEditing && invoice.status !== 'paid' && (
+          <div className="flex gap-2 mt-4 pt-4 border-t border-slate-100">
+            <button
+              onClick={startEditing}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-blue-600 border border-blue-200 rounded-xl hover:bg-blue-50 transition"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+              Edit Invoice
+            </button>
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+              Delete
+            </button>
+          </div>
+        )}
+
+        {/* Save / Cancel bar when editing */}
+        {isEditing && (
+          <div className="flex gap-2 mt-4 pt-4 border-t border-slate-100">
+            <button
+              onClick={handleSaveEdits}
+              disabled={saving}
+              className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2.5 rounded-xl transition disabled:opacity-50"
+            >
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+            <button
+              onClick={cancelEditing}
+              className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-900 font-semibold py-2.5 rounded-xl transition"
+            >
+              Cancel
+            </button>
+          </div>
         )}
       </div>
 
@@ -328,30 +526,94 @@ export default function InvoiceDetailPage() {
       {/* Line Items */}
       <div className="rounded-3xl bg-white p-5 shadow-sm mb-4">
         <h3 className="text-lg font-semibold text-slate-900 mb-4">Line Items</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-slate-200">
-                <th className="text-left py-3 px-0 text-sm font-semibold text-slate-600">Description</th>
-                <th className="text-right py-3 px-2 text-sm font-semibold text-slate-600">Qty</th>
-                <th className="text-right py-3 px-2 text-sm font-semibold text-slate-600">Unit Price</th>
-                <th className="text-right py-3 px-0 text-sm font-semibold text-slate-600">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {invoice.line_items?.map((item) => (
-                <tr key={item.id} className="border-b border-slate-100">
-                  <td className="py-3 px-0 text-slate-700">{item.description}</td>
-                  <td className="py-3 px-2 text-right text-slate-700">{item.quantity}</td>
-                  <td className="py-3 px-2 text-right text-slate-700">${(item.unit_price_cents / 100).toFixed(2)}</td>
-                  <td className="py-3 px-0 text-right font-medium text-slate-900">
-                    ${((item.quantity * item.unit_price_cents) / 100).toFixed(2)}
-                  </td>
+        {isEditing ? (
+          <div className="space-y-3">
+            {editLineItems.map((item, index) => (
+              <div key={item.id} className="p-3 border border-slate-200 rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-500">Item {index + 1}</span>
+                  {editLineItems.length > 1 && (
+                    <button
+                      onClick={() => handleRemoveLineItem(index)}
+                      className="text-red-500 hover:text-red-700 text-xs font-medium"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                <input
+                  type="text"
+                  value={item.description}
+                  onChange={(e) => handleUpdateLineItem(index, 'description', e.target.value)}
+                  placeholder="Description"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900"
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-slate-500 block mb-1">Quantity</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={item.quantity}
+                      onChange={(e) => handleUpdateLineItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 block mb-1">Unit Price ($)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={(item.unit_price_cents / 100).toFixed(2)}
+                      onChange={(e) => handleUpdateLineItem(index, 'unit_price_cents', Math.round(parseFloat(e.target.value || '0') * 100))}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900"
+                    />
+                  </div>
+                </div>
+                <p className="text-right text-sm font-medium text-slate-700">
+                  Subtotal: ${((item.quantity * item.unit_price_cents) / 100).toFixed(2)}
+                </p>
+              </div>
+            ))}
+            <button
+              onClick={handleAddLineItem}
+              className="w-full py-2 border-2 border-dashed border-slate-300 rounded-xl text-sm font-medium text-slate-500 hover:text-blue-600 hover:border-blue-300 transition"
+            >
+              + Add Line Item
+            </button>
+            <div className="pt-2 border-t border-slate-200 text-right">
+              <p className="text-lg font-semibold text-slate-900">
+                New Total: ${(editLineItems.reduce((sum, item) => sum + item.quantity * item.unit_price_cents, 0) / 100).toFixed(2)}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  <th className="text-left py-3 px-0 text-sm font-semibold text-slate-600">Description</th>
+                  <th className="text-right py-3 px-2 text-sm font-semibold text-slate-600">Qty</th>
+                  <th className="text-right py-3 px-2 text-sm font-semibold text-slate-600">Unit Price</th>
+                  <th className="text-right py-3 px-0 text-sm font-semibold text-slate-600">Total</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {invoice.line_items?.map((item) => (
+                  <tr key={item.id} className="border-b border-slate-100">
+                    <td className="py-3 px-0 text-slate-700">{item.description}</td>
+                    <td className="py-3 px-2 text-right text-slate-700">{item.quantity}</td>
+                    <td className="py-3 px-2 text-right text-slate-700">${(item.unit_price_cents / 100).toFixed(2)}</td>
+                    <td className="py-3 px-0 text-right font-medium text-slate-900">
+                      ${((item.quantity * item.unit_price_cents) / 100).toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Totals Section */}
@@ -398,11 +660,24 @@ export default function InvoiceDetailPage() {
       )}
 
       {/* Notes Section */}
-      {invoice.notes && (
+      {isEditing ? (
         <div className="rounded-3xl bg-white p-5 shadow-sm mb-4">
           <h3 className="text-lg font-semibold text-slate-900 mb-3">Notes</h3>
-          <p className="text-slate-700 whitespace-pre-wrap">{invoice.notes}</p>
+          <textarea
+            value={editNotes}
+            onChange={(e) => setEditNotes(e.target.value)}
+            rows={3}
+            placeholder="Add notes to this invoice..."
+            className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm text-slate-900 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
         </div>
+      ) : (
+        invoice.notes && (
+          <div className="rounded-3xl bg-white p-5 shadow-sm mb-4">
+            <h3 className="text-lg font-semibold text-slate-900 mb-3">Notes</h3>
+            <p className="text-slate-700 whitespace-pre-wrap">{invoice.notes}</p>
+          </div>
+        )
       )}
 
       {/* Other Actions */}
@@ -542,6 +817,44 @@ export default function InvoiceDetailPage() {
             >
               Done
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="rounded-3xl bg-white p-6 shadow-lg max-w-sm w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-600"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+              </div>
+              <h2 className="text-xl font-bold text-slate-900">Delete Invoice</h2>
+            </div>
+
+            <p className="text-slate-600 mb-2">
+              Are you sure you want to delete invoice <span className="font-semibold">{invoice.invoice_number}</span>?
+            </p>
+            <p className="text-sm text-red-600 mb-6">
+              This action cannot be undone. All line items and communication history for this invoice will also be deleted.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleting}
+                className="flex-1 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-900 font-semibold rounded-xl transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl transition disabled:opacity-50"
+              >
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
           </div>
         </div>
       )}
