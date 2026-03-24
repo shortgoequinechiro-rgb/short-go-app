@@ -19,7 +19,7 @@ type Horse = {
 type Service = {
   id: string
   name: string
-  price: number
+  price_cents: number
   category?: string
 }
 
@@ -27,7 +27,7 @@ type LineItem = {
   id: string
   description: string
   quantity: number
-  price: number
+  unit_price_cents: number
   isCustom: boolean
 }
 
@@ -138,7 +138,7 @@ export default function CreateInvoicePage() {
           id: service.id,
           description: service.name,
           quantity: 1,
-          price: service.price,
+          unit_price_cents: service.price_cents,
           isCustom: false,
         },
       ])
@@ -164,7 +164,7 @@ export default function CreateInvoicePage() {
         id,
         description: customDescription,
         quantity: customQuantity,
-        price,
+        unit_price_cents: Math.round(price * 100),
         isCustom: true,
       },
     ])
@@ -191,7 +191,7 @@ export default function CreateInvoicePage() {
   }
 
   const calculateTotal = () => {
-    return lineItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+    return lineItems.reduce((sum, item) => sum + item.unit_price_cents * item.quantity, 0)
   }
 
   const handleCreateInvoice = async () => {
@@ -213,7 +213,12 @@ export default function CreateInvoicePage() {
         horse_id: selectedHorse,
         notes,
         due_date: dueDate || null,
-        line_items: lineItems,
+        line_items: lineItems.map((item) => ({
+          service_id: item.isCustom ? null : item.id,
+          description: item.description,
+          quantity: item.quantity,
+          unit_price_cents: item.unit_price_cents,
+        })),
       }
 
       const res = await fetch('/api/invoices', {
@@ -231,7 +236,7 @@ export default function CreateInvoicePage() {
       }
 
       const data = await res.json()
-      router.push(`/invoices/${data.invoice.id}`)
+      router.push(`/invoices/${data.id}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create invoice')
     } finally {
@@ -367,7 +372,7 @@ export default function CreateInvoicePage() {
                   className="text-left p-3 border border-slate-300 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition"
                 >
                   <p className="font-medium text-slate-900 text-sm">{service.name}</p>
-                  <p className="text-slate-600 text-xs">${service.price.toFixed(2)}</p>
+                  <p className="text-slate-600 text-xs">${(service.price_cents / 100).toFixed(2)}</p>
                 </button>
               ))}
             </div>
@@ -434,8 +439,8 @@ export default function CreateInvoicePage() {
                     <div className="flex-1">
                       <p className="font-medium text-slate-900 text-sm">{item.description}</p>
                       <p className="text-slate-600 text-xs">
-                        ${item.price.toFixed(2)} x {item.quantity} = $
-                        {(item.price * item.quantity).toFixed(2)}
+                        ${(item.unit_price_cents / 100).toFixed(2)} x {item.quantity} = $
+                        {(item.unit_price_cents * item.quantity / 100).toFixed(2)}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 ml-4">
@@ -565,7 +570,7 @@ export default function CreateInvoicePage() {
                       {item.description} × {item.quantity}
                     </span>
                     <span className="font-semibold text-slate-900">
-                      ${(item.price * item.quantity).toFixed(2)}
+                      ${(item.unit_price_cents * item.quantity / 100).toFixed(2)}
                     </span>
                   </div>
                 ))}
@@ -576,7 +581,7 @@ export default function CreateInvoicePage() {
             <div className="border-t border-slate-200 pt-4">
               <div className="flex justify-between items-center">
                 <span className="text-lg font-semibold text-slate-900">Total</span>
-                <span className="text-2xl font-bold text-blue-600">${total.toFixed(2)}</span>
+                <span className="text-2xl font-bold text-blue-600">${(total / 100).toFixed(2)}</span>
               </div>
             </div>
 

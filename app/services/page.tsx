@@ -9,8 +9,8 @@ interface Service {
   id: string
   name: string
   description: string | null
-  price: number
-  active: boolean
+  price_cents: number
+  is_active: boolean
   sort_order: number
 }
 
@@ -47,7 +47,8 @@ export default function ServicesPage() {
 
       if (!res.ok) throw new Error('Failed to fetch services')
       const data = await res.json()
-      setServices(data.sort((a: Service, b: Service) => a.sort_order - b.sort_order))
+      const list = Array.isArray(data) ? data : (data.services || [])
+      setServices(list.sort((a: Service, b: Service) => a.sort_order - b.sort_order))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error loading services')
     } finally {
@@ -75,7 +76,7 @@ export default function ServicesPage() {
         body: JSON.stringify({
           name: formData.name,
           description: formData.description || null,
-          price: priceInCents,
+          price_cents: priceInCents,
         })
       })
 
@@ -93,7 +94,7 @@ export default function ServicesPage() {
       const { data: { session } } = await supabase.auth.getSession()
 
       const res = await fetch(`/api/services/${id}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session?.access_token}`
@@ -108,8 +109,8 @@ export default function ServicesPage() {
     }
   }
 
-  const handleToggleActive = async (id: string, active: boolean) => {
-    await handleUpdateService(id, { active: !active })
+  const handleToggleActive = async (id: string, isActive: boolean) => {
+    await handleUpdateService(id, { is_active: !isActive })
   }
 
   const handleDeleteService = async (id: string) => {
@@ -147,7 +148,7 @@ export default function ServicesPage() {
 
       for (const update of updates) {
         const res = await fetch(`/api/services/${update.id}`, {
-          method: 'PATCH',
+          method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${session?.access_token}`
@@ -328,7 +329,7 @@ export default function ServicesPage() {
                           <p className="text-sm text-slate-600 mt-1">{service.description}</p>
                         )}
                         <p className="text-lg font-semibold text-slate-900 mt-2">
-                          {formatPrice(service.price)}
+                          {formatPrice(service.price_cents)}
                         </p>
                       </div>
 
@@ -339,12 +340,12 @@ export default function ServicesPage() {
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input
                               type="checkbox"
-                              checked={service.active}
-                              onChange={() => handleToggleActive(service.id, service.active)}
+                              checked={service.is_active}
+                              onChange={() => handleToggleActive(service.id, service.is_active)}
                               className="rounded"
                             />
                             <span className="text-sm text-slate-600">
-                              {service.active ? 'Active' : 'Inactive'}
+                              {service.is_active ? 'Active' : 'Inactive'}
                             </span>
                           </label>
 

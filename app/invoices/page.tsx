@@ -7,10 +7,10 @@ import { supabase } from '../lib/supabase'
 type Invoice = {
   id: string
   invoice_number: string
-  date: string
+  invoice_date: string
   owner_name: string
   horse_name: string
-  total: number
+  total_cents: number
   status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled'
   due_date: string | null
 }
@@ -72,7 +72,7 @@ export default function InvoicesPage() {
         }
 
         const data = await res.json()
-        setInvoices(data.invoices || [])
+        setInvoices(Array.isArray(data) ? data : (data.invoices || []))
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load invoices')
       } finally {
@@ -94,10 +94,10 @@ export default function InvoicesPage() {
 
     // Filter by date range
     if (filters.dateFrom) {
-      filtered = filtered.filter((inv) => new Date(inv.date) >= new Date(filters.dateFrom!))
+      filtered = filtered.filter((inv) => new Date(inv.invoice_date) >= new Date(filters.dateFrom!))
     }
     if (filters.dateTo) {
-      filtered = filtered.filter((inv) => new Date(inv.date) <= new Date(filters.dateTo!))
+      filtered = filtered.filter((inv) => new Date(inv.invoice_date) <= new Date(filters.dateTo!))
     }
 
     setFilteredInvoices(filtered)
@@ -109,7 +109,7 @@ export default function InvoicesPage() {
 
     const outstanding = invoices
       .filter((inv) => inv.status !== 'paid' && inv.status !== 'cancelled')
-      .reduce((sum, inv) => sum + inv.total, 0)
+      .reduce((sum, inv) => sum + inv.total_cents, 0)
 
     const overdue = invoices.filter((inv) => {
       if (inv.status === 'paid' || inv.status === 'cancelled') return false
@@ -120,10 +120,10 @@ export default function InvoicesPage() {
     const paidThisMonth = invoices
       .filter((inv) => {
         if (inv.status !== 'paid') return false
-        const invDate = new Date(inv.date)
+        const invDate = new Date(inv.invoice_date)
         return invDate.getMonth() === currentMonth && invDate.getFullYear() === currentYear
       })
-      .reduce((sum, inv) => sum + inv.total, 0)
+      .reduce((sum, inv) => sum + inv.total_cents, 0)
 
     setSummaryStats({
       totalOutstanding: outstanding,
@@ -138,7 +138,7 @@ export default function InvoicesPage() {
       if (!session?.session?.access_token) return
 
       const res = await fetch(`/api/invoices/${invoiceId}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session.session.access_token}`,
@@ -193,7 +193,7 @@ export default function InvoicesPage() {
           <div className="rounded-3xl bg-white p-5 shadow-sm">
             <p className="text-slate-600 text-sm font-medium">Total Outstanding</p>
             <p className="text-2xl font-bold text-slate-900 mt-1">
-              ${summaryStats.totalOutstanding.toFixed(2)}
+              ${(summaryStats.totalOutstanding / 100).toFixed(2)}
             </p>
           </div>
           <div className="rounded-3xl bg-white p-5 shadow-sm">
@@ -203,7 +203,7 @@ export default function InvoicesPage() {
           <div className="rounded-3xl bg-white p-5 shadow-sm">
             <p className="text-slate-600 text-sm font-medium">Paid This Month</p>
             <p className="text-2xl font-bold text-emerald-600 mt-1">
-              ${summaryStats.paidThisMonth.toFixed(2)}
+              ${(summaryStats.paidThisMonth / 100).toFixed(2)}
             </p>
           </div>
         </div>
@@ -269,7 +269,7 @@ export default function InvoicesPage() {
                     <p className="text-slate-500 text-xs font-semibold uppercase">Invoice</p>
                     <p className="text-slate-900 font-semibold">{invoice.invoice_number}</p>
                     <p className="text-slate-600 text-sm">
-                      {new Date(invoice.date).toLocaleDateString()}
+                      {new Date(invoice.invoice_date).toLocaleDateString()}
                     </p>
                   </div>
 
@@ -284,7 +284,7 @@ export default function InvoicesPage() {
                   <div className="md:col-span-2">
                     <p className="text-slate-500 text-xs font-semibold uppercase">Total</p>
                     <p className="text-slate-900 font-semibold text-lg">
-                      ${invoice.total.toFixed(2)}
+                      ${(invoice.total_cents / 100).toFixed(2)}
                     </p>
                   </div>
 
