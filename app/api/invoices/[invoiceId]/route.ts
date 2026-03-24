@@ -29,7 +29,7 @@ export async function GET(
         payment_reference,
         created_at,
         updated_at,
-        owner:owners(full_name, email, phone),
+        owner:owners(full_name, email),
         horse:horses(name),
         line_items:invoice_line_items(
           id,
@@ -51,13 +51,9 @@ export async function GET(
       return NextResponse.json({ error: fetchError.message }, { status: 500 });
     }
 
-    const ownerData = invoice.owner as unknown as Record<string, string> | null;
-    const ownerArr = Array.isArray(invoice.owner) ? invoice.owner[0] : null;
     const result = {
       ...invoice,
-      owner_name: ownerData?.full_name || ownerArr?.full_name,
-      owner_email: ownerData?.email || ownerArr?.email,
-      owner_phone: ownerData?.phone || ownerArr?.phone,
+      owner_name: (invoice.owner as unknown as Record<string, string> | null)?.full_name || (Array.isArray(invoice.owner) ? invoice.owner[0]?.full_name : undefined),
       horse_name: (invoice.horse as unknown as Record<string, string> | null)?.name || (Array.isArray(invoice.horse) ? invoice.horse[0]?.name : undefined),
       owner: undefined,
       horse: undefined,
@@ -191,7 +187,7 @@ export async function PUT(
         payment_reference,
         created_at,
         updated_at,
-        owner:owners(full_name, email, phone),
+        owner:owners(full_name, email),
         horse:horses(name),
         line_items:invoice_line_items(
           id,
@@ -209,13 +205,9 @@ export async function PUT(
       return NextResponse.json({ error: fetchUpdatedError.message }, { status: 500 });
     }
 
-    const updOwnerData = updatedInvoice.owner as unknown as Record<string, string> | null;
-    const updOwnerArr = Array.isArray(updatedInvoice.owner) ? updatedInvoice.owner[0] : null;
     const result = {
       ...updatedInvoice,
-      owner_name: updOwnerData?.full_name || updOwnerArr?.full_name,
-      owner_email: updOwnerData?.email || updOwnerArr?.email,
-      owner_phone: updOwnerData?.phone || updOwnerArr?.phone,
+      owner_name: (updatedInvoice.owner as unknown as Record<string, string> | null)?.full_name || (Array.isArray(updatedInvoice.owner) ? updatedInvoice.owner[0]?.full_name : undefined),
       horse_name: (updatedInvoice.horse as unknown as Record<string, string> | null)?.name || (Array.isArray(updatedInvoice.horse) ? updatedInvoice.horse[0]?.name : undefined),
       owner: undefined,
       horse: undefined,
