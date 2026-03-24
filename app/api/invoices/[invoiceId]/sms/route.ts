@@ -104,20 +104,6 @@ export async function POST(
       to: phone,
     })
 
-    // Log the communication
-    await supabaseAdmin.from('communication_log').insert({
-      practitioner_id: user.id,
-      owner_id: invoice.owner_id,
-      invoice_id: invoiceId,
-      channel: 'sms',
-      message_type: 'invoice',
-      recipient: owner.phone,
-      subject: null,
-      body_preview: smsBody.substring(0, 100),
-      status: 'sent',
-      external_id: message.sid,
-    })
-
     // Update invoice status to 'sent' if currently 'draft'
     if (invoice.status === 'draft') {
       await supabaseAdmin

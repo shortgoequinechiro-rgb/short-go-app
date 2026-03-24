@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { NotificationBell } from './NotificationBell'
 
 export default function NavBar() {
   const [userEmail, setUserEmail] = useState<string | null>(null)
@@ -17,7 +16,11 @@ export default function NavBar() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setUserEmail(data.session?.user?.email ?? null)
-    }).catch(() => {})
+    }).catch(() => {
+      // Offline — try to get cached session
+      // Supabase stores session in localStorage so getSession() should still work,
+      // but if it throws, just leave email null (NavBar won't render)
+    })
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -26,6 +29,7 @@ export default function NavBar() {
     return () => subscription.unsubscribe()
   }, [])
 
+  // Close menu when clicking outside
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -36,10 +40,12 @@ export default function NavBar() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Close menu on route change
   useEffect(() => {
     setMenuOpen(false)
   }, [pathname])
 
+  // Don't render on public/marketing pages or when unauthenticated
   const isPublicPage =
     pathname === '/' ||
     pathname === '/login' ||
@@ -57,27 +63,21 @@ export default function NavBar() {
   const isHorse = pathname?.startsWith('/horses')
   const isCalendar = pathname?.startsWith('/calendar')
   const isInvoices = pathname?.startsWith('/invoices')
-  const isReports = pathname?.startsWith('/reports')
-  const isComms = pathname?.startsWith('/communications')
   const isAccount = pathname?.startsWith('/account') || pathname?.startsWith('/billing')
 
-  // Mobile nav links — show all pages for easy access
-  const mobileNavLinks = [
-    { href: '/dashboard', label: '\u{1F3E0} Dashboard', icon: 'dashboard' },
-    { href: '/calendar', label: '\u{1F4C5} Scheduler', icon: 'calendar' },
-    { href: '/invoices', label: '\u{1F4B0} Invoices', icon: 'invoices' },
-    { href: '/reports', label: '\u{1F4CA} Reports', icon: 'reports' },
-    { href: '/communications', label: '\u{1F4E8} Messages', icon: 'comms' },
-    { href: '/account', label: '\u{2699}\u{FE0F} Account', icon: 'account' },
+  const navLinks = [
+    { href: '/calendar', label: '📅 Scheduler', hidden: isCalendar },
+    { href: '/invoices', label: '💰 Invoices', hidden: isInvoices },
+    { href: '/account', label: 'Account', hidden: isAccount },
   ]
 
   return (
     <nav className="sticky top-0 z-50 border-b border-[#1a3358] bg-[#0f2040] shadow-lg">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-3 md:px-6">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 md:px-6">
 
         {/* Left: logo + brand */}
         <Link href="/dashboard" className="flex min-w-0 items-center gap-3">
-          <div className="relative h-10 w-10 flex-shrink-0 sm:h-12 sm:w-12">
+          <div className="relative h-12 w-12 flex-shrink-0">
             <Image
               src="/logo-gold.png"
               alt="Stride"
@@ -108,21 +108,21 @@ export default function NavBar() {
           </div>
         )}
 
-        {/* Right: desktop nav + notifications + email */}
+        {/* Right: desktop nav + email */}
         <div className="flex items-center gap-2">
           {/* Email (xl only) */}
-          <span className="hidden max-w-[180px] truncate text-sm text-blue-200 xl:block">
+          <span className="hidden max-w-[200px] truncate text-sm text-blue-200 xl:block">
             {userEmail}
           </span>
 
           {/* Desktop links */}
-          <div className="hidden items-center gap-1.5 md:flex">
+          <div className="hidden items-center gap-2 sm:flex">
             {!isCalendar && (
               <Link
                 href="/calendar"
                 className="whitespace-nowrap rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/20"
               >
-                Scheduler
+                📅 Scheduler
               </Link>
             )}
             {!isInvoices && (
@@ -130,23 +130,7 @@ export default function NavBar() {
                 href="/invoices"
                 className="whitespace-nowrap rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/20"
               >
-                Invoices
-              </Link>
-            )}
-            {!isReports && (
-              <Link
-                href="/reports"
-                className="whitespace-nowrap rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/20"
-              >
-                Reports
-              </Link>
-            )}
-            {!isComms && (
-              <Link
-                href="/communications"
-                className="whitespace-nowrap rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/20"
-              >
-                Messages
+                💰 Invoices
               </Link>
             )}
             {!isAccount && (
@@ -165,60 +149,51 @@ export default function NavBar() {
             </button>
           </div>
 
-          {/* Notification bell — visible on all sizes */}
-          <NotificationBell />
-
           {/* Mobile: hamburger */}
-          <div className="relative md:hidden" ref={menuRef}>
+          <div className="relative sm:hidden" ref={menuRef}>
             <button
               onClick={() => setMenuOpen((o) => !o)}
               aria-label="Open menu"
               className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/25 bg-white/10 text-white transition hover:bg-white/20"
             >
               {menuOpen ? (
+                /* X icon */
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               ) : (
+                /* Hamburger icon */
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               )}
             </button>
 
-            {/* Mobile Dropdown — full navigation */}
+            {/* Dropdown */}
             {menuOpen && (
-              <div className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-2xl border border-[#1a3358] bg-[#0f2040] shadow-2xl">
+              <div className="absolute right-0 top-12 z-50 w-52 overflow-hidden rounded-2xl border border-[#1a3358] bg-[#0f2040] shadow-2xl">
                 {/* User email */}
                 <div className="border-b border-white/10 px-4 py-3">
                   <p className="truncate text-xs text-blue-200">{userEmail}</p>
                 </div>
 
-                {/* Nav grid */}
-                <div className="p-2">
-                  {mobileNavLinks.map((link) => {
-                    const isActive = pathname === link.href || pathname?.startsWith(link.href + '/')
-                    return (
+                {/* Nav items */}
+                <div className="p-1.5">
+                  {navLinks.map((link) =>
+                    link.hidden ? null : (
                       <Link
                         key={link.href}
                         href={link.href}
-                        className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition ${
-                          isActive
-                            ? 'bg-white/15 text-white'
-                            : 'text-white/80 hover:bg-white/10 hover:text-white'
-                        }`}
+                        className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-white/90 transition hover:bg-white/10"
                       >
                         {link.label}
                       </Link>
                     )
-                  })}
-                </div>
+                  )}
 
-                {/* Sign out */}
-                <div className="border-t border-white/10 p-2">
                   <button
                     onClick={handleSignOut}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-red-300 transition hover:bg-white/10"
+                    className="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-red-300 transition hover:bg-white/10"
                   >
                     Sign Out
                   </button>

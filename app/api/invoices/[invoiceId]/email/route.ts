@@ -63,21 +63,14 @@ export async function POST(
     }
 
     // Fetch practitioner info
-    const { data: practitionerRaw, error: practitionerError } = await supabaseAdmin
-      .from('practitioners')
+    const { data: practitioner, error: practitionerError } = await supabaseAdmin
+      .from('users')
       .select('full_name, practice_name, location')
       .eq('id', invoice.practitioner_id)
       .single()
 
-    if (practitionerError || !practitionerRaw) {
+    if (practitionerError || !practitioner) {
       return NextResponse.json({ error: 'Practitioner not found' }, { status: 404 })
-    }
-
-    // Ensure no null values for PDF generation
-    const practitioner = {
-      full_name: practitionerRaw.full_name || 'Practitioner',
-      practice_name: practitionerRaw.practice_name || 'Stride Chiropractic',
-      location: practitionerRaw.location || '',
     }
 
     // Map line items for PDF (convert cents to dollars for display)
@@ -204,21 +197,6 @@ export async function POST(
         { status: 500 }
       )
     }
-
-    // Log the communication
-    const emailId = emailResponse.data?.id || null
-    await supabaseAdmin.from('communication_log').insert({
-      practitioner_id: user.id,
-      owner_id: invoice.owner_id,
-      invoice_id: invoiceId,
-      channel: 'email',
-      message_type: 'invoice',
-      recipient: owner.email,
-      subject: `Invoice ${invoice.invoice_number} from ${practitioner.practice_name || 'Stride Chiropractic'}`,
-      body_preview: `Invoice for $${(invoice.total_cents / 100).toFixed(2)}`,
-      status: 'sent',
-      external_id: emailId,
-    })
 
     // Update invoice status to 'sent' if currently 'draft'
     if (invoice.status === 'draft') {
