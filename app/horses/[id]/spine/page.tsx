@@ -391,7 +391,7 @@ function SpineVisitInner() {
       // 1. Fetch most recent visit
       const { data: prevVisits } = await supabase
         .from('visits')
-        .select('id, subjective, objective, assessment, plan, reason_for_visit, treated_areas, recommendations, follow_up, location, provider_name')
+        .select('id, subjective, objective, assessment, plan, reason_for_visit, treated_areas, recommendations, follow_up, location, provider_name, quick_notes')
         .eq('horse_id', horseId)
         .order('visit_date', { ascending: false })
         .limit(1)
@@ -404,18 +404,20 @@ function SpineVisitInner() {
 
       const prev = prevVisits[0]
       let clonedCount = 0
+      const clonedFields: string[] = []
 
       // Clone all non-null fields
-      if (prev.subjective) { setSubjective(prev.subjective); clonedCount++ }
-      if (prev.objective) { setObjective(prev.objective); clonedCount++ }
-      if (prev.assessment) { setAssessment(prev.assessment); clonedCount++ }
-      if (prev.plan) { setPlan(prev.plan); clonedCount++ }
-      if (prev.reason_for_visit) { setReasonForVisit(prev.reason_for_visit); clonedCount++ }
-      if (prev.treated_areas) { setTreatedAreas(prev.treated_areas); clonedCount++ }
-      if (prev.recommendations) { setRecommendations(prev.recommendations); clonedCount++ }
-      if (prev.follow_up) { setFollowUp(prev.follow_up); clonedCount++ }
-      if (prev.location) { setVisitLocation(prev.location); clonedCount++ }
-      if (prev.provider_name) { setProviderName(prev.provider_name); clonedCount++ }
+      if (prev.subjective) { setSubjective(prev.subjective); clonedCount++; clonedFields.push('subjective') }
+      if (prev.objective) { setObjective(prev.objective); clonedCount++; clonedFields.push('objective') }
+      if (prev.assessment) { setAssessment(prev.assessment); clonedCount++; clonedFields.push('assessment') }
+      if (prev.plan) { setPlan(prev.plan); clonedCount++; clonedFields.push('plan') }
+      if (prev.reason_for_visit) { setReasonForVisit(prev.reason_for_visit); clonedCount++; clonedFields.push('reason for visit') }
+      if (prev.treated_areas) { setTreatedAreas(prev.treated_areas); clonedCount++; clonedFields.push('treated areas') }
+      if (prev.recommendations) { setRecommendations(prev.recommendations); clonedCount++; clonedFields.push('recommendations') }
+      if (prev.follow_up) { setFollowUp(prev.follow_up); clonedCount++; clonedFields.push('follow up') }
+      if (prev.location) { setVisitLocation(prev.location); clonedCount++; clonedFields.push('location') }
+      if (prev.provider_name) { setProviderName(prev.provider_name); clonedCount++; clonedFields.push('provider name') }
+      if (prev.quick_notes) { setQuickNotes(prev.quick_notes); clonedCount++; clonedFields.push('quick notes') }
 
       // 2. Also clone spine findings from the previous visit
       if (prev.id) {
@@ -451,16 +453,17 @@ function SpineVisitInner() {
             if (flagged.length > 0) {
               setTreatedAreas(flagged.join(', '))
               clonedCount++
+              clonedFields.push('spine findings')
             }
           }
-          if (spine.notes) { setSpineNotes(spine.notes); clonedCount++ }
+          if (spine.notes) { setSpineNotes(spine.notes); clonedCount++; clonedFields.push('spine notes') }
         }
       }
 
       if (clonedCount === 0) {
         setMessage('Previous visit found but all fields were empty. Try filling in manually.')
       } else {
-        setMessage(`Cloned ${clonedCount} field${clonedCount !== 1 ? 's' : ''} from previous visit. Adjust any changes and save.`)
+        setMessage(`Cloned ${clonedCount} field${clonedCount !== 1 ? 's' : ''} from previous visit (${clonedFields.join(', ')}). Scroll down to review and save.`)
       }
     } catch {
       setMessage('Failed to clone previous visit.')
@@ -547,6 +550,12 @@ function SpineVisitInner() {
       setSpineNotes('')
       setLastSaved(null)
 
+      // New visits should start with a blank spine assessment
+      if (isNewVisitFlow && !selectedVisitId) {
+        setLoading(false)
+        return
+      }
+
       let query = supabase
         .from('spine_assessments')
         .select('findings, notes, assessed_at')
@@ -572,7 +581,7 @@ function SpineVisitInner() {
       setLoading(false)
     }
     loadAssessment()
-  }, [horseId, selectedVisitId])
+  }, [horseId, selectedVisitId, isNewVisitFlow])
 
   // ── Toggle a spine segment and auto-update quick notes ──
   function toggle(segKey: string, side: 'left' | 'right') {
@@ -687,7 +696,7 @@ function SpineVisitInner() {
           objective: objective || null,
           assessment: assessment || null,
           plan: plan || null,
-          quickNotes: null,
+          quickNotes: quickNotes || null,
           createdAt: new Date().toISOString(),
         })
 
@@ -701,7 +710,7 @@ function SpineVisitInner() {
           objective: objective || null,
           assessment: assessment || null,
           plan: plan || null,
-          quick_notes: null,
+          quick_notes: quickNotes || null,
           practitioner_id: userId || '',
           cachedAt: Date.now(),
         })
@@ -757,6 +766,7 @@ function SpineVisitInner() {
       treated_areas: treatedAreas || null,
       recommendations: recommendations || null,
       follow_up: followUp || null,
+      quick_notes: quickNotes || null,
       practitioner_id: userId,
     }
 
