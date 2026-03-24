@@ -388,13 +388,19 @@ function SpineVisitInner() {
     setCloningVisit(true)
     setMessage('')
     try {
-      // 1. Fetch most recent visit
-      const { data: prevVisits } = await supabase
+      // 1. Fetch most recent visit (select all columns)
+      const { data: prevVisits, error: visitError } = await supabase
         .from('visits')
-        .select('id, subjective, objective, assessment, plan, reason_for_visit, treated_areas, recommendations, follow_up, location, provider_name')
+        .select('*')
         .eq('horse_id', horseId)
         .order('visit_date', { ascending: false })
         .limit(1)
+
+      if (visitError) {
+        setMessage('Error loading previous visit: ' + visitError.message)
+        setCloningVisit(false)
+        return
+      }
 
       if (!prevVisits || prevVisits.length === 0) {
         setMessage('No previous visits found for this patient.')
@@ -406,7 +412,7 @@ function SpineVisitInner() {
       let clonedCount = 0
       const clonedFields: string[] = []
 
-      // Clone all non-null fields
+      // Clone all non-null visit fields
       if (prev.subjective) { setSubjective(prev.subjective); clonedCount++; clonedFields.push('subjective') }
       if (prev.objective) { setObjective(prev.objective); clonedCount++; clonedFields.push('objective') }
       if (prev.assessment) { setAssessment(prev.assessment); clonedCount++; clonedFields.push('assessment') }
@@ -417,6 +423,8 @@ function SpineVisitInner() {
       if (prev.follow_up) { setFollowUp(prev.follow_up); clonedCount++; clonedFields.push('follow up') }
       if (prev.location) { setVisitLocation(prev.location); clonedCount++; clonedFields.push('location') }
       if (prev.provider_name) { setProviderName(prev.provider_name); clonedCount++; clonedFields.push('provider name') }
+      if (prev.visit_type) { setVisitType(prev.visit_type); clonedCount++; clonedFields.push('visit type') }
+      if (prev.quick_notes) { setQuickNotes(prev.quick_notes); clonedCount++; clonedFields.push('quick notes') }
 
       // 2. Also clone spine findings from the previous visit
       if (prev.id) {
@@ -439,21 +447,23 @@ function SpineVisitInner() {
                 return [spineSummary, ...lines.filter(l => l.trim())].join('\n')
               })
             }
-            // Build treated areas
-            const flagged: string[] = []
-            for (const [key, val] of Object.entries(spine.findings as Findings)) {
-              if (!val.left && !val.right) continue
-              const sides: string[] = []
-              if (val.left) sides.push('L')
-              if (val.right) sides.push('R')
-              const label = key.toUpperCase().replace('_', ' ')
-              flagged.push(`${label} (${sides.join('/')})`)
+            // Build treated areas from spine if not already set from visit
+            if (!prev.treated_areas) {
+              const flagged: string[] = []
+              for (const [key, val] of Object.entries(spine.findings as Findings)) {
+                if (!val.left && !val.right) continue
+                const sides: string[] = []
+                if (val.left) sides.push('L')
+                if (val.right) sides.push('R')
+                const label = key.toUpperCase().replace('_', ' ')
+                flagged.push(`${label} (${sides.join('/')})`)
+              }
+              if (flagged.length > 0) {
+                setTreatedAreas(flagged.join(', '))
+              }
             }
-            if (flagged.length > 0) {
-              setTreatedAreas(flagged.join(', '))
-              clonedCount++
-              clonedFields.push('spine findings')
-            }
+            clonedCount++
+            clonedFields.push('spine findings')
           }
           if (spine.notes) { setSpineNotes(spine.notes); clonedCount++; clonedFields.push('spine notes') }
         }
@@ -462,7 +472,7 @@ function SpineVisitInner() {
       if (clonedCount === 0) {
         setMessage('Previous visit found but all fields were empty. Try filling in manually.')
       } else {
-        setMessage(`Cloned ${clonedCount} field${clonedCount !== 1 ? 's' : ''} from previous visit (${clonedFields.join(', ')}). Scroll down to review and save.`)
+        setMessage(`Cloned ${clonedCount} field${clonedCount !== 1 ? 's' : ''} from previous visit (${clonedFields.join(', ')}). Scroll down to review.`)
       }
     } catch {
       setMessage('Failed to clone previous visit.')
@@ -765,6 +775,7 @@ function SpineVisitInner() {
       treated_areas: treatedAreas || null,
       recommendations: recommendations || null,
       follow_up: followUp || null,
+      quick_notes: quickNotes || null,
       practitioner_id: userId,
     }
 
