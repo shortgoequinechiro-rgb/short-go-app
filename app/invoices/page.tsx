@@ -9,8 +9,6 @@ type Invoice = {
   invoice_number: string
   invoice_date: string
   owner_name: string
-  owner_email?: string
-  owner_phone?: string
   horse_name: string
   total_cents: number
   status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled'
@@ -52,9 +50,6 @@ export default function InvoicesPage() {
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [sendingEmail, setSendingEmail] = useState<string | null>(null)
-  const [sendingSms, setSendingSms] = useState<string | null>(null)
-  const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
   // Fetch invoices
   useEffect(() => {
@@ -137,60 +132,27 @@ export default function InvoicesPage() {
     })
   }, [invoices, filters])
 
-  const handleQuickEmail = async (invoiceId: string) => {
+  const handleMarkPaid = async (invoiceId: string) => {
     try {
-      setSendingEmail(invoiceId)
-      setError(null)
       const { data: session } = await supabase.auth.getSession()
       if (!session?.session?.access_token) return
 
-      const res = await fetch(`/api/invoices/${invoiceId}/email`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${session.session.access_token}` },
+      const res = await fetch(`/api/invoices/${invoiceId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.session.access_token}`,
+        },
+        body: JSON.stringify({ status: 'paid' }),
       })
 
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to send email')
-
-      setSuccessMsg(`Email sent to ${data.sentTo}`)
-      setTimeout(() => setSuccessMsg(null), 4000)
-
-      // Refresh invoice status
-      setInvoices((prev) =>
-        prev.map((inv) => (inv.id === invoiceId && inv.status === 'draft' ? { ...inv, status: 'sent' } : inv))
-      )
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send email')
-    } finally {
-      setSendingEmail(null)
-    }
-  }
-
-  const handleQuickSms = async (invoiceId: string) => {
-    try {
-      setSendingSms(invoiceId)
-      setError(null)
-      const { data: session } = await supabase.auth.getSession()
-      if (!session?.session?.access_token) return
-
-      const res = await fetch(`/api/invoices/${invoiceId}/sms`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${session.session.access_token}` },
-      })
-
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to send text')
-
-      setSuccessMsg(`Text sent to ${data.sentTo}`)
-      setTimeout(() => setSuccessMsg(null), 4000)
+      if (!res.ok) throw new Error('Failed to update invoice')
 
       setInvoices((prev) =>
-        prev.map((inv) => (inv.id === invoiceId && inv.status === 'draft' ? { ...inv, status: 'sent' } : inv))
+        prev.map((inv) => (inv.id === invoiceId ? { ...inv, status: 'paid' } : inv))
       )
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send text')
-    } finally {
-      setSendingSms(null)
+      console.error('Error marking invoice as paid:', err)
     }
   }
 
@@ -219,16 +181,9 @@ export default function InvoicesPage() {
         </Link>
       </div>
 
-      {successMsg && (
-        <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-700 font-medium">
-          {successMsg}
-        </div>
-      )}
-
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
           {error}
-          <button onClick={() => setError(null)} className="ml-2 text-red-500 underline text-sm">Dismiss</button>
         </div>
       )}
 
@@ -343,38 +298,24 @@ export default function InvoicesPage() {
                   </div>
 
                   {/* Actions */}
-                  <div className="md:col-span-2 flex flex-wrap gap-1">
+                  <div className="md:col-span-2 flex gap-2">
                     <Link
                       href={`/invoices/${invoice.id}`}
-                      className="px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-50"
+                      className="px-3 py-1 text-sm font-medium text-blue-600 hover:text-blue-700"
                     >
                       View
                     </Link>
                     {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
-                      <>
-                        {invoice.owner_email && (
-                          <button
-                            onClick={() => handleQuickEmail(invoice.id)}
-                            disabled={sendingEmail === invoice.id}
-                            className="px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-50 disabled:opacity-50"
-                          >
-                            {sendingEmail === invoice.id ? '...' : 'Email'}
-                          </button>
-                        )}
-                        {invoice.owner_phone && (
-                          <button
-                            onClick={() => handleQuickSms(invoice.id)}
-                            disabled={sendingSms === invoice.id}
-                            className="px-2 py-1 text-xs font-medium text-green-600 hover:text-green-700 border border-green-200 rounded-lg hover:bg-green-50 disabled:opacity-50"
-                          >
-                            {sendingSms === invoice.id ? '...' : 'Text'}
-                          </button>
-                        )}
-                      </>
+                      <button
+                        onClick={() => handleMarkPaid(invoice.id)}
+                        className="px-3 py-1 text-sm font-medium text-emerald-600 hover:text-emerald-700"
+                      >
+                        Mark Paid
+                      </button>
                     )}
                     <a
                       href={`/api/invoices/${invoice.id}/pdf`}
-                      className="px-2 py-1 text-xs font-medium text-slate-600 hover:text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50"
+                      className="px-3 py-1 text-sm font-medium text-slate-600 hover:text-slate-700"
                       target="_blank"
                       rel="noopener noreferrer"
                     >

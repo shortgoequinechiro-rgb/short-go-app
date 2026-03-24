@@ -20,7 +20,6 @@ interface Invoice {
   status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
   owner_name: string;
   owner_email?: string;
-  owner_phone?: string;
   horse_name: string;
   line_items: LineItem[];
   subtotal_cents: number;
@@ -64,19 +63,12 @@ export default function InvoiceDetailPage() {
   const [showPaymentLinkModal, setShowPaymentLinkModal] = useState(false);
   const [paymentLinkLoading, setPaymentLinkLoading] = useState(false);
   const [showSuccessBanner, setShowSuccessBanner] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
-  const [emailSending, setEmailSending] = useState(false);
-  const [smsSending, setSmsSending] = useState(false);
-
-  const showSuccess = (msg: string) => {
-    setSuccessMessage(msg);
-    setShowSuccessBanner(true);
-    setTimeout(() => setShowSuccessBanner(false), 5000);
-  };
 
   useEffect(() => {
     if (searchParams.get('paid') === 'true') {
-      showSuccess('Payment received!');
+      setShowSuccessBanner(true);
+      const timer = setTimeout(() => setShowSuccessBanner(false), 5000);
+      return () => clearTimeout(timer);
     }
   }, [searchParams]);
 
@@ -89,7 +81,9 @@ export default function InvoiceDetailPage() {
         headers: { Authorization: `Bearer ${session?.access_token}` }
       });
 
-      if (!res.ok) throw new Error('Failed to fetch invoice');
+      if (!res.ok) {
+        throw new Error('Failed to fetch invoice');
+      }
 
       const data = await res.json();
       setInvoice(data);
@@ -104,10 +98,8 @@ export default function InvoiceDetailPage() {
     fetchInvoice();
   }, [fetchInvoice]);
 
-  const handleSendEmail = async () => {
+  const handleSendInvoice = async () => {
     try {
-      setEmailSending(true);
-      setError(null);
       const { data: { session } } = await supabase.auth.getSession();
 
       const res = await fetch(`/api/invoices/${invoiceId}/email`, {
@@ -115,38 +107,21 @@ export default function InvoiceDetailPage() {
         headers: { Authorization: `Bearer ${session?.access_token}` }
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to send email');
+      if (!res.ok) throw new Error('Failed to send invoice');
 
-      showSuccess(`Email sent to ${data.sentTo || invoice?.owner_email}`);
-      await fetchInvoice();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send email');
-    } finally {
-      setEmailSending(false);
-    }
-  };
-
-  const handleSendSms = async () => {
-    try {
-      setSmsSending(true);
-      setError(null);
-      const { data: { session } } = await supabase.auth.getSession();
-
-      const res = await fetch(`/api/invoices/${invoiceId}/sms`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${session?.access_token}` }
+      // Update status to sent
+      await fetch(`/api/invoices/${invoiceId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({ status: 'sent' })
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to send text');
-
-      showSuccess(`Text sent to ${data.sentTo || invoice?.owner_phone}`);
       await fetchInvoice();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send text');
-    } finally {
-      setSmsSending(false);
+      setError(err instanceof Error ? err.message : 'Failed to send invoice');
     }
   };
 
@@ -170,7 +145,6 @@ export default function InvoiceDetailPage() {
       if (!res.ok) throw new Error('Failed to mark invoice as paid');
 
       setShowMarkPaidModal(false);
-      showSuccess('Invoice marked as paid!');
       await fetchInvoice();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to mark as paid');
@@ -204,7 +178,23 @@ export default function InvoiceDetailPage() {
   const handleCopyPaymentLink = () => {
     if (paymentLinkUrl) {
       navigator.clipboard.writeText(paymentLinkUrl);
-      showSuccess('Payment link copied!');
+    }
+  };
+
+  const handleResendInvoice = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const res = await fetch(`/api/invoices/${invoiceId}/email`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session?.access_token}` }
+      });
+
+      if (!res.ok) throw new Error('Failed to resend invoice');
+
+      await fetchInvoice();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to resend invoice');
     }
   };
 
@@ -218,7 +208,7 @@ export default function InvoiceDetailPage() {
     );
   }
 
-  if (!invoice) {
+  if (error || !invoice) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-6">
         <div className="rounded-3xl bg-white p-5 shadow-sm">
@@ -228,20 +218,11 @@ export default function InvoiceDetailPage() {
     );
   }
 
-  const canSend = invoice.status !== 'paid' && invoice.status !== 'cancelled';
-
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
       {showSuccessBanner && (
         <div className="mb-6 rounded-3xl bg-emerald-50 border border-emerald-200 p-4">
-          <p className="text-emerald-700 font-medium">{successMessage}</p>
-        </div>
-      )}
-
-      {error && (
-        <div className="mb-6 rounded-3xl bg-red-50 border border-red-200 p-4">
-          <p className="text-red-700 font-medium">{error}</p>
-          <button onClick={() => setError(null)} className="text-red-500 text-sm mt-1 underline">Dismiss</button>
+          <p className="text-emerald-700 font-medium">Payment received!</p>
         </div>
       )}
 
@@ -270,60 +251,13 @@ export default function InvoiceDetailPage() {
         <div className="rounded-3xl bg-white p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-slate-600 mb-3 uppercase">Owner</h3>
           <p className="text-lg font-medium text-slate-900">{invoice.owner_name}</p>
-          {invoice.owner_email && <p className="text-slate-600 text-sm">{invoice.owner_email}</p>}
-          {invoice.owner_phone && <p className="text-slate-600 text-sm">{invoice.owner_phone}</p>}
+          {invoice.owner_email && <p className="text-slate-600">{invoice.owner_email}</p>}
         </div>
         <div className="rounded-3xl bg-white p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-slate-600 mb-3 uppercase">Horse/Patient</h3>
           <p className="text-lg font-medium text-slate-900">{invoice.horse_name}</p>
         </div>
       </div>
-
-      {/* Send Invoice — Email & Text */}
-      {canSend && (
-        <div className="rounded-3xl bg-white p-5 shadow-sm mb-4">
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Send Invoice</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={handleSendEmail}
-              disabled={emailSending || !invoice.owner_email}
-              className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {emailSending ? (
-                'Sending...'
-              ) : (
-                <>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-                  Email Invoice
-                </>
-              )}
-            </button>
-            <button
-              onClick={handleSendSms}
-              disabled={smsSending || !invoice.owner_phone}
-              className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {smsSending ? (
-                'Sending...'
-              ) : (
-                <>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                  Text Invoice
-                </>
-              )}
-            </button>
-          </div>
-          {!invoice.owner_email && !invoice.owner_phone && (
-            <p className="text-amber-600 text-sm mt-3">No contact info on file for this owner. Please add email or phone.</p>
-          )}
-          {!invoice.owner_email && invoice.owner_phone && (
-            <p className="text-slate-500 text-sm mt-3">No email on file — text only.</p>
-          )}
-          {invoice.owner_email && !invoice.owner_phone && (
-            <p className="text-slate-500 text-sm mt-3">No phone on file — email only.</p>
-          )}
-        </div>
-      )}
 
       {/* Line Items */}
       <div className="rounded-3xl bg-white p-5 shadow-sm mb-4">
@@ -405,23 +339,53 @@ export default function InvoiceDetailPage() {
         </div>
       )}
 
-      {/* Other Actions */}
+      {/* Action Buttons */}
       <div className="rounded-3xl bg-white p-5 shadow-sm mb-6">
         <div className="space-y-3">
-          {canSend && (
+          {invoice.status === 'draft' && (
             <>
+              <button
+                onClick={handleSendInvoice}
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 rounded-xl transition"
+              >
+                Send Invoice
+              </button>
               <button
                 onClick={handleGetPaymentLink}
                 disabled={paymentLinkLoading}
-                className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-3 rounded-xl transition disabled:opacity-50"
+                className="w-full bg-slate-500 hover:bg-slate-600 text-white font-semibold py-3 rounded-xl transition disabled:opacity-50"
               >
-                {paymentLinkLoading ? 'Generating...' : 'Get Stripe Payment Link'}
+                {paymentLinkLoading ? 'Generating...' : 'Get Payment Link'}
               </button>
               <button
                 onClick={() => setShowMarkPaidModal(true)}
                 className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-3 rounded-xl transition"
               >
                 Mark as Paid
+              </button>
+            </>
+          )}
+
+          {invoice.status === 'sent' && (
+            <>
+              <button
+                onClick={() => setShowMarkPaidModal(true)}
+                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-3 rounded-xl transition"
+              >
+                Mark as Paid
+              </button>
+              <button
+                onClick={handleResendInvoice}
+                className="w-full bg-slate-500 hover:bg-slate-600 text-white font-semibold py-3 rounded-xl transition"
+              >
+                Resend
+              </button>
+              <button
+                onClick={handleGetPaymentLink}
+                disabled={paymentLinkLoading}
+                className="w-full bg-slate-200 hover:bg-slate-300 text-slate-900 font-semibold py-3 rounded-xl transition disabled:opacity-50"
+              >
+                {paymentLinkLoading ? 'Generating...' : 'Get Payment Link'}
               </button>
             </>
           )}
@@ -521,16 +485,10 @@ export default function InvoiceDetailPage() {
                     Copy Link
                   </button>
                   <button
-                    onClick={() => { handleSendEmail(); setShowPaymentLinkModal(false); }}
+                    onClick={handleSendInvoice}
                     className="w-full px-4 py-2 bg-slate-500 hover:bg-slate-600 text-white font-semibold rounded-xl transition"
                   >
                     Send via Email
-                  </button>
-                  <button
-                    onClick={() => { handleSendSms(); setShowPaymentLinkModal(false); }}
-                    className="w-full px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-xl transition"
-                  >
-                    Send via Text
                   </button>
                 </div>
               </>

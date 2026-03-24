@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
         stripe_payment_url,
         created_at,
         updated_at,
-        owner:owners(full_name, email, phone),
+        owner:owners(full_name, email),
         horse:horses(name),
         line_items:invoice_line_items(
           id,
@@ -63,18 +63,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: queryError.message }, { status: 500 });
     }
 
-    const invoices = data.map((invoice: Record<string, unknown>) => {
-      const ownerData = invoice.owner as unknown as Record<string, string> | null;
-      return {
-        ...invoice,
-        owner_name: ownerData?.full_name,
-        owner_email: ownerData?.email,
-        owner_phone: ownerData?.phone,
-        horse_name: (invoice.horse as unknown as Record<string, string> | null)?.name,
-        owner: undefined,
-        horse: undefined,
-      };
-    });
+    const invoices = data.map((invoice: Record<string, unknown>) => ({
+      ...invoice,
+      owner_name: (invoice.owner as unknown as Record<string, string> | null)?.full_name,
+      horse_name: (invoice.horse as unknown as Record<string, string> | null)?.name,
+      owner: undefined,
+      horse: undefined,
+    }));
 
     return NextResponse.json(invoices);
   } catch (e) {
@@ -180,7 +175,7 @@ export async function POST(request: NextRequest) {
         total_cents,
         notes,
         created_at,
-        owner:owners(full_name, email, phone),
+        owner:owners(full_name, email),
         horse:horses(name),
         line_items:invoice_line_items(
           id,
