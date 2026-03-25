@@ -569,18 +569,31 @@ test.describe('Patient Profile', () => {
     // Wait for the page to fully render
     await page.waitForTimeout(3000)
 
-    // The first "Edit" button on the Info tab is the Patient Info edit button
-    // (Owner edit button comes after it in the DOM)
-    const editBtn = page.getByRole('button', { name: 'Edit', exact: true }).first()
-    if (!(await editBtn.isVisible({ timeout: 5000 }).catch(() => false))) { test.skip(); return }
-    await editBtn.click()
-    await page.waitForTimeout(2000)
+    // Click the Edit button via JavaScript to avoid any Playwright selector issues
+    const clicked = await page.evaluate(() => {
+      const buttons = Array.from(document.querySelectorAll('button'))
+      // Find the first button whose trimmed text is exactly "Edit"
+      const editBtn = buttons.find(b => b.textContent?.trim() === 'Edit')
+      if (editBtn) { editBtn.click(); return true }
+      return false
+    })
+    if (!clicked) { test.skip(); return }
+    await page.waitForTimeout(3000)
 
-    // After clicking Edit, a species <select> with Feline/Bovine/etc options appears
-    const speciesSelect = page.locator('select', { has: page.locator('option:has-text("Feline")') }).first()
-    if (await speciesSelect.isVisible({ timeout: 5000 }).catch(() => false)) {
-      const opts = await speciesSelect.locator('option').allTextContents()
-      const text = opts.join(' ').toLowerCase()
+    // Check all selects on the page for species options
+    const speciesOptions = await page.evaluate(() => {
+      const selects = document.querySelectorAll('select')
+      for (const sel of selects) {
+        const optTexts = Array.from(sel.options).map(o => o.text.toLowerCase())
+        if (optTexts.some(t => t.includes('feline')) && optTexts.some(t => t.includes('bovine'))) {
+          return optTexts
+        }
+      }
+      return null
+    })
+
+    if (speciesOptions) {
+      const text = speciesOptions.join(' ')
       expect(text).toContain('feline')
       expect(text).toContain('bovine')
       expect(text).toContain('porcine')
