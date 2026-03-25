@@ -19,7 +19,6 @@ const footerSections = [
     title: "Company",
     links: [
       { label: "About", href: "/about" },
-      { label: "Blog", href: "/blog" },
       { label: "Contact", href: "/contact" },
     ],
   },
@@ -113,7 +112,7 @@ export default function MarketingFooter() {
         {/* Bottom row */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-white/50 text-xs">
-            &copy; {new Date().getFullYear()} Chiro Stride Equine & Canine Chiropractic Software. All rights reserved.
+            &copy; {new Date().getFullYear()} Chiro Stride Animal Chiropractic Software. All rights reserved.
           </p>
           <div className="flex items-center gap-6 text-xs text-white/50">
             <a href="#" className="hover:text-white/70 transition">Privacy Policy</a>

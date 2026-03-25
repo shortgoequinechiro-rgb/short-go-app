@@ -38,7 +38,7 @@ const heroFeatures = [
     title: "Patient Records",
     tagline: "Complete profiles. Full history.",
     description:
-      "Build detailed profiles for every equine and canine patient. Track breed, age, discipline, medical history, photos, and complete visit timelines — all in one place.",
+      "Build detailed profiles for every patient — horses, dogs, cats, cattle, and more. Track breed, age, discipline, medical history, photos, and complete visit timelines — all in one place.",
     bullets: [
       "Species-specific profile fields for horses and dogs",
       "Photo uploads and visual documentation per visit",
@@ -54,7 +54,7 @@ const heroFeatures = [
     description:
       "Tap on species-specific spinal diagrams to record subluxation findings. Track changes across visits and visualize patient progress with built-in comparison tools.",
     bullets: [
-      "Interactive spinal maps for equine and canine anatomy",
+      "Interactive spinal maps for all supported species",
       "Tap-to-record subluxation findings per vertebra",
       "Visit-over-visit comparison and progress tracking",
       "Export assessment reports for client records",
@@ -200,7 +200,7 @@ export default function FeaturesPage() {
             transition={{ duration: 0.6, delay: 0.25 }}
             className="text-white/70 text-lg md:text-xl max-w-2xl mx-auto"
           >
-            Every tool is designed around the real workflow of equine and canine chiropractors. No bloat, no learning curve.
+            Every tool is designed around the real workflow of animal chiropractors. No bloat, no learning curve.
           </motion.p>
         </div>
       </section>

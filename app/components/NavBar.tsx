@@ -55,7 +55,7 @@ export default function NavBar() {
     pathname === '/features' ||
     pathname === '/pricing' ||
     pathname === '/about' ||
-    pathname === '/blog'
+    false
   if (isPublicPage || !userEmail) return null
 
   async function handleSignOut() {
@@ -104,7 +104,7 @@ export default function NavBar() {
               CHIRO STRIDE
             </span>
             <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#c9a227]">
-              Equine &amp; Canine Chiro
+              Animal Chiropractic
             </span>
           </div>
         </Link>

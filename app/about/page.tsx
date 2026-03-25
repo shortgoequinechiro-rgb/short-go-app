@@ -40,7 +40,7 @@ const timeline = [
   {
     year: "The Problem",
     title: "Generic software doesn't fit",
-    desc: "Veterinary and human chiropractic software wasn't built for the unique needs of equine and canine chiropractors. Notes were messy, scheduling was manual, and nothing worked offline.",
+    desc: "Veterinary and human chiropractic software wasn't built for the unique needs of animal chiropractors. Notes were messy, scheduling was manual, and nothing worked offline.",
   },
   {
     year: "The Idea",
@@ -176,7 +176,7 @@ export default function AboutPage() {
               {
                 icon: Bone,
                 title: "Species-specific clinical tools",
-                desc: "Spinal maps, anatomy models, and assessment tools designed specifically for equine and canine patients.",
+                desc: "Spinal maps, anatomy models, and assessment tools designed specifically for animal patients across all supported species.",
               },
               {
                 icon: CalendarDays,

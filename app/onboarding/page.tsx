@@ -7,9 +7,9 @@ import { supabase } from '../lib/supabase'
 type Step = 'name' | 'practice' | 'branding' | 'done'
 
 const ANIMALS = [
-  { value: 'horses', label: 'Horses', emoji: '🐴', desc: 'Equine chiropractic & bodywork' },
-  { value: 'dogs', label: 'Dogs', emoji: '🐕', desc: 'Canine chiropractic & bodywork' },
-  { value: 'both', label: 'Both', emoji: '🐴🐕', desc: 'Equine & canine practice' },
+  { value: 'horses', label: 'Horses', emoji: '🐴', desc: 'Equine chiropractic' },
+  { value: 'dogs', label: 'Dogs', emoji: '🐕', desc: 'Canine chiropractic' },
+  { value: 'both', label: 'All Species', emoji: '🐾', desc: 'Multi-species practice' },
 ]
 
 export default function OnboardingPage() {

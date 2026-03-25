@@ -11,7 +11,6 @@ const navLinks = [
   { href: "/features", label: "Features" },
   { href: "/pricing", label: "Pricing" },
   { href: "/about", label: "About" },
-  { href: "/blog", label: "Blog" },
   { href: "/contact", label: "Contact" },
 ];
 
@@ -55,7 +54,7 @@ export default function MarketingNav() {
             <span className="text-xl font-bold tracking-tight">
               <span className="text-white">CHIRO STRIDE</span>
               <span className="text-[#c9a227]/60 text-xs ml-2 tracking-widest uppercase hidden sm:inline">
-                Equine & Canine Chiro
+                Animal Chiropractic
               </span>
             </span>
           </Link>

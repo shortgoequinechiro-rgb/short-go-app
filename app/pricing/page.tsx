@@ -19,7 +19,7 @@ import {
 
 const allFeatures = [
   { category: "Patient Management", features: [
-    "Unlimited patients (equine & canine)",
+    "Unlimited patients (all species)",
     "Detailed patient profiles with photos",
     "Owner management with multi-pet support",
     "Full visit timeline and history",
