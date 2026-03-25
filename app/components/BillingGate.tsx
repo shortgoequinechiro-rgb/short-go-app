@@ -10,7 +10,7 @@ import { supabase } from '../lib/supabase'
 // - /onboarding: new user setup (can't check billing before onboarding completes)
 // - /intake, /consent: accessed by horse owners without any account
 // - /billing: the paywall destination itself
-const PUBLIC_PREFIXES = ['/login', '/signup', '/onboarding', '/intake', '/consent', '/billing', '/contact']
+const PUBLIC_PREFIXES = ['/login', '/signup', '/onboarding', '/intake', '/consent', '/billing', '/contact', '/features', '/pricing', '/about', '/blog']
 
 export default function BillingGate({ children }: { children: React.ReactNode }) {
   const router = useRouter()
