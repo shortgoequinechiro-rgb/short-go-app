@@ -318,7 +318,7 @@ export default function InvoicesPage() {
                     </p>
                   </div>
 
-                  {/* Owner & Horse */}
+                  {/* Owner & Patient */}
                   <div className="md:col-span-3">
                     <p className="text-slate-500 text-xs font-semibold uppercase">Owner</p>
                     <p className="text-slate-900 font-semibold">{invoice.owner_name}</p>

@@ -186,6 +186,20 @@ export default function CreateInvoicePage() {
     )
   }
 
+  const handleUpdatePrice = (itemId: string, priceDollars: string) => {
+    const cents = Math.round(parseFloat(priceDollars || '0') * 100)
+    if (cents < 0) return
+    setLineItems((prev) =>
+      prev.map((item) => (item.id === itemId ? { ...item, unit_price_cents: cents } : item))
+    )
+  }
+
+  const handleUpdateDescription = (itemId: string, description: string) => {
+    setLineItems((prev) =>
+      prev.map((item) => (item.id === itemId ? { ...item, description } : item))
+    )
+  }
+
   const handleRemoveLineItem = (itemId: string) => {
     setLineItems((prev) => prev.filter((item) => item.id !== itemId))
   }
@@ -314,19 +328,19 @@ export default function CreateInvoicePage() {
         </div>
       )}
 
-      {/* Step 2: Select Horse */}
+      {/* Step 2: Select Patient */}
       {step === 2 && (
         <div className="rounded-3xl bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-bold text-slate-900 mb-4">Select Horse</h2>
+          <h2 className="text-xl font-bold text-slate-900 mb-4">Select Patient</h2>
           <p className="text-slate-600 text-sm mb-4">Owner: {ownerName}</p>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Horse</label>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Patient</label>
             <select
               value={selectedHorse}
               onChange={(e) => setSelectedHorse(e.target.value)}
               className="w-full px-4 py-3 border border-slate-300 rounded-lg text-slate-900"
             >
-              <option value="">Choose a horse...</option>
+              <option value="">Choose a patient...</option>
               {horses.map((horse) => (
                 <option key={horse.id} value={horse.id}>
                   {horse.name}
@@ -433,32 +447,53 @@ export default function CreateInvoicePage() {
           <div className="mb-8">
             <h3 className="text-sm font-semibold text-slate-900 mb-3">Line Items</h3>
             {lineItems.length > 0 ? (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {lineItems.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                    <div className="flex-1">
-                      <p className="font-medium text-slate-900 text-sm">{item.description}</p>
-                      <p className="text-slate-600 text-xs">
-                        ${(item.unit_price_cents / 100).toFixed(2)} x {item.quantity} = $
-                        {(item.unit_price_cents * item.quantity / 100).toFixed(2)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 ml-4">
+                  <div key={item.id} className="p-3 bg-slate-50 rounded-lg space-y-2">
+                    <div className="flex items-center justify-between">
                       <input
-                        type="number"
-                        value={item.quantity}
-                        onChange={(e) =>
-                          handleUpdateQuantity(item.id, parseInt(e.target.value) || 1)
-                        }
-                        min="1"
-                        className="w-12 px-2 py-1 border border-slate-300 rounded text-sm"
+                        type="text"
+                        value={item.description}
+                        onChange={(e) => handleUpdateDescription(item.id, e.target.value)}
+                        className="flex-1 font-medium text-slate-900 text-sm bg-white px-2 py-1 border border-slate-300 rounded mr-2"
                       />
                       <button
                         onClick={() => handleRemoveLineItem(item.id)}
-                        className="text-red-600 hover:text-red-700 text-sm font-medium"
+                        className="text-red-600 hover:text-red-700 text-xs font-medium flex-shrink-0"
                       >
                         Remove
                       </button>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1">
+                        <label className="block text-xs text-slate-500 mb-0.5">Price ($)</label>
+                        <input
+                          type="number"
+                          value={(item.unit_price_cents / 100).toFixed(2)}
+                          onChange={(e) => handleUpdatePrice(item.id, e.target.value)}
+                          step="0.01"
+                          min="0"
+                          className="w-full px-2 py-1 border border-slate-300 rounded text-sm text-slate-900"
+                        />
+                      </div>
+                      <div className="w-16">
+                        <label className="block text-xs text-slate-500 mb-0.5">Qty</label>
+                        <input
+                          type="number"
+                          value={item.quantity}
+                          onChange={(e) =>
+                            handleUpdateQuantity(item.id, parseInt(e.target.value) || 1)
+                          }
+                          min="1"
+                          className="w-full px-2 py-1 border border-slate-300 rounded text-sm text-slate-900"
+                        />
+                      </div>
+                      <div className="w-20 text-right">
+                        <label className="block text-xs text-slate-500 mb-0.5">Total</label>
+                        <p className="text-sm font-semibold text-slate-900 py-1">
+                          ${(item.unit_price_cents * item.quantity / 100).toFixed(2)}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -546,7 +581,7 @@ export default function CreateInvoicePage() {
                   <p className="font-semibold text-slate-900">{ownerName}</p>
                 </div>
                 <div>
-                  <p className="text-slate-600">Horse</p>
+                  <p className="text-slate-600">Patient</p>
                   <p className="font-semibold text-slate-900">{horseName}</p>
                 </div>
                 {dueDate && (
