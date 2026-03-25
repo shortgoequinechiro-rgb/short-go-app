@@ -96,7 +96,7 @@ export default function LandingPage() {
   return (
     <MarketingLayout>
       {/* ── Hero with Container Scroll ── */}
-      <section className="bg-gradient-to-b from-[#0a1628] via-[#0f2040] to-[#0a1628] pb-24 md:pb-40 relative">
+      <section className="bg-gradient-to-b from-[#0f2040] via-[#132d50] to-[#0f2040] pb-24 md:pb-40 relative">
         {/* Background grid pattern */}
         <div className="absolute inset-0 opacity-[0.03]" style={{
           backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
@@ -131,7 +131,7 @@ export default function LandingPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.3 }}
-                className="text-white/50 text-lg md:text-xl max-w-2xl mx-auto mt-6"
+                className="text-white/70 text-lg md:text-xl max-w-2xl mx-auto mt-6"
               >
                 Patient records, AI-powered SOAP notes, scheduling, digital forms, and more
                 — designed for the field, not the office.
@@ -144,7 +144,7 @@ export default function LandingPage() {
               >
                 <Link
                   href="/signup"
-                  className="px-8 py-4 rounded-full bg-[#c9a227] text-[#0a1628] font-bold text-lg hover:bg-[#ddb832] transition-all hover:scale-105 shadow-lg shadow-[#c9a227]/20 inline-flex items-center gap-2"
+                  className="px-8 py-4 rounded-full bg-[#c9a227] text-[#0e1e38] font-bold text-lg hover:bg-[#ddb832] transition-all hover:scale-105 shadow-lg shadow-[#c9a227]/20 inline-flex items-center gap-2"
                 >
                   Start Free Trial
                   <ChevronRight className="w-5 h-5" />
@@ -171,7 +171,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Social proof bar ── */}
-      <section className="border-y border-white/5 bg-[#0a1628]">
+      <section className="border-y border-white/5 bg-[#0e1e38]">
         <div className="max-w-5xl mx-auto py-8 px-6 flex flex-wrap items-center justify-center gap-8 md:gap-16 text-center">
           {[
             { value: "500+", label: "Patients Managed" },
@@ -181,22 +181,22 @@ export default function LandingPage() {
           ].map((stat, i) => (
             <FadeIn key={i} delay={i * 0.1}>
               <p className="text-2xl md:text-3xl font-bold text-white">{stat.value}</p>
-              <p className="text-white/40 text-xs mt-1">{stat.label}</p>
+              <p className="text-white/60 text-xs mt-1">{stat.label}</p>
             </FadeIn>
           ))}
         </div>
       </section>
 
       {/* ── Features ── */}
-      <section id="features" className="py-24 md:py-32 bg-[#0a1628]">
+      <section id="features" className="py-24 md:py-32 bg-[#0e1e38]">
         <div className="max-w-6xl mx-auto px-6">
           <FadeIn className="text-center mb-16">
             <p className="text-[#c9a227] text-sm tracking-[0.3em] uppercase font-medium mb-3">Features</p>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
               Everything you need.
-              <span className="text-white/30"> Nothing you don&apos;t.</span>
+              <span className="text-white/50"> Nothing you don&apos;t.</span>
             </h2>
-            <p className="text-white/40 mt-4 max-w-xl mx-auto">
+            <p className="text-white/60 mt-4 max-w-xl mx-auto">
               Built specifically for equine and canine chiropractors. Every feature designed around your real workflow.
             </p>
           </FadeIn>
@@ -211,7 +211,7 @@ export default function LandingPage() {
                       <f.icon className="w-6 h-6 text-[#c9a227]" />
                     </div>
                     <h3 className="text-lg font-semibold mb-2">{f.title}</h3>
-                    <p className="text-white/40 text-sm leading-relaxed">{f.desc}</p>
+                    <p className="text-white/60 text-sm leading-relaxed">{f.desc}</p>
                   </div>
                 </div>
               </FadeIn>
@@ -231,16 +231,16 @@ export default function LandingPage() {
       </section>
 
       {/* ── Anatomy section ── */}
-      <section id="anatomy" className="py-24 md:py-32 bg-gradient-to-b from-[#0a1628] via-[#0f2040] to-[#0a1628] border-y border-white/5">
+      <section id="anatomy" className="py-24 md:py-32 bg-gradient-to-b from-[#0e1e38] via-[#0f2040] to-[#0e1e38] border-y border-white/5">
         <div className="max-w-6xl mx-auto px-6">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <SlideIn direction="left">
               <p className="text-[#c9a227] text-sm tracking-[0.3em] uppercase font-medium mb-3">Interactive Anatomy</p>
               <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
                 Annotate. Educate.
-                <span className="text-white/30"> Document.</span>
+                <span className="text-white/50"> Document.</span>
               </h2>
-              <p className="text-white/50 text-base leading-relaxed mb-8">
+              <p className="text-white/70 text-base leading-relaxed mb-8">
                 Draw directly on 3D anatomical models. Circle problem areas, add arrows, and write notes.
                 Switch between clinical terminology and owner-friendly language for patient education.
               </p>
@@ -256,7 +256,7 @@ export default function LandingPage() {
                       <div className="w-8 h-8 rounded-lg bg-[#c9a227]/10 flex items-center justify-center shrink-0 mt-0.5">
                         <item.icon className="w-4 h-4 text-[#c9a227]" />
                       </div>
-                      <span className="text-white/50 text-sm">{item.text}</span>
+                      <span className="text-white/70 text-sm">{item.text}</span>
                     </div>
                   </FadeIn>
                 ))}
@@ -278,7 +278,7 @@ export default function LandingPage() {
                   initial={{ opacity: 0, scale: 0.8 }}
                   whileInView={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.5 }}
-                  className="absolute -top-4 -right-4 bg-[#c9a227] text-[#0a1628] text-xs font-bold px-3 py-1.5 rounded-full shadow-lg"
+                  className="absolute -top-4 -right-4 bg-[#c9a227] text-[#0e1e38] text-xs font-bold px-3 py-1.5 rounded-full shadow-lg"
                 >
                   NEW
                 </motion.div>
@@ -289,13 +289,13 @@ export default function LandingPage() {
       </section>
 
       {/* ── How it works ── */}
-      <section className="py-24 md:py-32 bg-[#0a1628]">
+      <section className="py-24 md:py-32 bg-[#0e1e38]">
         <div className="max-w-5xl mx-auto px-6">
           <FadeIn className="text-center mb-16">
             <p className="text-[#c9a227] text-sm tracking-[0.3em] uppercase font-medium mb-3">How It Works</p>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
               Three steps.
-              <span className="text-white/30"> That&apos;s it.</span>
+              <span className="text-white/50"> That&apos;s it.</span>
             </h2>
           </FadeIn>
 
@@ -321,7 +321,7 @@ export default function LandingPage() {
                 <div className="text-center">
                   <span className="text-6xl md:text-7xl font-black bg-gradient-to-b from-[#c9a227]/20 to-transparent bg-clip-text text-transparent">{item.step}</span>
                   <h3 className="text-xl font-bold mt-2 mb-3">{item.title}</h3>
-                  <p className="text-white/40 text-sm leading-relaxed">{item.desc}</p>
+                  <p className="text-white/60 text-sm leading-relaxed">{item.desc}</p>
                 </div>
               </FadeIn>
             ))}
@@ -330,15 +330,15 @@ export default function LandingPage() {
       </section>
 
       {/* ── Scheduler section ── */}
-      <section className="py-24 md:py-32 bg-gradient-to-b from-[#0a1628] via-[#0f2040] to-[#0a1628] border-y border-white/5">
+      <section className="py-24 md:py-32 bg-gradient-to-b from-[#0e1e38] via-[#0f2040] to-[#0e1e38] border-y border-white/5">
         <div className="max-w-6xl mx-auto px-6">
           <FadeIn className="text-center mb-12">
             <p className="text-[#c9a227] text-sm tracking-[0.3em] uppercase font-medium mb-3">Scheduling</p>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">
               Book. Remind.
-              <span className="text-white/30"> Confirm.</span>
+              <span className="text-white/50"> Confirm.</span>
             </h2>
-            <p className="text-white/50 text-base md:text-lg leading-relaxed max-w-2xl mx-auto">
+            <p className="text-white/70 text-base md:text-lg leading-relaxed max-w-2xl mx-auto">
               Manage your entire schedule from one place. Book appointments, send automatic
               reminders via email or SMS, and let clients confirm with a single tap.
             </p>
@@ -372,7 +372,7 @@ export default function LandingPage() {
                   <div className="w-8 h-8 rounded-lg bg-[#c9a227]/10 flex items-center justify-center shrink-0 mt-0.5">
                     <item.icon className="w-4 h-4 text-[#c9a227]" />
                   </div>
-                  <span className="text-white/50 text-sm">{item.text}</span>
+                  <span className="text-white/70 text-sm">{item.text}</span>
                 </div>
               </FadeIn>
             ))}
@@ -381,7 +381,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Built for the field ── */}
-      <section className="py-24 md:py-32 bg-gradient-to-b from-[#0a1628] to-[#0f2040] border-y border-white/5">
+      <section className="py-24 md:py-32 bg-gradient-to-b from-[#0e1e38] to-[#0f2040] border-y border-white/5">
         <div className="max-w-5xl mx-auto px-6 text-center">
           <FadeIn>
             <div className="inline-flex items-center gap-2 bg-[#c9a227]/10 border border-[#c9a227]/20 px-4 py-2 rounded-full mb-6">
@@ -392,11 +392,11 @@ export default function LandingPage() {
           <FadeIn delay={0.1}>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
               No signal?
-              <span className="text-white/30"> No problem.</span>
+              <span className="text-white/50"> No problem.</span>
             </h2>
           </FadeIn>
           <FadeIn delay={0.2}>
-            <p className="text-white/50 text-lg max-w-2xl mx-auto leading-relaxed mb-10">
+            <p className="text-white/70 text-lg max-w-2xl mx-auto leading-relaxed mb-10">
               Chiro Stride is a Progressive Web App that works without internet.
               Take notes at the barn, the arena, or the middle of nowhere.
               Everything syncs automatically when you&apos;re back online.
@@ -409,7 +409,7 @@ export default function LandingPage() {
                 { icon: WifiOff, text: "Works without signal" },
                 { icon: ArrowRight, text: "Auto-syncs when online" },
               ].map((item, i) => (
-                <div key={i} className="flex items-center gap-2 text-white/40 text-sm">
+                <div key={i} className="flex items-center gap-2 text-white/60 text-sm">
                   <item.icon className="w-4 h-4 text-[#c9a227]" />
                   {item.text}
                 </div>
@@ -420,13 +420,13 @@ export default function LandingPage() {
       </section>
 
       {/* ── Pricing ── */}
-      <section id="pricing" className="py-24 md:py-32 bg-[#0a1628]">
+      <section id="pricing" className="py-24 md:py-32 bg-[#0e1e38]">
         <div className="max-w-4xl mx-auto px-6">
           <FadeIn className="text-center mb-16">
             <p className="text-[#c9a227] text-sm tracking-[0.3em] uppercase font-medium mb-3">Pricing</p>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
               One plan.
-              <span className="text-white/30"> Everything included.</span>
+              <span className="text-white/50"> Everything included.</span>
             </h2>
           </FadeIn>
 
@@ -440,13 +440,13 @@ export default function LandingPage() {
                     <Star key={i} className="w-4 h-4 fill-[#c9a227] text-[#c9a227]" />
                   ))}
                 </div>
-                <p className="text-white/40 text-sm mb-6">Trusted by animal chiropractors</p>
+                <p className="text-white/60 text-sm mb-6">Trusted by animal chiropractors</p>
 
                 <div className="mb-2">
                   <span className="text-5xl md:text-6xl font-black text-white">$49</span>
-                  <span className="text-white/40 text-lg">/month</span>
+                  <span className="text-white/60 text-lg">/month</span>
                 </div>
-                <p className="text-white/30 text-sm mb-4">or $499/year <span className="text-emerald-400 font-semibold">(save 15%)</span></p>
+                <p className="text-white/50 text-sm mb-4">or $499/year <span className="text-emerald-400 font-semibold">(save 15%)</span></p>
 
                 <p className="text-[#c9a227] text-sm font-medium mb-8">
                   7-day free trial · No credit card required
@@ -463,7 +463,7 @@ export default function LandingPage() {
 
                 <Link
                   href="/signup"
-                  className="block w-full py-4 rounded-full bg-[#c9a227] text-[#0a1628] font-bold text-lg hover:bg-[#ddb832] transition-all hover:scale-[1.02] shadow-lg shadow-[#c9a227]/20"
+                  className="block w-full py-4 rounded-full bg-[#c9a227] text-[#0e1e38] font-bold text-lg hover:bg-[#ddb832] transition-all hover:scale-[1.02] shadow-lg shadow-[#c9a227]/20"
                 >
                   Start Free Trial
                 </Link>
@@ -474,7 +474,7 @@ export default function LandingPage() {
           <FadeIn delay={0.3} className="text-center mt-8">
             <Link
               href="/pricing"
-              className="inline-flex items-center gap-2 text-white/40 text-sm hover:text-white transition"
+              className="inline-flex items-center gap-2 text-white/60 text-sm hover:text-white transition"
             >
               See full pricing details
               <ArrowRight className="w-4 h-4" />
@@ -484,7 +484,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Final CTA ── */}
-      <section className="py-24 md:py-32 bg-gradient-to-b from-[#0a1628] via-[#0f2040] to-[#0a1628] border-t border-white/5">
+      <section className="py-24 md:py-32 bg-gradient-to-b from-[#0e1e38] via-[#0f2040] to-[#0e1e38] border-t border-white/5">
         <div className="max-w-4xl mx-auto px-6 text-center">
           <FadeIn>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
@@ -496,7 +496,7 @@ export default function LandingPage() {
             </h2>
           </FadeIn>
           <FadeIn delay={0.15}>
-            <p className="text-white/50 text-lg max-w-xl mx-auto mb-10">
+            <p className="text-white/70 text-lg max-w-xl mx-auto mb-10">
               Join chiropractors who are spending less time on paperwork and more time with their patients.
             </p>
           </FadeIn>
@@ -504,7 +504,7 @@ export default function LandingPage() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
                 href="/signup"
-                className="px-8 py-4 rounded-full bg-[#c9a227] text-[#0a1628] font-bold text-lg hover:bg-[#ddb832] transition-all hover:scale-105 shadow-lg shadow-[#c9a227]/20 inline-flex items-center gap-2"
+                className="px-8 py-4 rounded-full bg-[#c9a227] text-[#0e1e38] font-bold text-lg hover:bg-[#ddb832] transition-all hover:scale-105 shadow-lg shadow-[#c9a227]/20 inline-flex items-center gap-2"
               >
                 Start Free Trial
                 <ChevronRight className="w-5 h-5" />
@@ -518,7 +518,7 @@ export default function LandingPage() {
             </div>
           </FadeIn>
           <FadeIn delay={0.4}>
-            <p className="text-white/30 text-sm mt-6">7-day free trial · No credit card required</p>
+            <p className="text-white/50 text-sm mt-6">7-day free trial · No credit card required</p>
           </FadeIn>
         </div>
       </section>

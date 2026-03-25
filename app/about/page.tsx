@@ -60,7 +60,7 @@ export default function AboutPage() {
   return (
     <MarketingLayout>
       {/* Hero */}
-      <section className="pt-32 pb-20 md:pt-40 md:pb-28 bg-gradient-to-b from-[#0a1628] via-[#0f2040] to-[#0a1628] relative">
+      <section className="pt-32 pb-20 md:pt-40 md:pb-28 bg-gradient-to-b from-[#0e1e38] via-[#0f2040] to-[#0e1e38] relative">
         <div className="absolute inset-0 opacity-[0.03]" style={{
           backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
           backgroundSize: "64px 64px",
@@ -82,7 +82,7 @@ export default function AboutPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-white/50 text-lg md:text-xl max-w-2xl mx-auto"
+            className="text-white/70 text-lg md:text-xl max-w-2xl mx-auto"
           >
             We got tired of software that didn&apos;t understand our work. So we built something that does.
           </motion.p>
@@ -90,13 +90,13 @@ export default function AboutPage() {
       </section>
 
       {/* Story */}
-      <section className="py-24 md:py-32 bg-[#0a1628]">
+      <section className="py-24 md:py-32 bg-[#0e1e38]">
         <div className="max-w-4xl mx-auto px-6">
           <FadeIn className="text-center mb-16">
             <p className="text-[#c9a227] text-sm tracking-[0.3em] uppercase font-medium mb-3">Our Story</p>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
               From frustration
-              <span className="text-white/30"> to solution.</span>
+              <span className="text-white/50"> to solution.</span>
             </h2>
           </FadeIn>
 
@@ -115,7 +115,7 @@ export default function AboutPage() {
                   <div className="ml-4">
                     <span className="text-[#c9a227] text-xs font-semibold tracking-widest uppercase">{item.year}</span>
                     <h3 className="text-xl font-bold mt-1 mb-2">{item.title}</h3>
-                    <p className="text-white/40 text-sm leading-relaxed max-w-2xl">{item.desc}</p>
+                    <p className="text-white/60 text-sm leading-relaxed max-w-2xl">{item.desc}</p>
                   </div>
                 </div>
               </FadeIn>
@@ -125,7 +125,7 @@ export default function AboutPage() {
       </section>
 
       {/* Values */}
-      <section className="py-24 md:py-32 bg-gradient-to-b from-[#0a1628] via-[#0f2040] to-[#0a1628] border-y border-white/5">
+      <section className="py-24 md:py-32 bg-gradient-to-b from-[#0e1e38] via-[#0f2040] to-[#0e1e38] border-y border-white/5">
         <div className="max-w-6xl mx-auto px-6">
           <FadeIn className="text-center mb-16">
             <p className="text-[#c9a227] text-sm tracking-[0.3em] uppercase font-medium mb-3">Our Values</p>
@@ -142,7 +142,7 @@ export default function AboutPage() {
                     <v.icon className="w-7 h-7 text-[#c9a227]" />
                   </div>
                   <h3 className="text-lg font-bold mb-3">{v.title}</h3>
-                  <p className="text-white/40 text-sm leading-relaxed">{v.desc}</p>
+                  <p className="text-white/60 text-sm leading-relaxed">{v.desc}</p>
                 </div>
               </FadeIn>
             ))}
@@ -151,13 +151,13 @@ export default function AboutPage() {
       </section>
 
       {/* What makes Chiro Stride different */}
-      <section className="py-24 md:py-32 bg-[#0a1628]">
+      <section className="py-24 md:py-32 bg-[#0e1e38]">
         <div className="max-w-5xl mx-auto px-6">
           <FadeIn className="text-center mb-16">
             <p className="text-[#c9a227] text-sm tracking-[0.3em] uppercase font-medium mb-3">Why Chiro Stride</p>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
               What makes us
-              <span className="text-white/30"> different.</span>
+              <span className="text-white/50"> different.</span>
             </h2>
           </FadeIn>
 
@@ -191,7 +191,7 @@ export default function AboutPage() {
                   </div>
                   <div>
                     <h3 className="font-semibold mb-1">{item.title}</h3>
-                    <p className="text-white/40 text-sm leading-relaxed">{item.desc}</p>
+                    <p className="text-white/60 text-sm leading-relaxed">{item.desc}</p>
                   </div>
                 </div>
               </FadeIn>
@@ -201,7 +201,7 @@ export default function AboutPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-24 md:py-32 bg-gradient-to-b from-[#0a1628] via-[#0f2040] to-[#0a1628] border-t border-white/5">
+      <section className="py-24 md:py-32 bg-gradient-to-b from-[#0e1e38] via-[#0f2040] to-[#0e1e38] border-t border-white/5">
         <div className="max-w-3xl mx-auto px-6 text-center">
           <FadeIn>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
@@ -213,7 +213,7 @@ export default function AboutPage() {
             </h2>
           </FadeIn>
           <FadeIn delay={0.15}>
-            <p className="text-white/50 text-lg mb-10">
+            <p className="text-white/70 text-lg mb-10">
               Start your free trial today and see why Chiro Stride is the practice management tool animal chiropractors have been waiting for.
             </p>
           </FadeIn>

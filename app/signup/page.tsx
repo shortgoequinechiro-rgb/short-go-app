@@ -94,7 +94,7 @@ export default function SignupPage() {
   return (
     <main
       className="relative min-h-screen overflow-hidden"
-      style={{ background: 'linear-gradient(135deg, #0a1628 0%, #0f2040 60%, #162d55 100%)' }}
+      style={{ background: 'linear-gradient(135deg, #0e1e38 0%, #132d50 60%, #1a3a5e 100%)' }}
     >
       {/* Horse silhouette */}
       <div

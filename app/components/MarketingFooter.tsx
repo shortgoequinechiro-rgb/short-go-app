@@ -35,7 +35,7 @@ const footerSections = [
 
 export default function MarketingFooter() {
   return (
-    <footer className="relative bg-[#060e1a] border-t border-white/5 overflow-hidden">
+    <footer className="relative bg-[#0b1627] border-t border-white/5 overflow-hidden">
       {/* Subtle glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[1px] bg-gradient-to-r from-transparent via-[#c9a227]/30 to-transparent" />
 
@@ -48,19 +48,19 @@ export default function MarketingFooter() {
               <Image src="/stride-logo-gold.png" alt="Chiro Stride" width={36} height={36} />
               <span className="text-lg font-bold tracking-tight text-white">CHIRO STRIDE</span>
             </Link>
-            <p className="text-white/40 text-sm leading-relaxed max-w-sm mb-6">
+            <p className="text-white/60 text-sm leading-relaxed max-w-sm mb-6">
               Practice management software built by animal chiropractors, for animal chiropractors.
               Designed for the field, not the office.
             </p>
             <div className="space-y-2">
               <a
                 href="mailto:hello@chirostride.com"
-                className="flex items-center gap-2 text-white/40 text-sm hover:text-[#c9a227] transition"
+                className="flex items-center gap-2 text-white/60 text-sm hover:text-[#c9a227] transition"
               >
                 <Mail className="w-4 h-4" />
                 hello@chirostride.com
               </a>
-              <div className="flex items-center gap-2 text-white/40 text-sm">
+              <div className="flex items-center gap-2 text-white/60 text-sm">
                 <MapPin className="w-4 h-4" />
                 Serving practitioners nationwide
               </div>
@@ -78,7 +78,7 @@ export default function MarketingFooter() {
                   <li key={link.label}>
                     <Link
                       href={link.href}
-                      className="text-white/40 text-sm hover:text-white transition inline-flex items-center gap-1 group"
+                      className="text-white/60 text-sm hover:text-white transition inline-flex items-center gap-1 group"
                     >
                       {link.label}
                       <ArrowUpRight className="w-3 h-3 opacity-0 -translate-y-0.5 translate-x-[-2px] group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 transition-all" />
@@ -95,13 +95,13 @@ export default function MarketingFooter() {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
               <h4 className="text-white text-sm font-semibold mb-1">Stay in the loop</h4>
-              <p className="text-white/40 text-xs">Product updates, tips, and chiropractic insights.</p>
+              <p className="text-white/60 text-xs">Product updates, tips, and chiropractic insights.</p>
             </div>
             <div className="flex gap-2 w-full sm:w-auto">
               <input
                 type="email"
                 placeholder="you@example.com"
-                className="flex-1 sm:w-64 px-4 py-2.5 rounded-full bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-[#c9a227]/50 transition"
+                className="flex-1 sm:w-64 px-4 py-2.5 rounded-full bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/40 focus:outline-none focus:border-[#c9a227]/50 transition"
               />
               <button className="px-5 py-2.5 rounded-full bg-[#c9a227] text-[#0a1628] font-semibold text-sm hover:bg-[#ddb832] transition-all hover:scale-105 whitespace-nowrap">
                 Subscribe
@@ -112,12 +112,12 @@ export default function MarketingFooter() {
 
         {/* Bottom row */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-white/20 text-xs">
+          <p className="text-white/40 text-xs">
             &copy; {new Date().getFullYear()} Chiro Stride Equine & Canine Chiropractic Software. All rights reserved.
           </p>
-          <div className="flex items-center gap-6 text-xs text-white/20">
-            <a href="#" className="hover:text-white/40 transition">Privacy Policy</a>
-            <a href="#" className="hover:text-white/40 transition">Terms of Service</a>
+          <div className="flex items-center gap-6 text-xs text-white/40">
+            <a href="#" className="hover:text-white/60 transition">Privacy Policy</a>
+            <a href="#" className="hover:text-white/60 transition">Terms of Service</a>
           </div>
         </div>
       </div>

@@ -149,7 +149,7 @@ function ProfileTab({ practitioner, onSaved }: { practitioner: Practitioner; onS
         <div className="flex items-center gap-5">
           <label
             htmlFor="logo-upload-settings"
-            className={`group flex h-20 w-20 cursor-pointer items-center justify-center rounded-xl border transition hover:border-[#c9a227] overflow-hidden shrink-0 ${logoUrl ? 'border-[#c9a227]/30 bg-white' : 'border-[#1a3358] bg-[#081120]'}`}
+            className={`group flex h-20 w-20 cursor-pointer items-center justify-center rounded-xl border transition hover:border-[#c9a227] overflow-hidden shrink-0 ${logoUrl ? 'border-[#c9a227]/30 bg-white' : 'border-[#1e3a60] bg-[#0c1830]'}`}
           >
             {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -194,7 +194,7 @@ function ProfileTab({ practitioner, onSaved }: { practitioner: Practitioner; onS
             value={fullName}
             onChange={e => { setFullName(e.target.value); setSaved(false) }}
             placeholder="Dr. Jane Smith"
-            className="w-full rounded-xl border border-[#1a3358] bg-[#081120] px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/40 transition"
+            className="w-full rounded-xl border border-[#1e3a60] bg-[#0c1830] px-4 py-2.5 text-sm text-white placeholder-white/40 outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/40 transition"
           />
         </div>
 
@@ -208,7 +208,7 @@ function ProfileTab({ practitioner, onSaved }: { practitioner: Practitioner; onS
             value={practiceName}
             onChange={e => { setPracticeName(e.target.value); setSaved(false) }}
             placeholder="Chiro Stride Equine Chiropractic"
-            className="w-full rounded-xl border border-[#1a3358] bg-[#081120] px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/40 transition"
+            className="w-full rounded-xl border border-[#1e3a60] bg-[#0c1830] px-4 py-2.5 text-sm text-white placeholder-white/40 outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/40 transition"
           />
         </div>
 
@@ -222,7 +222,7 @@ function ProfileTab({ practitioner, onSaved }: { practitioner: Practitioner; onS
             value={location}
             onChange={e => { setLocation(e.target.value); setSaved(false) }}
             placeholder="Nashville, TN"
-            className="w-full rounded-xl border border-[#1a3358] bg-[#081120] px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/40 transition"
+            className="w-full rounded-xl border border-[#1e3a60] bg-[#0c1830] px-4 py-2.5 text-sm text-white placeholder-white/40 outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/40 transition"
           />
         </div>
 
@@ -234,7 +234,7 @@ function ProfileTab({ practitioner, onSaved }: { practitioner: Practitioner; onS
           <select
             value={animalsServed}
             onChange={e => { setAnimalsServed(e.target.value); setSaved(false) }}
-            className="w-full rounded-xl border border-[#1a3358] bg-[#081120] px-4 py-2.5 text-sm text-white outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/40 transition"
+            className="w-full rounded-xl border border-[#1e3a60] bg-[#0c1830] px-4 py-2.5 text-sm text-white outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/40 transition"
           >
             <option value="equine">🐴 Equine only</option>
             <option value="canine">🐕 Canine only</option>
@@ -256,7 +256,7 @@ function ProfileTab({ practitioner, onSaved }: { practitioner: Practitioner; onS
           type="email"
           value={practitioner.email ?? ''}
           disabled
-          className="w-full rounded-xl border border-[#1a3358] bg-[#081120]/50 px-4 py-2.5 text-sm text-white/40 cursor-not-allowed"
+          className="w-full rounded-xl border border-[#1e3a60] bg-[#0c1830]/50 px-4 py-2.5 text-sm text-white/40 cursor-not-allowed"
         />
         <p className="mt-1 text-[11px] text-blue-400/60">Email is tied to your login and cannot be changed here.</p>
       </div>
@@ -328,7 +328,7 @@ function SecurityTab() {
             value={currentPw}
             onChange={e => { setCurrentPw(e.target.value); setError(''); setSaved(false) }}
             placeholder="••••••••"
-            className="w-full rounded-xl border border-[#1a3358] bg-[#081120] px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/40 transition"
+            className="w-full rounded-xl border border-[#1e3a60] bg-[#0c1830] px-4 py-2.5 text-sm text-white placeholder-white/40 outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/40 transition"
           />
         </div>
         <div>
@@ -340,7 +340,7 @@ function SecurityTab() {
             value={newPw}
             onChange={e => { setNewPw(e.target.value); setError(''); setSaved(false) }}
             placeholder="••••••••"
-            className="w-full rounded-xl border border-[#1a3358] bg-[#081120] px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/40 transition"
+            className="w-full rounded-xl border border-[#1e3a60] bg-[#0c1830] px-4 py-2.5 text-sm text-white placeholder-white/40 outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/40 transition"
           />
           <p className="mt-1 text-[11px] text-blue-400/60">Minimum 8 characters.</p>
         </div>
@@ -353,7 +353,7 @@ function SecurityTab() {
             value={confirmPw}
             onChange={e => { setConfirmPw(e.target.value); setError(''); setSaved(false) }}
             placeholder="••••••••"
-            className="w-full rounded-xl border border-[#1a3358] bg-[#081120] px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/40 transition"
+            className="w-full rounded-xl border border-[#1e3a60] bg-[#0c1830] px-4 py-2.5 text-sm text-white placeholder-white/40 outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/40 transition"
           />
         </div>
 
@@ -424,7 +424,7 @@ function BillingTab({ practitioner }: { practitioner: Practitioner }) {
       </div>
 
       {/* Plan card */}
-      <div className="rounded-2xl border border-[#1a3358] bg-[#0d1b30] p-6">
+      <div className="rounded-2xl border border-[#1e3a60] bg-[#112240] p-6">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-blue-400 mb-1">Current Plan</p>
@@ -523,7 +523,7 @@ function BillingTab({ practitioner }: { practitioner: Practitioner }) {
       </div>
 
       {/* What's included */}
-      <div className="rounded-2xl border border-[#1a3358] bg-[#0d1b30] p-6">
+      <div className="rounded-2xl border border-[#1e3a60] bg-[#112240] p-6">
         <p className="text-xs font-semibold uppercase tracking-wider text-blue-400 mb-4">What&apos;s Included</p>
         <ul className="space-y-2">
           {[
@@ -576,7 +576,7 @@ function RemindersTab() {
       </div>
 
       {/* How it works */}
-      <div className="rounded-2xl border border-[#1a3358] bg-[#0d1b30] p-5 space-y-3">
+      <div className="rounded-2xl border border-[#1e3a60] bg-[#112240] p-5 space-y-3">
         <p className="text-xs font-bold uppercase tracking-wider text-blue-400">How It Works</p>
         <ul className="space-y-2 text-sm text-blue-200">
           <li className="flex gap-2">
@@ -603,7 +603,7 @@ function RemindersTab() {
       </div>
 
       {/* Required env vars */}
-      <div className="rounded-2xl border border-[#1a3358] bg-[#0d1b30] p-5">
+      <div className="rounded-2xl border border-[#1e3a60] bg-[#112240] p-5">
         <p className="text-xs font-bold uppercase tracking-wider text-blue-400 mb-3">Required Configuration</p>
         <div className="space-y-2">
           {[
@@ -629,7 +629,7 @@ function RemindersTab() {
       </div>
 
       {/* Manual trigger */}
-      <div className="rounded-2xl border border-[#1a3358] bg-[#0d1b30] p-5">
+      <div className="rounded-2xl border border-[#1e3a60] bg-[#112240] p-5">
         <p className="text-xs font-bold uppercase tracking-wider text-blue-400 mb-1">Manual Trigger</p>
         <p className="text-sm text-blue-200/70 mb-4">
           Run the reminder job right now to test it or catch up on any missed runs.
@@ -719,7 +719,7 @@ function AccountPageContent() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#081120]">
+      <div className="flex min-h-screen items-center justify-center bg-[#0c1830]">
         <div className="text-blue-300 text-sm">Loading account…</div>
       </div>
     )
@@ -727,7 +727,7 @@ function AccountPageContent() {
 
   if (!practitioner) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#081120]">
+      <div className="flex min-h-screen items-center justify-center bg-[#0c1830]">
         <div className="text-center">
           <div className="text-amber-400 text-sm mb-2">
             {navigator.onLine ? 'Could not load account info. Please refresh.' : 'Account settings are not available offline.'}
@@ -748,7 +748,7 @@ function AccountPageContent() {
   ]
 
   return (
-    <main className="min-h-screen bg-[#081120]">
+    <main className="min-h-screen bg-[#0c1830]">
       <div className="mx-auto max-w-3xl px-4 py-10">
 
         {/* Header */}
@@ -770,7 +770,7 @@ function AccountPageContent() {
         </div>
 
         {/* Tab bar */}
-        <div className="mb-8 flex gap-1 rounded-2xl border border-[#1a3358] bg-[#0a1628] p-1">
+        <div className="mb-8 flex gap-1 rounded-2xl border border-[#1e3a60] bg-[#0e1e38] p-1">
           {tabs.map(t => (
             <button
               key={t.id}
@@ -787,7 +787,7 @@ function AccountPageContent() {
         </div>
 
         {/* Tab content */}
-        <div className="rounded-2xl border border-[#1a3358] bg-[#0a1628] p-6">
+        <div className="rounded-2xl border border-[#1e3a60] bg-[#0e1e38] p-6">
           {tab === 'profile' && (
             <ProfileTab
               practitioner={practitioner}

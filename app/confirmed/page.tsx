@@ -73,9 +73,9 @@ export default function ConfirmedPage() {
   return (
     <main
       className="flex min-h-screen items-center justify-center px-4"
-      style={{ background: 'linear-gradient(135deg, #0a1628 0%, #0f2040 60%, #162d55 100%)' }}
+      style={{ background: 'linear-gradient(135deg, #0e1e38 0%, #132d50 60%, #1a3a5e 100%)' }}
     >
-      <div className="w-full max-w-md rounded-3xl border border-[#1a3358] bg-[#0d1b30]/80 p-10 shadow-2xl backdrop-blur">
+      <div className="w-full max-w-md rounded-3xl border border-[#1e3a60] bg-[#112240]/80 p-10 shadow-2xl backdrop-blur">
         {/* Logo / brand */}
         <div className="mb-8 text-center">
           <p className="text-xs font-semibold uppercase tracking-widest text-[#c9a227]">

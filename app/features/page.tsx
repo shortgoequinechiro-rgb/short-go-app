@@ -167,7 +167,7 @@ export default function FeaturesPage() {
   return (
     <MarketingLayout>
       {/* Hero */}
-      <section className="pt-32 pb-20 md:pt-40 md:pb-28 bg-gradient-to-b from-[#0a1628] via-[#0f2040] to-[#0a1628] relative">
+      <section className="pt-32 pb-20 md:pt-40 md:pb-28 bg-gradient-to-b from-[#0e1e38] via-[#0f2040] to-[#0e1e38] relative">
         <div className="absolute inset-0 opacity-[0.03]" style={{
           backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
           backgroundSize: "64px 64px",
@@ -198,7 +198,7 @@ export default function FeaturesPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.25 }}
-            className="text-white/50 text-lg md:text-xl max-w-2xl mx-auto"
+            className="text-white/70 text-lg md:text-xl max-w-2xl mx-auto"
           >
             Every tool is designed around the real workflow of equine and canine chiropractors. No bloat, no learning curve.
           </motion.p>
@@ -206,12 +206,12 @@ export default function FeaturesPage() {
       </section>
 
       {/* Feature deep-dives */}
-      <section className="bg-[#0a1628]">
+      <section className="bg-[#0e1e38]">
         {heroFeatures.map((feature, i) => (
           <div
             key={feature.id}
             id={feature.id}
-            className={`py-20 md:py-28 ${i % 2 === 1 ? "bg-gradient-to-b from-[#0a1628] via-[#0f2040]/50 to-[#0a1628]" : ""}`}
+            className={`py-20 md:py-28 ${i % 2 === 1 ? "bg-gradient-to-b from-[#0e1e38] via-[#0f2040]/50 to-[#0e1e38]" : ""}`}
           >
             <div className="max-w-6xl mx-auto px-6">
               <div className={`grid md:grid-cols-2 gap-12 items-center ${i % 2 === 1 ? "md:direction-rtl" : ""}`}>
@@ -224,7 +224,7 @@ export default function FeaturesPage() {
                     <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
                       {feature.tagline}
                     </h2>
-                    <p className="text-white/50 text-base leading-relaxed mb-8">
+                    <p className="text-white/70 text-base leading-relaxed mb-8">
                       {feature.description}
                     </p>
                     <div className="space-y-3">
@@ -244,7 +244,7 @@ export default function FeaturesPage() {
                   <div className={`${i % 2 === 1 ? "md:order-1" : ""}`}>
                     <div className="relative aspect-[4/3] rounded-2xl bg-gradient-to-br from-white/[0.05] to-white/[0.02] border border-white/10 overflow-hidden flex items-center justify-center">
                       <feature.icon className="w-24 h-24 text-[#c9a227]/20" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#0a1628]/50 to-transparent" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#0e1e38]/50 to-transparent" />
                     </div>
                   </div>
                 </SlideIn>
@@ -255,13 +255,13 @@ export default function FeaturesPage() {
       </section>
 
       {/* Additional features grid */}
-      <section className="py-24 md:py-32 bg-gradient-to-b from-[#0a1628] via-[#0f2040] to-[#0a1628] border-t border-white/5">
+      <section className="py-24 md:py-32 bg-gradient-to-b from-[#0e1e38] via-[#0f2040] to-[#0e1e38] border-t border-white/5">
         <div className="max-w-6xl mx-auto px-6">
           <FadeIn className="text-center mb-16">
             <p className="text-[#c9a227] text-sm tracking-[0.3em] uppercase font-medium mb-3">And More</p>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
               Everything else
-              <span className="text-white/30"> you&apos;d expect.</span>
+              <span className="text-white/50"> you&apos;d expect.</span>
             </h2>
           </FadeIn>
 
@@ -273,7 +273,7 @@ export default function FeaturesPage() {
                     <f.icon className="w-5 h-5 text-[#c9a227]" />
                   </div>
                   <h3 className="text-sm font-semibold mb-2">{f.title}</h3>
-                  <p className="text-white/40 text-xs leading-relaxed">{f.desc}</p>
+                  <p className="text-white/60 text-xs leading-relaxed">{f.desc}</p>
                 </div>
               </FadeIn>
             ))}
@@ -282,7 +282,7 @@ export default function FeaturesPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-24 md:py-32 bg-[#0a1628] border-t border-white/5">
+      <section className="py-24 md:py-32 bg-[#0e1e38] border-t border-white/5">
         <div className="max-w-3xl mx-auto px-6 text-center">
           <FadeIn>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
@@ -290,7 +290,7 @@ export default function FeaturesPage() {
             </h2>
           </FadeIn>
           <FadeIn delay={0.15}>
-            <p className="text-white/50 text-lg mb-10">
+            <p className="text-white/70 text-lg mb-10">
               Start your free trial today — no credit card required.
             </p>
           </FadeIn>
