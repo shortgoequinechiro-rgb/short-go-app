@@ -10,7 +10,9 @@ import { NotificationBell } from './NotificationBell'
 export default function NavBar() {
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const moreRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const pathname = usePathname()
 
@@ -31,6 +33,9 @@ export default function NavBar() {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setMenuOpen(false)
       }
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setMoreOpen(false)
+      }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
@@ -38,6 +43,7 @@ export default function NavBar() {
 
   useEffect(() => {
     setMenuOpen(false)
+    setMoreOpen(false)
   }, [pathname])
 
   const isPublicPage =
@@ -153,36 +159,72 @@ export default function NavBar() {
                 Messages
               </Link>
             )}
-            {!isServices && (
-              <Link
-                href="/services"
-                className="whitespace-nowrap rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/20"
+
+            {/* More dropdown — Services, Help, Account */}
+            <div className="relative" ref={moreRef}>
+              <button
+                onClick={() => setMoreOpen((o) => !o)}
+                className={`whitespace-nowrap rounded-xl border border-white/25 px-3 py-2 text-sm font-medium transition inline-flex items-center gap-1.5 ${
+                  isServices || isHelp || isAccount
+                    ? 'bg-white/20 text-white'
+                    : 'bg-white/10 text-white hover:bg-white/20'
+                }`}
               >
-                Services
-              </Link>
-            )}
-            {!isHelp && (
-              <Link
-                href="/help"
-                className="whitespace-nowrap rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/20"
-              >
-                Help
-              </Link>
-            )}
-            {!isAccount && (
-              <Link
-                href="/account"
-                className="whitespace-nowrap rounded-xl border border-white/25 bg-transparent px-3 py-2 text-sm font-medium text-white/70 transition hover:bg-white/10 hover:text-white"
-              >
-                Account
-              </Link>
-            )}
-            <button
-              onClick={handleSignOut}
-              className="whitespace-nowrap rounded-xl border border-white/25 bg-transparent px-3 py-2 text-sm font-medium text-white/90 transition-colors hover:bg-white/10"
-            >
-              Sign Out
-            </button>
+                More
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className={`h-3.5 w-3.5 transition-transform ${moreOpen ? 'rotate-180' : ''}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {moreOpen && (
+                <div className="absolute right-0 top-11 z-50 w-48 overflow-hidden rounded-2xl border border-[#1a3358] bg-[#0f2040] shadow-2xl">
+                  <div className="p-1.5">
+                    <Link
+                      href="/services"
+                      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                        isServices ? 'bg-white/15 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'
+                      }`}
+                    >
+                      <span className="text-base">&#128203;</span>
+                      Services
+                    </Link>
+                    <Link
+                      href="/help"
+                      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                        isHelp ? 'bg-white/15 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'
+                      }`}
+                    >
+                      <span className="text-base">&#10067;</span>
+                      Help
+                    </Link>
+                    <Link
+                      href="/account"
+                      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                        isAccount ? 'bg-white/15 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'
+                      }`}
+                    >
+                      <span className="text-base">&#9881;&#65039;</span>
+                      Account
+                    </Link>
+                  </div>
+                  <div className="border-t border-white/10 p-1.5">
+                    <button
+                      onClick={handleSignOut}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-red-300 transition hover:bg-white/10"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Notification bell — visible on all sizes */}
