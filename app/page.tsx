@@ -230,6 +230,59 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Reviews ── */}
+      <section className="py-24 md:py-32 bg-gradient-to-b from-[#0e1e38] via-[#0f2040] to-[#0e1e38] border-y border-white/5">
+        <div className="max-w-6xl mx-auto px-6">
+          <FadeIn className="text-center mb-16">
+            <p className="text-[#c9a227] text-sm tracking-[0.3em] uppercase font-medium mb-3">Testimonials</p>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
+              Loved by practitioners
+              <span className="text-white/50"> everywhere.</span>
+            </h2>
+          </FadeIn>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                name: "Dr. Sarah Mitchell",
+                role: "Equine Chiropractor — Nashville, TN",
+                quote: "I used to spend my evenings catching up on SOAP notes. Now I tap a few buttons at the barn and I'm done before I leave. Chiro Stride gave me my evenings back.",
+                stars: 5,
+              },
+              {
+                name: "Dr. James Kowalski",
+                role: "Canine & Equine Practitioner — Fort Collins, CO",
+                quote: "The offline mode is a game-changer. Half my equine clients are 30 minutes from the nearest cell tower. Everything just syncs when I get home.",
+                stars: 5,
+              },
+              {
+                name: "Dr. Emily Chen",
+                role: "Animal Chiropractor — Lexington, KY",
+                quote: "My clients love the digital intake forms and the anatomy viewer. It makes the whole experience feel modern and professional. I can't imagine going back to paper.",
+                stars: 5,
+              },
+            ].map((review, i) => (
+              <FadeIn key={i} delay={i * 0.12}>
+                <div className="relative bg-white/[0.03] border border-white/5 rounded-2xl p-7 h-full flex flex-col hover:border-[#c9a227]/20 transition-all duration-500">
+                  <div className="flex items-center gap-1 mb-4">
+                    {[...Array(review.stars)].map((_, j) => (
+                      <Star key={j} className="w-4 h-4 fill-[#c9a227] text-[#c9a227]" />
+                    ))}
+                  </div>
+                  <p className="text-white/80 text-sm leading-relaxed flex-1">
+                    &ldquo;{review.quote}&rdquo;
+                  </p>
+                  <div className="mt-6 pt-5 border-t border-white/5">
+                    <p className="font-semibold text-white text-sm">{review.name}</p>
+                    <p className="text-white/50 text-xs mt-0.5">{review.role}</p>
+                  </div>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── Anatomy section ── */}
       <section id="anatomy" className="py-24 md:py-32 bg-gradient-to-b from-[#0e1e38] via-[#0f2040] to-[#0e1e38] border-y border-white/5">
         <div className="max-w-6xl mx-auto px-6">
