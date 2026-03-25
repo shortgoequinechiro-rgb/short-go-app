@@ -97,7 +97,7 @@ export default function MarketingNav() {
             </Link>
             <Link
               href="/signup"
-              className="text-sm px-5 py-2.5 rounded-full bg-[#c9a227] text-[#0a1628] font-semibold hover:bg-[#ddb832] transition-all hover:scale-105 shadow-lg shadow-[#c9a227]/20 inline-flex items-center gap-1"
+              className="hidden sm:inline-flex text-sm px-5 py-2.5 rounded-full bg-[#c9a227] text-[#0a1628] font-semibold hover:bg-[#ddb832] transition-all hover:scale-105 shadow-lg shadow-[#c9a227]/20 items-center gap-1"
             >
               Start Free Trial
               <ChevronRight className="w-4 h-4" />
@@ -141,12 +141,18 @@ export default function MarketingNav() {
                     </Link>
                   );
                 })}
-                <div className="pt-3 border-t border-white/5 mt-3">
+                <div className="pt-3 border-t border-white/5 mt-3 space-y-1">
                   <Link
                     href="/login"
                     className="block px-4 py-3 rounded-xl text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 transition"
                   >
                     Log in
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="block px-4 py-3 rounded-xl text-sm font-semibold text-[#c9a227] hover:bg-[#c9a227]/10 transition"
+                  >
+                    Start Free Trial
                   </Link>
                 </div>
               </div>
