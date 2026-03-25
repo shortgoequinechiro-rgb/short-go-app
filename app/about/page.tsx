@@ -22,7 +22,7 @@ const values = [
   {
     icon: Target,
     title: "Built for the Field",
-    desc: "We know you're not sitting at a desk. Stride works at the barn, the arena, or the middle of nowhere — because that's where the work happens.",
+    desc: "We know you're not sitting at a desk. Chiro Stride works at the barn, the arena, or the middle of nowhere — because that's where the work happens.",
   },
   {
     icon: Lightbulb,
@@ -32,7 +32,7 @@ const values = [
   {
     icon: Heart,
     title: "By Practitioners, For Practitioners",
-    desc: "Stride was built by animal chiropractors who were frustrated with generic software. We understand your workflow because we live it.",
+    desc: "Chiro Stride was built by animal chiropractors who were frustrated with generic software. We understand your workflow because we live it.",
   },
 ];
 
@@ -48,7 +48,7 @@ const timeline = [
     desc: "What if SOAP notes wrote themselves? What if you could map subluxations on a real spinal diagram? What if the app actually worked at the barn?",
   },
   {
-    year: "Stride",
+    year: "Chiro Stride",
     title: "Software that gets out of your way",
     desc: "We built the tool we always wanted: fast, focused, offline-ready, with AI that handles the paperwork so you can focus on the patient.",
   },
@@ -150,11 +150,11 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* What makes Stride different */}
+      {/* What makes Chiro Stride different */}
       <section className="py-24 md:py-32 bg-[#0a1628]">
         <div className="max-w-5xl mx-auto px-6">
           <FadeIn className="text-center mb-16">
-            <p className="text-[#c9a227] text-sm tracking-[0.3em] uppercase font-medium mb-3">Why Stride</p>
+            <p className="text-[#c9a227] text-sm tracking-[0.3em] uppercase font-medium mb-3">Why Chiro Stride</p>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
               What makes us
               <span className="text-white/30"> different.</span>
@@ -166,7 +166,7 @@ export default function AboutPage() {
               {
                 icon: WifiOff,
                 title: "Offline-first architecture",
-                desc: "Not an afterthought. Stride was designed from day one to work without internet. Your data is always available.",
+                desc: "Not an afterthought. Chiro Stride was designed from day one to work without internet. Your data is always available.",
               },
               {
                 icon: BrainCircuit,
@@ -214,7 +214,7 @@ export default function AboutPage() {
           </FadeIn>
           <FadeIn delay={0.15}>
             <p className="text-white/50 text-lg mb-10">
-              Start your free trial today and see why Stride is the practice management tool animal chiropractors have been waiting for.
+              Start your free trial today and see why Chiro Stride is the practice management tool animal chiropractors have been waiting for.
             </p>
           </FadeIn>
           <FadeIn delay={0.3}>

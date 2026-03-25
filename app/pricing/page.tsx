@@ -81,11 +81,11 @@ const faqs = [
   },
   {
     q: "Does it work on my phone?",
-    a: "Stride is a Progressive Web App. Install it on your iPhone, Android, or tablet — it looks and feels like a native app. No app store required.",
+    a: "Chiro Stride is a Progressive Web App. Install it on your iPhone, Android, or tablet — it looks and feels like a native app. No app store required.",
   },
   {
     q: "What about offline use?",
-    a: "Stride works fully offline. Take notes at the barn without cell signal. Everything syncs automatically when connectivity returns.",
+    a: "Chiro Stride works fully offline. Take notes at the barn without cell signal. Everything syncs automatically when connectivity returns.",
   },
 ];
 

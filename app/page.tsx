@@ -163,7 +163,7 @@ export default function LandingPage() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="https://pyuarwwhmtoflyzwblbn.supabase.co/storage/v1/object/public/marketing/dashboard-screenshot.png?v=4"
-            alt="Stride dashboard showing client records, appointments, and patient management"
+            alt="Chiro Stride dashboard showing client records, appointments, and patient management"
             className="mx-auto rounded-xl object-cover h-full w-full object-top"
             draggable={false}
           />
@@ -269,7 +269,7 @@ export default function LandingPage() {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src="/anatomy-screenshot.png"
-                    alt="Stride 3D Horse Anatomy Viewer with skeleton layer, annotation tools, and region details"
+                    alt="Chiro Stride 3D Horse Anatomy Viewer with skeleton layer, annotation tools, and region details"
                     className="w-full h-auto object-cover rounded-3xl"
                     draggable={false}
                   />
@@ -351,7 +351,7 @@ export default function LandingPage() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/scheduler.png"
-                alt="Stride appointment scheduler with calendar view, booking, and automated reminders"
+                alt="Chiro Stride appointment scheduler with calendar view, booking, and automated reminders"
                 className="w-full h-auto object-cover rounded-3xl"
                 draggable={false}
               />
@@ -397,7 +397,7 @@ export default function LandingPage() {
           </FadeIn>
           <FadeIn delay={0.2}>
             <p className="text-white/50 text-lg max-w-2xl mx-auto leading-relaxed mb-10">
-              Stride is a Progressive Web App that works without internet.
+              Chiro Stride is a Progressive Web App that works without internet.
               Take notes at the barn, the arena, or the middle of nowhere.
               Everything syncs automatically when you&apos;re back online.
             </p>

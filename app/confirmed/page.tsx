@@ -79,7 +79,7 @@ export default function ConfirmedPage() {
         {/* Logo / brand */}
         <div className="mb-8 text-center">
           <p className="text-xs font-semibold uppercase tracking-widest text-[#c9a227]">
-            STRIDE Equine Chiropractic
+            CHIRO STRIDE Equine Chiropractic
           </p>
         </div>
         <Suspense>

@@ -166,7 +166,7 @@ export default function SignupPage() {
 
           {/* Brand */}
           <div className="mb-5">
-            <h2 className="text-3xl font-bold tracking-widest text-slate-900">STRIDE</h2>
+            <h2 className="text-3xl font-bold tracking-widest text-slate-900">CHIRO STRIDE</h2>
             <p className="mt-1 text-sm font-medium text-slate-500 uppercase tracking-widest">
               Chiropractic Practice Management
             </p>

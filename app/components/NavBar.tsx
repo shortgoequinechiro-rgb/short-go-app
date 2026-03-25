@@ -94,14 +94,14 @@ export default function NavBar() {
           <div className="relative h-10 w-10 flex-shrink-0 sm:h-12 sm:w-12">
             <Image
               src="/logo-gold.png"
-              alt="Stride"
+              alt="Chiro Stride"
               fill
               className="object-contain"
             />
           </div>
           <div className="hidden flex-col leading-none sm:flex">
             <span className="whitespace-nowrap text-lg font-extrabold tracking-widest text-white md:text-xl">
-              STRIDE
+              CHIRO STRIDE
             </span>
             <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#c9a227]">
               Equine &amp; Canine Chiro

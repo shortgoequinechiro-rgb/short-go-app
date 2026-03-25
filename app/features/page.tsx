@@ -108,7 +108,7 @@ const heroFeatures = [
     title: "Offline Mode",
     tagline: "No signal? No problem.",
     description:
-      "Stride is a Progressive Web App that works without internet. Take notes at the barn, the arena, or the middle of nowhere. Everything syncs automatically when you're back online.",
+      "Chiro Stride is a Progressive Web App that works without internet. Take notes at the barn, the arena, or the middle of nowhere. Everything syncs automatically when you're back online.",
     bullets: [
       "Full app functionality without cell signal",
       "Install on your phone like a native app",
@@ -157,7 +157,7 @@ const additionalFeatures = [
   {
     icon: Globe,
     title: "PWA — Works Everywhere",
-    desc: "Install Stride on any device — iPhone, Android, tablet, desktop. One app that works everywhere.",
+    desc: "Install Chiro Stride on any device — iPhone, Android, tablet, desktop. One app that works everywhere.",
   },
 ];
 

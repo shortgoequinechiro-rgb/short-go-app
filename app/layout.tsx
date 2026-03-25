@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Stride Equine & Canine Chiropractic",
+  title: "Chiro Stride | Equine & Canine Chiropractic",
   description: "Practice management built for equine and canine chiropractors",
   manifest: "/manifest.json",
   icons: {
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Stride",
+    title: "Chiro Stride",
   },
   other: {
     "mobile-web-app-capable": "yes",

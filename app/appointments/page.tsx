@@ -159,7 +159,7 @@ function generateIcs(appt: Appointment): string {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Stride//EN',
+    'PRODID:-//ChiroStride//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'BEGIN:VEVENT',

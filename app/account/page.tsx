@@ -207,7 +207,7 @@ function ProfileTab({ practitioner, onSaved }: { practitioner: Practitioner; onS
             type="text"
             value={practiceName}
             onChange={e => { setPracticeName(e.target.value); setSaved(false) }}
-            placeholder="Stride Equine Chiropractic"
+            placeholder="Chiro Stride Equine Chiropractic"
             className="w-full rounded-xl border border-[#1a3358] bg-[#081120] px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/40 transition"
           />
         </div>
@@ -420,7 +420,7 @@ function BillingTab({ practitioner }: { practitioner: Practitioner }) {
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-bold text-white">Billing &amp; Subscription</h2>
-        <p className="text-sm text-blue-300 mt-0.5">Manage your STRIDE subscription and payment method.</p>
+        <p className="text-sm text-blue-300 mt-0.5">Manage your Chiro Stride subscription and payment method.</p>
       </div>
 
       {/* Plan card */}
@@ -428,7 +428,7 @@ function BillingTab({ practitioner }: { practitioner: Practitioner }) {
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-blue-400 mb-1">Current Plan</p>
-            <p className="text-xl font-bold text-white tracking-wide">STRIDE Pro</p>
+            <p className="text-xl font-bold text-white tracking-wide">Chiro Stride Pro</p>
             <p className="text-sm text-blue-300 mt-0.5">$49/month or $499/year</p>
           </div>
           <StatusBadge status={status} />
