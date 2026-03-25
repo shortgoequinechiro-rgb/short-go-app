@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useRef, useEffect } from "react";
+import React, { useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion, useInView, useScroll, useTransform } from "framer-motion";
+import { motion } from "framer-motion";
 import { ContainerScroll } from "@/app/components/ui/container-scroll-animation";
+import { FadeIn, SlideIn } from "@/app/components/motion-helpers";
+import MarketingLayout from "@/app/components/MarketingLayout";
 import { supabase } from "./lib/supabase";
 import {
   ClipboardList,
@@ -23,60 +25,10 @@ import {
   MessageSquare,
   Users,
   ArrowRight,
+  Zap,
+  Shield,
+  Globe,
 } from "lucide-react";
-
-/* ───────────────────────── helpers ───────────────────────── */
-
-function FadeIn({
-  children,
-  className = "",
-  delay = 0,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  delay?: number;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
-  return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 40 }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.7, delay, ease: "easeOut" }}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-function SlideIn({
-  children,
-  className = "",
-  direction = "left",
-  delay = 0,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  direction?: "left" | "right";
-  delay?: number;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-60px" });
-  const x = direction === "left" ? -60 : 60;
-  return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, x }}
-      animate={inView ? { opacity: 1, x: 0 } : {}}
-      transition={{ duration: 0.7, delay, ease: "easeOut" }}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  );
-}
 
 /* ───────────────────────── feature data ───────────────────────── */
 
@@ -124,12 +76,17 @@ const pricingFeatures = [
   "Custom practice branding",
 ];
 
+const logos = [
+  { name: "Equine", icon: Zap },
+  { name: "Canine", icon: Shield },
+  { name: "Field Ready", icon: Globe },
+];
+
 /* ───────────────────────── page ───────────────────────── */
 
 export default function LandingPage() {
   const router = useRouter();
 
-  // Redirect authenticated users straight to the dashboard
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) router.replace("/dashboard");
@@ -137,52 +94,27 @@ export default function LandingPage() {
   }, [router]);
 
   return (
-    <div className="bg-[#0a1628] text-white overflow-x-hidden">
-      {/* ── Nav ── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-[#0a1628]/80 border-b border-white/5">
-        <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-3">
-            <Image src="/stride-logo-gold.png" alt="Stride" width={40} height={40} />
-            <span className="text-xl font-bold tracking-tight">
-              <span className="text-white">STRIDE</span>
-              <span className="text-[#c9a227]/60 text-xs ml-2 tracking-widest uppercase hidden sm:inline">
-                Equine & Canine Chiro
-              </span>
-            </span>
-          </Link>
-          <div className="flex items-center gap-6">
-            <a href="#features" className="text-sm text-white/60 hover:text-white transition hidden md:block">
-              Features
-            </a>
-            <a href="#anatomy" className="text-sm text-white/60 hover:text-white transition hidden md:block">
-              Anatomy
-            </a>
-            <a href="#pricing" className="text-sm text-white/60 hover:text-white transition hidden md:block">
-              Pricing
-            </a>
-            <Link
-              href="/login"
-              className="text-sm px-5 py-2.5 rounded-full bg-[#c9a227] text-[#0a1628] font-semibold hover:bg-[#ddb832] transition-all hover:scale-105"
-            >
-              Start Free Trial
-            </Link>
-          </div>
-        </div>
-      </nav>
-
+    <MarketingLayout>
       {/* ── Hero with Container Scroll ── */}
-      <section className="bg-gradient-to-b from-[#0a1628] via-[#0f2040] to-[#0a1628] pb-24 md:pb-40">
+      <section className="bg-gradient-to-b from-[#0a1628] via-[#0f2040] to-[#0a1628] pb-24 md:pb-40 relative">
+        {/* Background grid pattern */}
+        <div className="absolute inset-0 opacity-[0.03]" style={{
+          backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
+          backgroundSize: "64px 64px",
+        }} />
+
         <ContainerScroll
           titleComponent={
-            <div className="mt-20">
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-                className="text-[#c9a227] text-sm md:text-base tracking-[0.3em] uppercase font-medium mb-4"
+            <div className="mt-20 relative">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5 }}
+                className="inline-flex items-center gap-2 bg-[#c9a227]/10 border border-[#c9a227]/20 px-4 py-2 rounded-full mb-6"
               >
-                Practice Management for Animal Chiropractors
-              </motion.p>
+                <span className="w-2 h-2 rounded-full bg-[#c9a227] animate-pulse" />
+                <span className="text-[#c9a227] text-sm font-medium">Now with 3D Anatomy Viewer</span>
+              </motion.div>
               <motion.h1
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -211,18 +143,23 @@ export default function LandingPage() {
                 className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10 mb-16 md:mb-24"
               >
                 <Link
-                  href="/login"
-                  className="px-8 py-4 rounded-full bg-[#c9a227] text-[#0a1628] font-bold text-lg hover:bg-[#ddb832] transition-all hover:scale-105 shadow-lg shadow-[#c9a227]/20"
+                  href="/signup"
+                  className="px-8 py-4 rounded-full bg-[#c9a227] text-[#0a1628] font-bold text-lg hover:bg-[#ddb832] transition-all hover:scale-105 shadow-lg shadow-[#c9a227]/20 inline-flex items-center gap-2"
                 >
                   Start Free Trial
-                  <ChevronRight className="inline ml-1 w-5 h-5" />
+                  <ChevronRight className="w-5 h-5" />
                 </Link>
-                <span className="text-white/30 text-sm">14 days free · No credit card required</span>
+                <Link
+                  href="/features"
+                  className="px-8 py-4 rounded-full border border-white/20 text-white font-medium text-lg hover:bg-white/5 transition-all inline-flex items-center gap-2"
+                >
+                  See All Features
+                  <ArrowRight className="w-5 h-5" />
+                </Link>
               </motion.div>
             </div>
           }
         >
-          {/* Real app screenshot */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="https://pyuarwwhmtoflyzwblbn.supabase.co/storage/v1/object/public/marketing/dashboard-screenshot.png?v=4"
@@ -259,21 +196,37 @@ export default function LandingPage() {
               Everything you need.
               <span className="text-white/30"> Nothing you don&apos;t.</span>
             </h2>
+            <p className="text-white/40 mt-4 max-w-xl mx-auto">
+              Built specifically for equine and canine chiropractors. Every feature designed around your real workflow.
+            </p>
           </FadeIn>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {features.map((f, i) => (
               <FadeIn key={i} delay={i * 0.08}>
-                <div className="group relative bg-white/[0.03] border border-white/5 rounded-2xl p-7 hover:border-[#c9a227]/30 transition-all duration-500 hover:bg-white/[0.05]">
-                  <div className="w-12 h-12 rounded-xl bg-[#c9a227]/10 flex items-center justify-center mb-5 group-hover:bg-[#c9a227]/20 transition">
-                    <f.icon className="w-6 h-6 text-[#c9a227]" />
+                <div className="group relative bg-white/[0.03] border border-white/5 rounded-2xl p-7 hover:border-[#c9a227]/30 transition-all duration-500 hover:bg-white/[0.05] h-full">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-[#c9a227]/[0.02] rounded-full blur-3xl group-hover:bg-[#c9a227]/[0.05] transition-all duration-700" />
+                  <div className="relative">
+                    <div className="w-12 h-12 rounded-xl bg-[#c9a227]/10 flex items-center justify-center mb-5 group-hover:bg-[#c9a227]/20 transition">
+                      <f.icon className="w-6 h-6 text-[#c9a227]" />
+                    </div>
+                    <h3 className="text-lg font-semibold mb-2">{f.title}</h3>
+                    <p className="text-white/40 text-sm leading-relaxed">{f.desc}</p>
                   </div>
-                  <h3 className="text-lg font-semibold mb-2">{f.title}</h3>
-                  <p className="text-white/40 text-sm leading-relaxed">{f.desc}</p>
                 </div>
               </FadeIn>
             ))}
           </div>
+
+          <FadeIn delay={0.4} className="text-center mt-10">
+            <Link
+              href="/features"
+              className="inline-flex items-center gap-2 text-[#c9a227] text-sm font-medium hover:gap-3 transition-all"
+            >
+              Explore all features
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </FadeIn>
         </div>
       </section>
 
@@ -321,7 +274,6 @@ export default function LandingPage() {
                     draggable={false}
                   />
                 </div>
-                {/* Floating badges */}
                 <motion.div
                   initial={{ opacity: 0, scale: 0.8 }}
                   whileInView={{ opacity: 1, scale: 1 }}
@@ -367,7 +319,7 @@ export default function LandingPage() {
             ].map((item, i) => (
               <FadeIn key={i} delay={i * 0.15}>
                 <div className="text-center">
-                  <span className="text-6xl md:text-7xl font-black text-[#c9a227]/10">{item.step}</span>
+                  <span className="text-6xl md:text-7xl font-black bg-gradient-to-b from-[#c9a227]/20 to-transparent bg-clip-text text-transparent">{item.step}</span>
                   <h3 className="text-xl font-bold mt-2 mb-3">{item.title}</h3>
                   <p className="text-white/40 text-sm leading-relaxed">{item.desc}</p>
                 </div>
@@ -393,7 +345,6 @@ export default function LandingPage() {
           </FadeIn>
         </div>
 
-        {/* Full-width image — breaks out of the 6xl container for more impact */}
         <div className="max-w-[90rem] mx-auto px-4 md:px-8">
           <FadeIn delay={0.15}>
             <div className="rounded-3xl border border-white/10 overflow-hidden shadow-2xl">
@@ -433,7 +384,7 @@ export default function LandingPage() {
       <section className="py-24 md:py-32 bg-gradient-to-b from-[#0a1628] to-[#0f2040] border-y border-white/5">
         <div className="max-w-5xl mx-auto px-6 text-center">
           <FadeIn>
-            <div className="inline-flex items-center gap-2 bg-[#c9a227]/10 px-4 py-2 rounded-full mb-6">
+            <div className="inline-flex items-center gap-2 bg-[#c9a227]/10 border border-[#c9a227]/20 px-4 py-2 rounded-full mb-6">
               <WifiOff className="w-4 h-4 text-[#c9a227]" />
               <span className="text-[#c9a227] text-sm font-medium">Works Offline</span>
             </div>
@@ -481,7 +432,6 @@ export default function LandingPage() {
 
           <FadeIn delay={0.15}>
             <div className="max-w-md mx-auto bg-white/[0.03] border border-[#c9a227]/20 rounded-3xl p-8 md:p-10 text-center relative overflow-hidden">
-              {/* Glow effect */}
               <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-48 h-48 bg-[#c9a227]/10 rounded-full blur-3xl" />
 
               <div className="relative">
@@ -512,7 +462,7 @@ export default function LandingPage() {
                 </div>
 
                 <Link
-                  href="/login"
+                  href="/signup"
                   className="block w-full py-4 rounded-full bg-[#c9a227] text-[#0a1628] font-bold text-lg hover:bg-[#ddb832] transition-all hover:scale-[1.02] shadow-lg shadow-[#c9a227]/20"
                 >
                   Start Free Trial
@@ -520,30 +470,58 @@ export default function LandingPage() {
               </div>
             </div>
           </FadeIn>
+
+          <FadeIn delay={0.3} className="text-center mt-8">
+            <Link
+              href="/pricing"
+              className="inline-flex items-center gap-2 text-white/40 text-sm hover:text-white transition"
+            >
+              See full pricing details
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </FadeIn>
         </div>
       </section>
 
-      {/* ── Footer ── */}
-      <footer className="border-t border-white/5 bg-[#060e1a] py-12">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-3">
-              <Image src="/stride-logo-gold.png" alt="Stride" width={32} height={32} />
-              <span className="text-white/60 text-sm">
-                Built by animal chiropractors, for animal chiropractors.
+      {/* ── Final CTA ── */}
+      <section className="py-24 md:py-32 bg-gradient-to-b from-[#0a1628] via-[#0f2040] to-[#0a1628] border-t border-white/5">
+        <div className="max-w-4xl mx-auto px-6 text-center">
+          <FadeIn>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
+              Ready to modernize
+              <br />
+              <span className="bg-gradient-to-r from-[#c9a227] via-[#f5e6b8] to-[#c9a227] bg-clip-text text-transparent">
+                your practice?
               </span>
+            </h2>
+          </FadeIn>
+          <FadeIn delay={0.15}>
+            <p className="text-white/50 text-lg max-w-xl mx-auto mb-10">
+              Join chiropractors who are spending less time on paperwork and more time with their patients.
+            </p>
+          </FadeIn>
+          <FadeIn delay={0.3}>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link
+                href="/signup"
+                className="px-8 py-4 rounded-full bg-[#c9a227] text-[#0a1628] font-bold text-lg hover:bg-[#ddb832] transition-all hover:scale-105 shadow-lg shadow-[#c9a227]/20 inline-flex items-center gap-2"
+              >
+                Start Free Trial
+                <ChevronRight className="w-5 h-5" />
+              </Link>
+              <Link
+                href="/contact"
+                className="px-8 py-4 rounded-full border border-white/20 text-white font-medium text-lg hover:bg-white/5 transition-all"
+              >
+                Talk to Us
+              </Link>
             </div>
-            <div className="flex items-center gap-6 text-sm text-white/30">
-              <Link href="/login" className="hover:text-white/60 transition">Login</Link>
-              <Link href="/contact" className="hover:text-white/60 transition">Contact</Link>
-              <a href="#" className="hover:text-white/60 transition">Privacy</a>
-            </div>
-          </div>
-          <div className="text-center mt-8 text-white/20 text-xs">
-            &copy; {new Date().getFullYear()} Stride Equine & Canine Chiropractic Software. All rights reserved.
-          </div>
+          </FadeIn>
+          <FadeIn delay={0.4}>
+            <p className="text-white/30 text-sm mt-6">7-day free trial · No credit card required</p>
+          </FadeIn>
         </div>
-      </footer>
-    </div>
+      </section>
+    </MarketingLayout>
   );
 }
