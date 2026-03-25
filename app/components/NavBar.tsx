@@ -86,7 +86,7 @@ export default function NavBar() {
   ]
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-[#1a3358] bg-[#0f2040] shadow-lg">
+    <nav className="sticky top-0 z-50 border-b border-[#1e3a60] bg-[#0f2040] shadow-[0_2px_16px_rgba(0,0,0,0.3)]">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-3 md:px-6">
 
         {/* Left: logo + brand */}
@@ -188,7 +188,7 @@ export default function NavBar() {
               </button>
 
               {moreOpen && (
-                <div className="absolute right-0 top-11 z-50 w-48 overflow-hidden rounded-2xl border border-[#1a3358] bg-[#0f2040] shadow-2xl">
+                <div className="absolute right-0 top-11 z-50 w-48 overflow-hidden rounded-2xl border border-[#1e3a60] bg-[#132a4d] shadow-2xl">
                   <div className="p-1.5">
                     <Link
                       href="/services"
@@ -254,7 +254,7 @@ export default function NavBar() {
 
             {/* Mobile Dropdown — full navigation */}
             {menuOpen && (
-              <div className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-2xl border border-[#1a3358] bg-[#0f2040] shadow-2xl">
+              <div className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-2xl border border-[#1e3a60] bg-[#132a4d] shadow-2xl">
                 {/* User email */}
                 <div className="border-b border-white/10 px-4 py-3">
                   <p className="truncate text-xs text-blue-200">{userEmail}</p>

@@ -8,8 +8,8 @@ import { supabase } from '../lib/supabase'
 export default function BillingPage() {
   return (
     <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center" style={{ background: 'linear-gradient(135deg, #0a1628 0%, #0f2040 60%, #162d55 100%)' }}>
-        <div className="text-white/40 text-sm">Loading...</div>
+      <div className="flex min-h-screen items-center justify-center" style={{ background: 'linear-gradient(135deg, #0e1e38 0%, #0f2040 60%, #162d55 100%)' }}>
+        <div className="text-white/60 text-sm">Loading...</div>
       </div>
     }>
       <BillingContent />
@@ -83,15 +83,15 @@ function BillingContent() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center" style={{ background: 'linear-gradient(135deg, #0a1628 0%, #0f2040 60%, #162d55 100%)' }}>
-        <div className="text-white/40 text-sm">Loading...</div>
+      <div className="flex min-h-screen items-center justify-center" style={{ background: 'linear-gradient(135deg, #0e1e38 0%, #0f2040 60%, #162d55 100%)' }}>
+        <div className="text-white/60 text-sm">Loading...</div>
       </div>
     )
   }
 
   if (success) {
     return (
-      <div className="flex min-h-screen items-center justify-center px-4" style={{ background: 'linear-gradient(135deg, #0a1628 0%, #0f2040 60%, #162d55 100%)' }}>
+      <div className="flex min-h-screen items-center justify-center px-4" style={{ background: 'linear-gradient(135deg, #0e1e38 0%, #0f2040 60%, #162d55 100%)' }}>
         <div className="w-full max-w-md rounded-3xl bg-white/95 p-10 text-center shadow-2xl backdrop-blur-sm">
           <div className="mb-4 text-5xl">🎉</div>
           <h2 className="text-2xl font-bold text-slate-900">You&apos;re all set!</h2>
@@ -112,7 +112,7 @@ function BillingContent() {
   const isPastDue = status === 'past_due'
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-12" style={{ background: 'linear-gradient(135deg, #0a1628 0%, #0f2040 60%, #162d55 100%)' }}>
+    <div className="flex min-h-screen items-center justify-center px-4 py-12" style={{ background: 'linear-gradient(135deg, #0e1e38 0%, #0f2040 60%, #162d55 100%)' }}>
       <div className="w-full max-w-lg">
 
         {/* Header */}

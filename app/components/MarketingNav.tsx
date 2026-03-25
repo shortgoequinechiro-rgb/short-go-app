@@ -35,7 +35,7 @@ export default function MarketingNav() {
       <nav
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           scrolled
-            ? "backdrop-blur-2xl bg-[#0a1628]/90 border-b border-white/5 shadow-2xl shadow-black/20"
+            ? "backdrop-blur-2xl bg-[#0e1e38]/95 border-b border-white/5 shadow-2xl shadow-black/20"
             : "bg-transparent"
         }`}
       >
@@ -71,7 +71,7 @@ export default function MarketingNav() {
                   className={`relative px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 ${
                     isActive
                       ? "text-white bg-white/10"
-                      : "text-white/60 hover:text-white hover:bg-white/5"
+                      : "text-white/70 hover:text-white hover:bg-white/5"
                   }`}
                 >
                   {link.label}
@@ -91,7 +91,7 @@ export default function MarketingNav() {
           <div className="flex items-center gap-3">
             <Link
               href="/login"
-              className="hidden sm:inline-flex text-sm text-white/60 hover:text-white transition px-4 py-2"
+              className="hidden sm:inline-flex text-sm text-white/70 hover:text-white transition px-4 py-2"
             >
               Log in
             </Link>
@@ -122,7 +122,7 @@ export default function MarketingNav() {
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.2 }}
-              className="md:hidden overflow-hidden border-t border-white/5 bg-[#0a1628]/95 backdrop-blur-2xl"
+              className="md:hidden overflow-hidden border-t border-white/5 bg-[#0e1e38]/95 backdrop-blur-2xl"
             >
               <div className="max-w-7xl mx-auto px-6 py-4 space-y-1">
                 {navLinks.map((link) => {
@@ -134,7 +134,7 @@ export default function MarketingNav() {
                       className={`block px-4 py-3 rounded-xl text-sm font-medium transition ${
                         isActive
                           ? "bg-white/10 text-white"
-                          : "text-white/60 hover:text-white hover:bg-white/5"
+                          : "text-white/70 hover:text-white hover:bg-white/5"
                       }`}
                     >
                       {link.label}
@@ -144,7 +144,7 @@ export default function MarketingNav() {
                 <div className="pt-3 border-t border-white/5 mt-3">
                   <Link
                     href="/login"
-                    className="block px-4 py-3 rounded-xl text-sm font-medium text-white/60 hover:text-white hover:bg-white/5 transition"
+                    className="block px-4 py-3 rounded-xl text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 transition"
                   >
                     Log in
                   </Link>

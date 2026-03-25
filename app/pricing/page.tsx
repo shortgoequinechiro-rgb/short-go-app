@@ -95,7 +95,7 @@ export default function PricingPage() {
   return (
     <MarketingLayout>
       {/* Hero */}
-      <section className="pt-32 pb-20 md:pt-40 md:pb-28 bg-gradient-to-b from-[#0a1628] via-[#0f2040] to-[#0a1628] relative">
+      <section className="pt-32 pb-20 md:pt-40 md:pb-28 bg-gradient-to-b from-[#0e1e38] via-[#0f2040] to-[#0e1e38] relative">
         <div className="absolute inset-0 opacity-[0.03]" style={{
           backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
           backgroundSize: "64px 64px",
@@ -117,7 +117,7 @@ export default function PricingPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-white/50 text-lg md:text-xl max-w-2xl mx-auto"
+            className="text-white/70 text-lg md:text-xl max-w-2xl mx-auto"
           >
             One plan. Everything included. No hidden fees, no per-patient charges, no surprises.
           </motion.p>
@@ -125,17 +125,17 @@ export default function PricingPage() {
       </section>
 
       {/* Pricing cards */}
-      <section className="pb-24 md:pb-32 bg-[#0a1628]">
+      <section className="pb-24 md:pb-32 bg-[#0e1e38]">
         <div className="max-w-5xl mx-auto px-6">
           <div className="grid md:grid-cols-2 gap-8 -mt-4">
             {/* Monthly */}
             <FadeIn>
               <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-8 md:p-10 relative h-full flex flex-col">
                 <h3 className="text-lg font-semibold mb-1">Monthly</h3>
-                <p className="text-white/40 text-sm mb-6">Pay as you go. Cancel anytime.</p>
+                <p className="text-white/60 text-sm mb-6">Pay as you go. Cancel anytime.</p>
                 <div className="mb-6">
                   <span className="text-5xl font-black text-white">$49</span>
-                  <span className="text-white/40 text-lg">/month</span>
+                  <span className="text-white/60 text-lg">/month</span>
                 </div>
                 <Link
                   href="/signup"
@@ -172,12 +172,12 @@ export default function PricingPage() {
                     ))}
                   </div>
                   <h3 className="text-lg font-semibold mb-1">Annual</h3>
-                  <p className="text-white/40 text-sm mb-6">Best value. Save $89/year.</p>
+                  <p className="text-white/60 text-sm mb-6">Best value. Save $89/year.</p>
                   <div className="mb-2">
                     <span className="text-5xl font-black text-white">$499</span>
-                    <span className="text-white/40 text-lg">/year</span>
+                    <span className="text-white/60 text-lg">/year</span>
                   </div>
-                  <p className="text-white/30 text-xs mb-6">That&apos;s just $41.58/month</p>
+                  <p className="text-white/50 text-xs mb-6">That&apos;s just $41.58/month</p>
                   <Link
                     href="/signup"
                     className="block w-full py-4 rounded-full bg-[#c9a227] text-[#0a1628] font-bold text-center text-lg hover:bg-[#ddb832] transition-all hover:scale-[1.02] shadow-lg shadow-[#c9a227]/20 mb-8"
@@ -199,7 +199,7 @@ export default function PricingPage() {
 
           {/* Trust badges */}
           <FadeIn delay={0.3}>
-            <div className="flex flex-wrap items-center justify-center gap-8 mt-12 text-white/30 text-sm">
+            <div className="flex flex-wrap items-center justify-center gap-8 mt-12 text-white/50 text-sm">
               {[
                 { icon: Shield, text: "Secure & encrypted" },
                 { icon: Clock, text: "7-day free trial" },
@@ -217,13 +217,13 @@ export default function PricingPage() {
       </section>
 
       {/* Full feature breakdown */}
-      <section className="py-24 md:py-32 bg-gradient-to-b from-[#0a1628] via-[#0f2040] to-[#0a1628] border-y border-white/5">
+      <section className="py-24 md:py-32 bg-gradient-to-b from-[#0e1e38] via-[#0f2040] to-[#0e1e38] border-y border-white/5">
         <div className="max-w-5xl mx-auto px-6">
           <FadeIn className="text-center mb-16">
             <p className="text-[#c9a227] text-sm tracking-[0.3em] uppercase font-medium mb-3">What&apos;s Included</p>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
               Everything.
-              <span className="text-white/30"> Seriously.</span>
+              <span className="text-white/50"> Seriously.</span>
             </h2>
           </FadeIn>
 
@@ -236,7 +236,7 @@ export default function PricingPage() {
                     {category.features.map((f, j) => (
                       <div key={j} className="flex items-start gap-2.5">
                         <Check className="w-3.5 h-3.5 text-[#c9a227]/60 shrink-0 mt-0.5" />
-                        <span className="text-white/50 text-sm">{f}</span>
+                        <span className="text-white/70 text-sm">{f}</span>
                       </div>
                     ))}
                   </div>
@@ -248,13 +248,13 @@ export default function PricingPage() {
       </section>
 
       {/* FAQ */}
-      <section className="py-24 md:py-32 bg-[#0a1628]">
+      <section className="py-24 md:py-32 bg-[#0e1e38]">
         <div className="max-w-3xl mx-auto px-6">
           <FadeIn className="text-center mb-16">
             <p className="text-[#c9a227] text-sm tracking-[0.3em] uppercase font-medium mb-3">FAQ</p>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight">
               Questions?
-              <span className="text-white/30"> Answers.</span>
+              <span className="text-white/50"> Answers.</span>
             </h2>
           </FadeIn>
 
@@ -266,7 +266,7 @@ export default function PricingPage() {
                     <HelpCircle className="w-5 h-5 text-[#c9a227] shrink-0 mt-0.5" />
                     {faq.q}
                   </h3>
-                  <p className="text-white/40 text-sm leading-relaxed ml-8">{faq.a}</p>
+                  <p className="text-white/60 text-sm leading-relaxed ml-8">{faq.a}</p>
                 </div>
               </FadeIn>
             ))}
@@ -275,7 +275,7 @@ export default function PricingPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-24 md:py-32 bg-gradient-to-b from-[#0a1628] via-[#0f2040] to-[#0a1628] border-t border-white/5">
+      <section className="py-24 md:py-32 bg-gradient-to-b from-[#0e1e38] via-[#0f2040] to-[#0e1e38] border-t border-white/5">
         <div className="max-w-3xl mx-auto px-6 text-center">
           <FadeIn>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-6">
@@ -283,7 +283,7 @@ export default function PricingPage() {
             </h2>
           </FadeIn>
           <FadeIn delay={0.15}>
-            <p className="text-white/50 text-lg mb-10">
+            <p className="text-white/70 text-lg mb-10">
               7-day free trial. No credit card required. Full access to everything.
             </p>
           </FadeIn>

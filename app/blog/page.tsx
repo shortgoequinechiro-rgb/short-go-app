@@ -82,7 +82,7 @@ export default function BlogPage() {
   return (
     <MarketingLayout>
       {/* Hero */}
-      <section className="pt-32 pb-20 md:pt-40 md:pb-28 bg-gradient-to-b from-[#0a1628] via-[#0f2040] to-[#0a1628] relative">
+      <section className="pt-32 pb-20 md:pt-40 md:pb-28 bg-gradient-to-b from-[#0e1e38] via-[#0f2040] to-[#0e1e38] relative">
         <div className="absolute inset-0 opacity-[0.03]" style={{
           backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
           backgroundSize: "64px 64px",
@@ -113,7 +113,7 @@ export default function BlogPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.25 }}
-            className="text-white/50 text-lg md:text-xl max-w-2xl mx-auto"
+            className="text-white/70 text-lg md:text-xl max-w-2xl mx-auto"
           >
             Tips, product updates, and practice management insights for equine and canine chiropractors.
           </motion.p>
@@ -121,18 +121,18 @@ export default function BlogPage() {
       </section>
 
       {/* Posts grid */}
-      <section className="py-24 md:py-32 bg-[#0a1628]">
+      <section className="py-24 md:py-32 bg-[#0e1e38]">
         <div className="max-w-6xl mx-auto px-6">
           {/* Newsletter signup */}
           <FadeIn className="mb-16">
             <div className="bg-gradient-to-r from-[#c9a227]/10 to-[#c9a227]/5 border border-[#c9a227]/20 rounded-2xl p-8 text-center">
               <h2 className="text-xl font-bold mb-2">Get notified when we publish</h2>
-              <p className="text-white/40 text-sm mb-6">We&apos;re working on our first articles. Subscribe to be the first to know.</p>
+              <p className="text-white/60 text-sm mb-6">We&apos;re working on our first articles. Subscribe to be the first to know.</p>
               <div className="flex gap-2 max-w-md mx-auto">
                 <input
                   type="email"
                   placeholder="you@example.com"
-                  className="flex-1 px-4 py-2.5 rounded-full bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-[#c9a227]/50 transition"
+                  className="flex-1 px-4 py-2.5 rounded-full bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/50 focus:outline-none focus:border-[#c9a227]/50 transition"
                 />
                 <button className="px-5 py-2.5 rounded-full bg-[#c9a227] text-[#0a1628] font-semibold text-sm hover:bg-[#ddb832] transition-all hover:scale-105 whitespace-nowrap">
                   Notify Me
@@ -161,10 +161,10 @@ export default function BlogPage() {
                     <h3 className="text-base font-semibold mb-2 group-hover:text-[#c9a227] transition-colors leading-snug">
                       {post.title}
                     </h3>
-                    <p className="text-white/40 text-sm leading-relaxed mb-4 flex-1">
+                    <p className="text-white/60 text-sm leading-relaxed mb-4 flex-1">
                       {post.excerpt}
                     </p>
-                    <div className="flex items-center justify-between text-xs text-white/30">
+                    <div className="flex items-center justify-between text-xs text-white/50">
                       <div className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />
                         {post.readTime}
@@ -180,13 +180,13 @@ export default function BlogPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-24 md:py-32 bg-gradient-to-b from-[#0a1628] via-[#0f2040] to-[#0a1628] border-t border-white/5">
+      <section className="py-24 md:py-32 bg-gradient-to-b from-[#0e1e38] via-[#0f2040] to-[#0e1e38] border-t border-white/5">
         <div className="max-w-3xl mx-auto px-6 text-center">
           <FadeIn>
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-6">
               Don&apos;t wait for the blog.
               <br />
-              <span className="text-white/30">Try the product.</span>
+              <span className="text-white/50">Try the product.</span>
             </h2>
           </FadeIn>
           <FadeIn delay={0.15}>

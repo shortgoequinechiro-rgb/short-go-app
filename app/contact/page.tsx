@@ -57,7 +57,7 @@ export default function ContactPage() {
   return (
     <MarketingLayout>
       {/* Hero */}
-      <section className="pt-32 pb-16 md:pt-40 md:pb-20 bg-gradient-to-b from-[#0a1628] via-[#0f2040] to-[#0a1628] relative">
+      <section className="pt-32 pb-16 md:pt-40 md:pb-20 bg-gradient-to-b from-[#0e1e38] via-[#0f2040] to-[#0e1e38] relative">
         <div className="absolute inset-0 opacity-[0.03]" style={{
           backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
           backgroundSize: "64px 64px",
@@ -78,7 +78,7 @@ export default function ContactPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-white/50 text-lg md:text-xl max-w-2xl mx-auto"
+            className="text-white/70 text-lg md:text-xl max-w-2xl mx-auto"
           >
             Have a question? Want to see a demo? We&apos;d love to hear from you.
           </motion.p>
@@ -86,7 +86,7 @@ export default function ContactPage() {
       </section>
 
       {/* Content */}
-      <section className="pb-24 md:pb-32 bg-[#0a1628]">
+      <section className="pb-24 md:pb-32 bg-[#0e1e38]">
         <div className="max-w-6xl mx-auto px-6">
           <div className="grid lg:grid-cols-5 gap-12">
             {/* Left: info cards */}
@@ -97,7 +97,7 @@ export default function ContactPage() {
                     <Mail className="w-5 h-5 text-[#c9a227]" />
                   </div>
                   <h3 className="font-semibold mb-1">Email Us</h3>
-                  <p className="text-white/40 text-sm mb-3">For general inquiries and support.</p>
+                  <p className="text-white/60 text-sm mb-3">For general inquiries and support.</p>
                   <a href="mailto:hello@chirostride.com" className="text-[#c9a227] text-sm font-medium hover:underline">
                     hello@chirostride.com
                   </a>
@@ -110,7 +110,7 @@ export default function ContactPage() {
                     <MessageSquare className="w-5 h-5 text-[#c9a227]" />
                   </div>
                   <h3 className="font-semibold mb-1">Request a Demo</h3>
-                  <p className="text-white/40 text-sm">
+                  <p className="text-white/60 text-sm">
                     Want a walkthrough? Let us know in your message and we&apos;ll set up a time.
                   </p>
                 </div>
@@ -122,7 +122,7 @@ export default function ContactPage() {
                     <Clock className="w-5 h-5 text-[#c9a227]" />
                   </div>
                   <h3 className="font-semibold mb-1">Response Time</h3>
-                  <p className="text-white/40 text-sm">
+                  <p className="text-white/60 text-sm">
                     We typically respond within 24 hours on business days.
                   </p>
                 </div>
@@ -136,7 +136,7 @@ export default function ContactPage() {
                   <div className="rounded-3xl border border-[#c9a227]/20 bg-white/[0.03] p-10 text-center">
                     <CheckCircle className="mx-auto mb-4 h-14 w-14 text-emerald-400" />
                     <h2 className="mb-2 text-2xl font-bold">Message Sent!</h2>
-                    <p className="mb-8 text-white/50">
+                    <p className="mb-8 text-white/70">
                       Thanks for reaching out. We&apos;ll get back to you shortly.
                     </p>
                     <Link
@@ -185,7 +185,7 @@ export default function ContactPage() {
                     <div className="grid gap-6 sm:grid-cols-2">
                       <div>
                         <label htmlFor="phone" className="mb-1.5 block text-sm font-medium text-white/70">
-                          Phone <span className="text-white/30">(optional)</span>
+                          Phone <span className="text-white/50">(optional)</span>
                         </label>
                         <input
                           id="phone"
@@ -198,7 +198,7 @@ export default function ContactPage() {
                       </div>
                       <div>
                         <label htmlFor="practiceName" className="mb-1.5 block text-sm font-medium text-white/70">
-                          Practice Name <span className="text-white/30">(optional)</span>
+                          Practice Name <span className="text-white/50">(optional)</span>
                         </label>
                         <input
                           id="practiceName"

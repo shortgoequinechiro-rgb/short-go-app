@@ -168,7 +168,7 @@ function MiniCalendar({
   const today = new Date()
 
   return (
-    <div className="rounded-xl border border-[#1a3358] bg-[#0d1b30] p-3 select-none">
+    <div className="rounded-xl border border-[#1e3a60] bg-[#112240] p-3 select-none">
       <div className="mb-2 flex items-center justify-between">
         <button onClick={() => setView(new Date(year, month - 1, 1))} className="rounded p-1 text-blue-300 hover:bg-white/10">◀</button>
         <span className="text-xs font-semibold text-white">
@@ -370,7 +370,7 @@ function ApptPopup({
           onChange={e => { setNotes(e.target.value); setSaved(false) }}
           rows={4}
           placeholder="Add appointment notes…"
-          className="w-full resize-none rounded-lg border border-[#1a3358] bg-[#081120] px-3 py-2 text-xs text-white placeholder-white/30 outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/40 transition"
+          className="w-full resize-none rounded-lg border border-[#1e3a60] bg-[#0c1830] px-3 py-2 text-xs text-white placeholder-white/30 outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/40 transition"
         />
         {err && <p className="mt-1 text-[10px] text-red-400">{err}</p>}
         <button
@@ -428,7 +428,7 @@ function ApptPopup({
           onClick={onClose}
         />
         {/* Bottom sheet */}
-        <div className="fixed bottom-0 left-0 right-0 z-50 max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-[#1a3358] bg-[#0d1b30] shadow-2xl">
+        <div className="fixed bottom-0 left-0 right-0 z-50 max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-[#1e3a60] bg-[#112240] shadow-2xl">
           {inner}
         </div>
       </>
@@ -445,7 +445,7 @@ function ApptPopup({
       {/* Centered popup */}
       <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
         <div
-          className="pointer-events-auto w-72 max-h-[85vh] overflow-y-auto rounded-xl border border-[#1a3358] bg-[#0d1b30] shadow-2xl"
+          className="pointer-events-auto w-72 max-h-[85vh] overflow-y-auto rounded-xl border border-[#1e3a60] bg-[#112240] shadow-2xl"
         >
           {inner}
         </div>
@@ -632,12 +632,12 @@ function QuickBookModal({
     onClose()
   }
 
-  const inputCls = 'w-full rounded-lg border border-[#1a3358] bg-[#081120] px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/30 transition'
+  const inputCls = 'w-full rounded-lg border border-[#1e3a60] bg-[#0c1830] px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/30 transition'
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60 p-0 md:p-4" onClick={onClose}>
       <div
-        className="w-full md:max-w-md rounded-t-2xl md:rounded-2xl border border-[#1a3358] bg-[#0d1b30] shadow-2xl max-h-[90vh] overflow-y-auto"
+        className="w-full md:max-w-md rounded-t-2xl md:rounded-2xl border border-[#1e3a60] bg-[#112240] shadow-2xl max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
         {/* Handle bar */}
@@ -646,7 +646,7 @@ function QuickBookModal({
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#1a3358]">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#1e3a60]">
           <div>
             <h3 className="font-bold text-white text-base">New Appointment</h3>
             <p className="text-xs text-blue-300 mt-0.5">
@@ -676,7 +676,7 @@ function QuickBookModal({
           <div>
             <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Owner</label>
             {selectedOwner ? (
-              <div className="flex items-center justify-between rounded-lg border border-[#c9a227] bg-[#081120] px-3 py-2">
+              <div className="flex items-center justify-between rounded-lg border border-[#c9a227] bg-[#0c1830] px-3 py-2">
                 <span className="text-sm font-medium text-white">{selectedOwner.name}</span>
                 <button
                   onClick={() => {
@@ -701,7 +701,7 @@ function QuickBookModal({
                 />
                 <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 text-xs">▾</span>
                 {showOwnerDropdown && (
-                  <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-52 overflow-y-auto rounded-lg border border-[#1a3358] bg-[#081120] shadow-xl">
+                  <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-52 overflow-y-auto rounded-lg border border-[#1e3a60] bg-[#0c1830] shadow-xl">
                     {filteredOwners.length === 0 ? (
                       <div className="px-3 py-2 text-xs text-blue-300">No owners found</div>
                     ) : filteredOwners.map(o => (
@@ -777,7 +777,7 @@ function QuickBookModal({
                     <span className="text-blue-400 text-xs">▾</span>
                   </button>
                   {showPatientDropdown && (
-                    <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-52 overflow-y-auto rounded-lg border border-[#1a3358] bg-[#081120] shadow-xl">
+                    <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-52 overflow-y-auto rounded-lg border border-[#1e3a60] bg-[#0c1830] shadow-xl">
                       {ownerPatients.map(h => {
                         const checked = selectedPatientIds.includes(h.id)
                         return (
@@ -822,7 +822,7 @@ function QuickBookModal({
               autoComplete="off"
             />
             {showLocSuggestions && filteredLocations.length > 0 && (
-              <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-40 overflow-y-auto rounded-lg border border-[#1a3358] bg-[#081120] shadow-lg">
+              <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-40 overflow-y-auto rounded-lg border border-[#1e3a60] bg-[#0c1830] shadow-lg">
                 {filteredLocations.map((loc, i) => (
                   <button
                     key={i}
@@ -929,12 +929,12 @@ function EditApptModal({
     onClose()
   }
 
-  const inputCls = 'w-full rounded-lg border border-[#1a3358] bg-[#081120] px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/30 transition'
+  const inputCls = 'w-full rounded-lg border border-[#1e3a60] bg-[#0c1830] px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/30 transition'
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60 p-0 md:p-4" onClick={onClose}>
       <div
-        className="w-full md:max-w-md rounded-t-2xl md:rounded-2xl border border-[#1a3358] bg-[#0d1b30] shadow-2xl max-h-[90vh] overflow-y-auto"
+        className="w-full md:max-w-md rounded-t-2xl md:rounded-2xl border border-[#1e3a60] bg-[#112240] shadow-2xl max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
         {/* Handle bar (mobile) */}
@@ -943,7 +943,7 @@ function EditApptModal({
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#1a3358]">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#1e3a60]">
           <div>
             <h3 className="font-bold text-white text-base">✏️ Edit Appointment</h3>
             <p className="text-xs text-blue-300 mt-0.5">
@@ -984,7 +984,7 @@ function EditApptModal({
           <div>
             <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Patient</label>
             {form.horseId ? (
-              <div className="flex items-center justify-between rounded-lg border border-[#c9a227] bg-[#081120] px-3 py-2">
+              <div className="flex items-center justify-between rounded-lg border border-[#c9a227] bg-[#0c1830] px-3 py-2">
                 <span className="text-sm text-white">
                   {speciesEmoji(selectedHorse?.species)}
                   {selectedHorse?.name}
@@ -1009,7 +1009,7 @@ function EditApptModal({
                 />
                 <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 text-xs">▾</span>
                 {showPatientDropdown && (
-                  <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-52 overflow-y-auto rounded-lg border border-[#1a3358] bg-[#081120] shadow-xl">
+                  <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-52 overflow-y-auto rounded-lg border border-[#1e3a60] bg-[#0c1830] shadow-xl">
                     {filtered.length === 0 ? (
                       <div className="px-3 py-2 text-xs text-blue-300">No patients found</div>
                     ) : filtered.slice(0, 20).map(h => (
@@ -1061,7 +1061,7 @@ function EditApptModal({
               autoComplete="off"
             />
             {showLocSuggestions && filteredLocations.length > 0 && (
-              <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-40 overflow-y-auto rounded-lg border border-[#1a3358] bg-[#081120] shadow-lg">
+              <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-40 overflow-y-auto rounded-lg border border-[#1e3a60] bg-[#0c1830] shadow-lg">
                 {filteredLocations.map((loc, i) => (
                   <button
                     key={i}
@@ -1459,10 +1459,10 @@ export default function CalendarPage() {
   // ── Mobile layout: day-list view ─────────────────────────────────────────
   if (isMobile) {
     return (
-      <div className="flex h-[calc(100vh-64px)] flex-col overflow-hidden bg-[#081120] text-white">
+      <div className="flex h-[calc(100vh-64px)] flex-col overflow-hidden bg-[#0c1830] text-white">
 
         {/* Mobile toolbar */}
-        <div className="flex flex-shrink-0 items-center justify-between gap-2 border-b border-[#1a3358] bg-[#0a1628] px-3 py-2">
+        <div className="flex flex-shrink-0 items-center justify-between gap-2 border-b border-[#1e3a60] bg-[#0e1e38] px-3 py-2">
           <button
             onClick={prevDay}
             className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/20 text-white hover:bg-white/10 transition"
@@ -1484,7 +1484,7 @@ export default function CalendarPage() {
         </div>
 
         {/* Today + New Appointment row */}
-        <div className="flex flex-shrink-0 items-center justify-between gap-2 border-b border-[#1a3358] bg-[#0d1b30] px-3 py-2">
+        <div className="flex flex-shrink-0 items-center justify-between gap-2 border-b border-[#1e3a60] bg-[#112240] px-3 py-2">
           <button
             onClick={goToToday}
             className={`rounded-xl border px-3 py-1.5 text-sm font-medium transition
@@ -1524,7 +1524,7 @@ export default function CalendarPage() {
           {loading ? (
             <div className="flex h-32 items-center justify-center text-blue-300 text-sm">Loading…</div>
           ) : mobileDayAppts.length === 0 ? (
-            <div className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[#1a3358] text-center">
+            <div className="flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[#1e3a60] text-center">
               <span className="text-3xl">📭</span>
               <p className="text-sm text-blue-300">No appointments this day</p>
               <Link
@@ -1544,7 +1544,7 @@ export default function CalendarPage() {
                   <button
                     key={appt.id}
                     onClick={e => handleApptClick(appt, e)}
-                    className={`w-full rounded-2xl border-l-4 bg-[#0d1b30] p-4 text-left transition hover:brightness-110 active:scale-[0.99] ${STATUS_BORDER[appt.status]}`}
+                    className={`w-full rounded-2xl border-l-4 bg-[#112240] p-4 text-left transition hover:brightness-110 active:scale-[0.99] ${STATUS_BORDER[appt.status]}`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
@@ -1635,7 +1635,7 @@ export default function CalendarPage() {
         {/* Block Time Modal (mobile - create + edit) */}
         {showBlockModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => { setShowBlockModal(false); setEditingBlockId(null) }}>
-            <div className="w-full max-w-sm rounded-2xl border border-[#1a3358] bg-[#0d1b30] p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="w-full max-w-sm rounded-2xl border border-[#1e3a60] bg-[#112240] p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="font-bold text-white">{editingBlockId ? '✏️ Edit Blocked Time' : '🚫 Block Out Time'}</h3>
                 <button onClick={() => { setShowBlockModal(false); setEditingBlockId(null) }} className="text-white/50 hover:text-white text-xl leading-none">×</button>
@@ -1643,21 +1643,21 @@ export default function CalendarPage() {
               <div className="space-y-3">
                 <div>
                   <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Date</label>
-                  <input type="date" value={blockForm.date} onChange={e => setBlockForm(f => ({ ...f, date: e.target.value }))} className="w-full rounded-lg border border-[#1a3358] bg-[#081120] px-3 py-2 text-sm text-white outline-none focus:border-[#c9a227]" />
+                  <input type="date" value={blockForm.date} onChange={e => setBlockForm(f => ({ ...f, date: e.target.value }))} className="w-full rounded-lg border border-[#1e3a60] bg-[#0c1830] px-3 py-2 text-sm text-white outline-none focus:border-[#c9a227]" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Start</label>
-                    <input type="time" value={blockForm.startTime} onChange={e => setBlockForm(f => ({ ...f, startTime: e.target.value }))} className="w-full rounded-lg border border-[#1a3358] bg-[#081120] px-3 py-2 text-sm text-white outline-none focus:border-[#c9a227]" />
+                    <input type="time" value={blockForm.startTime} onChange={e => setBlockForm(f => ({ ...f, startTime: e.target.value }))} className="w-full rounded-lg border border-[#1e3a60] bg-[#0c1830] px-3 py-2 text-sm text-white outline-none focus:border-[#c9a227]" />
                   </div>
                   <div>
                     <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">End</label>
-                    <input type="time" value={blockForm.endTime} onChange={e => setBlockForm(f => ({ ...f, endTime: e.target.value }))} className="w-full rounded-lg border border-[#1a3358] bg-[#081120] px-3 py-2 text-sm text-white outline-none focus:border-[#c9a227]" />
+                    <input type="time" value={blockForm.endTime} onChange={e => setBlockForm(f => ({ ...f, endTime: e.target.value }))} className="w-full rounded-lg border border-[#1e3a60] bg-[#0c1830] px-3 py-2 text-sm text-white outline-none focus:border-[#c9a227]" />
                   </div>
                 </div>
                 <div>
                   <label className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-blue-400">Label (optional)</label>
-                  <input type="text" value={blockForm.label} onChange={e => setBlockForm(f => ({ ...f, label: e.target.value }))} placeholder="e.g. Lunch, Travel, Personal" className="w-full rounded-lg border border-[#1a3358] bg-[#081120] px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-[#c9a227]" />
+                  <input type="text" value={blockForm.label} onChange={e => setBlockForm(f => ({ ...f, label: e.target.value }))} placeholder="e.g. Lunch, Travel, Personal" className="w-full rounded-lg border border-[#1e3a60] bg-[#0c1830] px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-[#c9a227]" />
                 </div>
                 {blockSaveErr && (
                   <p className="rounded-lg border border-red-700 bg-red-900/30 px-3 py-2 text-xs text-red-300">{blockSaveErr}</p>
@@ -1675,13 +1675,13 @@ export default function CalendarPage() {
 
   // ── Desktop layout: week grid ─────────────────────────────────────────────
   return (
-    <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-[#081120] text-white">
+    <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-[#0c1830] text-white">
 
       {/* Sidebar */}
-      <aside className="hidden lg:flex w-56 flex-shrink-0 flex-col gap-4 border-r border-[#1a3358] bg-[#0a1628] p-4 overflow-y-auto">
+      <aside className="hidden lg:flex w-56 flex-shrink-0 flex-col gap-4 border-r border-[#1e3a60] bg-[#0e1e38] p-4 overflow-y-auto">
         <MiniCalendar selected={miniCalDate} onSelect={handleMiniCalSelect} />
 
-        <div className="rounded-xl border border-[#1a3358] bg-[#0d1b30] p-3">
+        <div className="rounded-xl border border-[#1e3a60] bg-[#112240] p-3">
           <div className="mb-2 text-xs font-bold uppercase tracking-wider text-blue-400">This Week</div>
           <div className="space-y-1.5">
             {([
@@ -1702,14 +1702,14 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-[#1a3358] bg-[#0d1b30] p-3 space-y-1">
+        <div className="rounded-xl border border-[#1e3a60] bg-[#112240] p-3 space-y-1">
           <div className="mb-2 text-xs font-bold uppercase tracking-wider text-blue-400">Quick Links</div>
           <button onClick={() => openNewApptModal(toISO(miniCalDate))} className="block w-full text-left rounded-lg px-2 py-1.5 text-xs text-blue-200 hover:bg-white/10 transition">+ New Appointment</button>
           <Link href="/dashboard"    className="block rounded-lg px-2 py-1.5 text-xs text-blue-200 hover:bg-white/10 transition">Dashboard</Link>
           <Link href="/dashboard"    className="block rounded-lg px-2 py-1.5 text-xs text-blue-200 hover:bg-white/10 transition">Owners &amp; Patients</Link>
         </div>
 
-        <div className="rounded-xl border border-[#1a3358] bg-[#0d1b30] p-3">
+        <div className="rounded-xl border border-[#1e3a60] bg-[#112240] p-3">
           <div className="mb-2 text-xs font-bold uppercase tracking-wider text-blue-400">Legend</div>
           <div className="space-y-1.5">
             {(['scheduled','confirmed','completed','cancelled'] as const).map(s => (
@@ -1726,7 +1726,7 @@ export default function CalendarPage() {
       <div className="flex flex-1 flex-col overflow-hidden">
 
         {/* Toolbar */}
-        <div className="flex flex-shrink-0 items-center justify-between gap-3 border-b border-[#1a3358] bg-[#0a1628] px-4 py-2">
+        <div className="flex flex-shrink-0 items-center justify-between gap-3 border-b border-[#1e3a60] bg-[#0e1e38] px-4 py-2">
           <div className="flex items-center gap-2">
             <button onClick={prevWeek} className="rounded-lg border border-white/20 px-3 py-1.5 text-sm text-white hover:bg-white/10 transition">◀</button>
             <button onClick={nextWeek} className="rounded-lg border border-white/20 px-3 py-1.5 text-sm text-white hover:bg-white/10 transition">▶</button>
@@ -1770,8 +1770,8 @@ export default function CalendarPage() {
         </div>
 
         {/* Day headers */}
-        <div className="flex flex-shrink-0 border-b border-[#1a3358] bg-[#0d1b30]">
-          <div className="w-14 flex-shrink-0 border-r border-[#1a3358]" />
+        <div className="flex flex-shrink-0 border-b border-[#1e3a60] bg-[#112240]">
+          <div className="w-14 flex-shrink-0 border-r border-[#1e3a60]" />
           {displayDays.map((day, i) => {
             const iso     = toISO(day)
             const isToday = iso === toISO(today)
@@ -1779,7 +1779,7 @@ export default function CalendarPage() {
             return (
               <div
                 key={i}
-                className={`flex flex-1 flex-col items-center justify-center py-2 border-r border-[#1a3358] last:border-r-0
+                className={`flex flex-1 flex-col items-center justify-center py-2 border-r border-[#1e3a60] last:border-r-0
                   ${isToday ? 'bg-[#c9a227]/10' : ''}`}
               >
                 <div className={`text-xs font-bold uppercase tracking-wider ${isToday ? 'text-[#c9a227]' : 'text-blue-400'}`}>
@@ -1812,7 +1812,7 @@ export default function CalendarPage() {
           )}
 
           {/* Time labels */}
-          <div className="relative w-14 flex-shrink-0 border-r border-[#1a3358]" style={{ height: GRID_HEIGHT }}>
+          <div className="relative w-14 flex-shrink-0 border-r border-[#1e3a60]" style={{ height: GRID_HEIGHT }}>
             {HOUR_LABELS.map((label, i) => (
               <div
                 key={i}
@@ -1835,7 +1835,7 @@ export default function CalendarPage() {
             return (
               <div
                 key={colIdx}
-                className={`relative flex-1 border-r border-[#1a3358] last:border-r-0 ${isToday ? 'bg-[#c9a227]/5' : ''}`}
+                className={`relative flex-1 border-r border-[#1e3a60] last:border-r-0 ${isToday ? 'bg-[#c9a227]/5' : ''}`}
                 style={{ height: GRID_HEIGHT, minWidth: 90 }}
                 onMouseMove={e => {
                   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
@@ -1861,10 +1861,10 @@ export default function CalendarPage() {
                 }}
               >
                 {HOUR_LABELS.map((_, i) => (
-                  <div key={i} className="absolute left-0 right-0 border-t border-[#1a3358]/60" style={{ top: i * 60 * PX_PER_MIN }} />
+                  <div key={i} className="absolute left-0 right-0 border-t border-[#1e3a60]/60" style={{ top: i * 60 * PX_PER_MIN }} />
                 ))}
                 {HOUR_LABELS.map((_, i) => (
-                  <div key={`half-${i}`} className="absolute left-0 right-0 border-t border-[#1a3358]/25" style={{ top: i * 60 * PX_PER_MIN + 30 * PX_PER_MIN }} />
+                  <div key={`half-${i}`} className="absolute left-0 right-0 border-t border-[#1e3a60]/25" style={{ top: i * 60 * PX_PER_MIN + 30 * PX_PER_MIN }} />
                 ))}
 
                 {/* 15-min hover highlight */}
@@ -1976,7 +1976,7 @@ export default function CalendarPage() {
         </div>
 
         {/* Status bar */}
-        <div className="flex flex-shrink-0 flex-wrap gap-x-4 gap-y-1 border-t border-[#1a3358] bg-[#0a1628] px-4 py-1.5 text-xs text-blue-200">
+        <div className="flex flex-shrink-0 flex-wrap gap-x-4 gap-y-1 border-t border-[#1e3a60] bg-[#0e1e38] px-4 py-1.5 text-xs text-blue-200">
           <span>📅 <strong className="text-white">{appointments.length}</strong> appointments this week</span>
           <span>✅ Scheduled: <strong className="text-blue-300">{counts.scheduled}</strong></span>
           <span>🟢 Confirmed: <strong className="text-emerald-300">{counts.confirmed}</strong></span>
@@ -2040,7 +2040,7 @@ export default function CalendarPage() {
       {/* Blocked Time Popup (click on a blocked slot) */}
       {selectedBlock && (
         <div
-          className="fixed z-50 w-56 rounded-xl border border-[#1a3358] bg-[#0d1b30] shadow-2xl"
+          className="fixed z-50 w-56 rounded-xl border border-[#1e3a60] bg-[#112240] shadow-2xl"
           style={{ left: selectedBlock.x, top: selectedBlock.y }}
         >
           <div className="p-3">
@@ -2074,7 +2074,7 @@ export default function CalendarPage() {
       {/* Block Time Modal (create + edit) */}
       {showBlockModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => { setShowBlockModal(false); setEditingBlockId(null) }}>
-          <div className="w-full max-w-sm rounded-2xl border border-[#1a3358] bg-[#0d1b30] p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="w-full max-w-sm rounded-2xl border border-[#1e3a60] bg-[#112240] p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="mb-4 flex items-center justify-between">
               <h3 className="font-bold text-white">{editingBlockId ? '✏️ Edit Blocked Time' : '🚫 Block Out Time'}</h3>
               <button onClick={() => { setShowBlockModal(false); setEditingBlockId(null) }} className="text-white/50 hover:text-white text-xl leading-none">×</button>
@@ -2086,7 +2086,7 @@ export default function CalendarPage() {
                   type="date"
                   value={blockForm.date}
                   onChange={e => setBlockForm(f => ({ ...f, date: e.target.value }))}
-                  className="w-full rounded-lg border border-[#1a3358] bg-[#081120] px-3 py-2 text-sm text-white outline-none focus:border-[#c9a227]"
+                  className="w-full rounded-lg border border-[#1e3a60] bg-[#0c1830] px-3 py-2 text-sm text-white outline-none focus:border-[#c9a227]"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -2096,7 +2096,7 @@ export default function CalendarPage() {
                     type="time"
                     value={blockForm.startTime}
                     onChange={e => setBlockForm(f => ({ ...f, startTime: e.target.value }))}
-                    className="w-full rounded-lg border border-[#1a3358] bg-[#081120] px-3 py-2 text-sm text-white outline-none focus:border-[#c9a227]"
+                    className="w-full rounded-lg border border-[#1e3a60] bg-[#0c1830] px-3 py-2 text-sm text-white outline-none focus:border-[#c9a227]"
                   />
                 </div>
                 <div>
@@ -2105,7 +2105,7 @@ export default function CalendarPage() {
                     type="time"
                     value={blockForm.endTime}
                     onChange={e => setBlockForm(f => ({ ...f, endTime: e.target.value }))}
-                    className="w-full rounded-lg border border-[#1a3358] bg-[#081120] px-3 py-2 text-sm text-white outline-none focus:border-[#c9a227]"
+                    className="w-full rounded-lg border border-[#1e3a60] bg-[#0c1830] px-3 py-2 text-sm text-white outline-none focus:border-[#c9a227]"
                   />
                 </div>
               </div>
@@ -2116,7 +2116,7 @@ export default function CalendarPage() {
                   value={blockForm.label}
                   onChange={e => setBlockForm(f => ({ ...f, label: e.target.value }))}
                   placeholder="e.g. Lunch, Travel, Personal"
-                  className="w-full rounded-lg border border-[#1a3358] bg-[#081120] px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-[#c9a227]"
+                  className="w-full rounded-lg border border-[#1e3a60] bg-[#0c1830] px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-[#c9a227]"
                 />
               </div>
               {blockSaveErr && (
