@@ -804,7 +804,6 @@ function SpineVisitInner() {
       treated_areas: treatedAreas || null,
       recommendations: recommendations || null,
       follow_up: followUp || null,
-      quick_notes: quickNotes || null,
       practitioner_id: userId,
     }
 
