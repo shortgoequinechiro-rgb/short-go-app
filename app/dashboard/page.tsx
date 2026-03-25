@@ -1187,8 +1187,17 @@ export default function Home() {
     setOwnerAddressEdit(selectedOwner?.address || '')
   }
 
+  async function getAuthHeaders(): Promise<Record<string, string>> {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) return {}
+    return { Authorization: `Bearer ${session.access_token}` }
+  }
+
   async function sendOptInSms(ownerId: string) {
-    const res = await fetch(`/api/owners/${ownerId}/send-optin-sms`, { method: 'POST' })
+    const res = await fetch(`/api/owners/${ownerId}/send-optin-sms`, {
+      method: 'POST',
+      headers: await getAuthHeaders(),
+    })
     return res.ok
   }
 
@@ -1201,7 +1210,10 @@ export default function Home() {
     setSendingIntakeSms(true)
     setMessage('')
     try {
-      const res = await fetch(`/api/owners/${ownerId}/send-intake-sms`, { method: 'POST' })
+      const res = await fetch(`/api/owners/${ownerId}/send-intake-sms`, {
+        method: 'POST',
+        headers: await getAuthHeaders(),
+      })
       const data = await res.json()
       if (!res.ok) {
         if (data.needsConsent) {
@@ -1233,7 +1245,10 @@ export default function Home() {
     setSendingIntake(true)
     setMessage('')
     try {
-      const res = await fetch(`/api/owners/${ownerId}/send-intake`, { method: 'POST' })
+      const res = await fetch(`/api/owners/${ownerId}/send-intake`, {
+        method: 'POST',
+        headers: await getAuthHeaders(),
+      })
       const data = await res.json()
       if (!res.ok) {
         setMessage(data.error || 'Failed to send intake email.')
@@ -1256,7 +1271,10 @@ export default function Home() {
     setSendingConsent(true)
     setMessage('')
     try {
-      const res = await fetch(`/api/owners/${ownerId}/send-consent`, { method: 'POST' })
+      const res = await fetch(`/api/owners/${ownerId}/send-consent`, {
+        method: 'POST',
+        headers: await getAuthHeaders(),
+      })
       const data = await res.json()
       if (!res.ok) {
         setMessage(data.error || 'Failed to send consent email.')
@@ -1279,7 +1297,10 @@ export default function Home() {
     setSendingConsentSms(true)
     setMessage('')
     try {
-      const res = await fetch(`/api/owners/${ownerId}/send-consent-sms`, { method: 'POST' })
+      const res = await fetch(`/api/owners/${ownerId}/send-consent-sms`, {
+        method: 'POST',
+        headers: await getAuthHeaders(),
+      })
       const data = await res.json()
       if (!res.ok) {
         if (data.needsConsent) {

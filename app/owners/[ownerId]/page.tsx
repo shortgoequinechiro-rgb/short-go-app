@@ -393,15 +393,27 @@ export default function OwnerPage() {
     if (!owner?.email) { setMessage('This owner does not have an email address on file.'); return }
     setSendingIntake(true); setMessage('')
     try {
-      const res = await fetch(`/api/owners/${ownerId}/send-intake`, { method: 'POST' })
+      const res = await fetch(`/api/owners/${ownerId}/send-intake`, {
+        method: 'POST',
+        headers: await getAuthHeaders(),
+      })
       const data = await res.json()
       setMessage(res.ok ? `Intake form link sent to ${owner.email}.` : (data.error || 'Failed to send intake email.'))
     } catch { setMessage('Failed to send intake email.') }
     finally { setSendingIntake(false) }
   }
 
+  async function getAuthHeaders(): Promise<Record<string, string>> {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) return {}
+    return { Authorization: `Bearer ${session.access_token}` }
+  }
+
   async function sendOptInSms() {
-    const res = await fetch(`/api/owners/${ownerId}/send-optin-sms`, { method: 'POST' })
+    const res = await fetch(`/api/owners/${ownerId}/send-optin-sms`, {
+      method: 'POST',
+      headers: await getAuthHeaders(),
+    })
     return res.ok
   }
 
@@ -409,7 +421,10 @@ export default function OwnerPage() {
     if (!owner?.phone) { setMessage('This owner does not have a phone number on file.'); return }
     setSendingIntakeSms(true); setMessage('')
     try {
-      const res = await fetch(`/api/owners/${ownerId}/send-intake-sms`, { method: 'POST' })
+      const res = await fetch(`/api/owners/${ownerId}/send-intake-sms`, {
+        method: 'POST',
+        headers: await getAuthHeaders(),
+      })
       const data = await res.json()
       if (!res.ok && data.needsConsent) {
         const sent = await sendOptInSms()
@@ -425,7 +440,10 @@ export default function OwnerPage() {
     if (!owner?.email) { setMessage('This owner does not have an email address on file.'); return }
     setSendingConsent(true); setMessage('')
     try {
-      const res = await fetch(`/api/owners/${ownerId}/send-consent`, { method: 'POST' })
+      const res = await fetch(`/api/owners/${ownerId}/send-consent`, {
+        method: 'POST',
+        headers: await getAuthHeaders(),
+      })
       const data = await res.json()
       setMessage(res.ok ? `Consent form link sent to ${owner.email}.` : (data.error || 'Failed to send consent email.'))
     } catch { setMessage('Failed to send consent email.') }
@@ -436,7 +454,10 @@ export default function OwnerPage() {
     if (!owner?.phone) { setMessage('This owner does not have a phone number on file.'); return }
     setSendingConsentSms(true); setMessage('')
     try {
-      const res = await fetch(`/api/owners/${ownerId}/send-consent-sms`, { method: 'POST' })
+      const res = await fetch(`/api/owners/${ownerId}/send-consent-sms`, {
+        method: 'POST',
+        headers: await getAuthHeaders(),
+      })
       const data = await res.json()
       if (!res.ok && data.needsConsent) {
         const sent = await sendOptInSms()
