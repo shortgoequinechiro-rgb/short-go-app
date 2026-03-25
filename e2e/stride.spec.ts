@@ -764,7 +764,7 @@ test.describe('Invoices List', () => {
       return
     }
     await expect(page.locator('text=/invoices/i').first()).toBeVisible({ timeout: 10000 })
-    await expect(page.locator('a[href="/invoices/create"]')).toBeVisible()
+    await expect(page.locator('a[href="/invoices/create"]').first()).toBeVisible()
   })
 
   test('invoices page has status filter', async ({ page }) => {
