@@ -101,7 +101,7 @@ export default function MarketingFooter() {
               <input
                 type="email"
                 placeholder="you@example.com"
-                className="flex-1 sm:w-64 px-4 py-2.5 rounded-full bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/40 focus:outline-none focus:border-[#c9a227]/50 transition"
+                className="flex-1 sm:w-64 px-4 py-2.5 rounded-full bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/50 focus:outline-none focus:border-[#c9a227]/50 transition"
               />
               <button className="px-5 py-2.5 rounded-full bg-[#c9a227] text-[#0a1628] font-semibold text-sm hover:bg-[#ddb832] transition-all hover:scale-105 whitespace-nowrap">
                 Subscribe
@@ -112,12 +112,12 @@ export default function MarketingFooter() {
 
         {/* Bottom row */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-white/40 text-xs">
+          <p className="text-white/50 text-xs">
             &copy; {new Date().getFullYear()} Chiro Stride Equine & Canine Chiropractic Software. All rights reserved.
           </p>
-          <div className="flex items-center gap-6 text-xs text-white/40">
-            <a href="#" className="hover:text-white/60 transition">Privacy Policy</a>
-            <a href="#" className="hover:text-white/60 transition">Terms of Service</a>
+          <div className="flex items-center gap-6 text-xs text-white/50">
+            <a href="#" className="hover:text-white/70 transition">Privacy Policy</a>
+            <a href="#" className="hover:text-white/70 transition">Terms of Service</a>
           </div>
         </div>
       </div>
