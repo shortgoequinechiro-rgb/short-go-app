@@ -394,6 +394,7 @@ export default function InvoiceDetailPage() {
               >
                 <option value="draft">Draft</option>
                 <option value="sent">Sent</option>
+                <option value="paid">Paid</option>
                 <option value="overdue">Overdue</option>
                 <option value="cancelled">Cancelled</option>
               </select>
@@ -424,7 +425,7 @@ export default function InvoiceDetailPage() {
         )}
 
         {/* Edit / Delete buttons */}
-        {!isEditing && invoice.status !== 'paid' && (
+        {!isEditing && (
           <div className="flex gap-2 mt-4 pt-4 border-t border-slate-100">
             <button
               onClick={startEditing}
@@ -835,6 +836,11 @@ export default function InvoiceDetailPage() {
             <p className="text-slate-600 mb-2">
               Are you sure you want to delete invoice <span className="font-semibold">{invoice.invoice_number}</span>?
             </p>
+            {invoice.status === 'paid' && (
+              <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                <p className="text-sm text-amber-800 font-medium">This invoice is marked as paid (${(invoice.total_cents / 100).toFixed(2)}). Deleting it will remove it from your records permanently.</p>
+              </div>
+            )}
             <p className="text-sm text-red-600 mb-6">
               This action cannot be undone. All line items and communication history for this invoice will also be deleted.
             </p>

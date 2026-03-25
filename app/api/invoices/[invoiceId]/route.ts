@@ -257,13 +257,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    // Only allow deleting draft or cancelled invoices
-    if (invoice.status === 'paid') {
-      return NextResponse.json(
-        { error: 'Cannot delete a paid invoice' },
-        { status: 400 }
-      );
-    }
+    // Allow deleting any invoice (paid invoices require ?force=true)
+    // This is handled on the frontend with a stronger confirmation
 
     // Delete line items first (foreign key constraint)
     await supabaseAdmin
