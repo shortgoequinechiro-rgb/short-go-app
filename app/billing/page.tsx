@@ -119,7 +119,7 @@ function BillingContent() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold tracking-widest text-white">CHIRO STRIDE</h1>
           <p className="mt-1 text-sm text-blue-300 uppercase tracking-widest">
-            Chiropractic Practice Management
+            Animal Chiropractic Practice Management
           </p>
         </div>
 

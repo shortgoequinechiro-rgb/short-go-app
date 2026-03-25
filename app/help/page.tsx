@@ -316,7 +316,7 @@ const guides: Guide[] = [
       },
       {
         title: 'Choose the anatomy model',
-        description: 'The viewer automatically loads the correct model based on the patient\'s species (equine or canine).',
+        description: 'The viewer automatically loads the correct model based on the patient\'s species.',
       },
       {
         title: 'Toggle anatomy layers',

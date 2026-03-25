@@ -36,7 +36,7 @@ const features = [
   {
     icon: ClipboardList,
     title: "Patient Records",
-    desc: "Complete equine and canine profiles with breed, discipline, medical history, photos, and full visit timelines.",
+    desc: "Complete patient profiles with breed, discipline, medical history, photos, and full visit timelines — for any species.",
   },
   {
     icon: Bone,
@@ -197,7 +197,7 @@ export default function LandingPage() {
               <span className="text-white/50"> Nothing you don&apos;t.</span>
             </h2>
             <p className="text-white/60 mt-4 max-w-xl mx-auto">
-              Built specifically for equine and canine chiropractors. Every feature designed around your real workflow.
+              Built specifically for animal chiropractors. Every feature designed around your real workflow.
             </p>
           </FadeIn>
 

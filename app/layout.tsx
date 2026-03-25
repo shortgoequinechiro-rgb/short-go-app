@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Chiro Stride | Equine & Canine Chiropractic",
-  description: "Practice management built for equine and canine chiropractors",
+  title: "Chiro Stride | Animal Chiropractic Practice Management",
+  description: "Practice management built for animal chiropractors",
   manifest: "/manifest.json",
   icons: {
     icon: "/favicon.ico",
