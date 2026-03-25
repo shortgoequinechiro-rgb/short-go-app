@@ -52,11 +52,16 @@ export default function SignupPage() {
     // 2. Save practitioner profile immediately (works even before email confirmation)
     if (userId) {
       try {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+        // Send Bearer token if a session is available (auto-confirm on)
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`
+        }
+
         const res = await fetch('/api/onboarding/setup-profile', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({
-            user_id: userId,
             email: email.trim(),
             full_name: fullName.trim(),
             credentials: credentials.trim(),

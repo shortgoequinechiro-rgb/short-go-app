@@ -20,10 +20,32 @@ function getAdminSupabase() {
 }
 
 export async function POST(req: NextRequest) {
+  // ── Twilio signature verification ──
+  const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN
+  const twilioSignature = req.headers.get('x-twilio-signature') || ''
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://short-go-app.vercel.app'
+  const webhookUrl = `${appUrl}/api/sms/incoming`
+
+  if (!twilioAuthToken) {
+    console.error('[sms/incoming] TWILIO_AUTH_TOKEN not configured')
+    return twimlResponse('')
+  }
+
+  // Clone the request to read body twice (once for validation, once for processing)
+  const rawBody = await req.text()
+  const urlParams = new URLSearchParams(rawBody)
+  const params: Record<string, string> = {}
+  urlParams.forEach((value, key) => { params[key] = value })
+
+  const isValid = twilio.validateRequest(twilioAuthToken, twilioSignature, webhookUrl, params)
+  if (!isValid) {
+    console.warn('[sms/incoming] Invalid Twilio signature — rejecting request')
+    return new NextResponse('Forbidden', { status: 403 })
+  }
+
   // Twilio sends form-encoded data
-  const formData = await req.formData()
-  const from = formData.get('From') as string | null
-  const body = (formData.get('Body') as string | null)?.trim().toUpperCase() || ''
+  const from = params['From'] || null
+  const body = (params['Body'] || '').trim().toUpperCase()
 
   if (!from) {
     return twimlResponse('')

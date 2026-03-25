@@ -35,13 +35,17 @@ export async function POST(
 
   const { data: owner, error } = await supabase
     .from('owners')
-    .select('id, full_name, phone')
+    .select('id, full_name, phone, practitioner_id')
     .eq('id', ownerId)
     .single()
 
   if (error || !owner) {
-    const detail = error?.message || 'No owner row returned'
-    return NextResponse.json({ error: `Owner not found: ${detail}` }, { status: 404 })
+    return NextResponse.json({ error: 'Owner not found.' }, { status: 404 })
+  }
+
+  // Verify the authenticated practitioner owns this client
+  if (owner.practitioner_id !== user.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   if (!owner.phone) {
@@ -65,8 +69,9 @@ export async function POST(
     })
 
     if (message.errorCode) {
+      console.error(`Twilio error ${message.errorCode}: ${message.errorMessage}`)
       return NextResponse.json(
-        { error: `Twilio error ${message.errorCode}: ${message.errorMessage}` },
+        { error: 'Failed to send SMS.' },
         { status: 500 }
       )
     }
@@ -81,6 +86,7 @@ export async function POST(
     return NextResponse.json({ success: true, sid: message.sid })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
-    return NextResponse.json({ error: `Twilio error: ${msg}` }, { status: 500 })
+    console.error('Twilio error:', msg)
+    return NextResponse.json({ error: 'Failed to send SMS.' }, { status: 500 })
   }
 }

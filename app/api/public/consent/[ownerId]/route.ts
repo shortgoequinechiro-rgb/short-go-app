@@ -22,7 +22,8 @@ export async function GET(
     .order('signed_at', { ascending: false })
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error('Failed to load consent forms:', error)
+    return NextResponse.json({ error: 'Failed to load consent data.' }, { status: 500 })
   }
 
   return NextResponse.json({ consents: data || [] })
