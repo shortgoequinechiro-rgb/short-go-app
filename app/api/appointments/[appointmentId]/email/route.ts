@@ -260,7 +260,8 @@ export async function POST(
     })
 
     if ((result as any)?.error) {
-      return NextResponse.json({ error: (result as any).error.message || 'Send failed.' }, { status: 500 })
+      console.error('Resend error:', (result as any).error)
+      return NextResponse.json({ error: 'Failed to send email.' }, { status: 500 })
     }
 
     // Mark sent flag

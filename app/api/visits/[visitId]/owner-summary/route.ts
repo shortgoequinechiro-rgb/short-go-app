@@ -301,12 +301,13 @@ export async function POST(
     })
 
     if ((result as any)?.error) {
-      return NextResponse.json({ error: (result as any).error.message || 'Send failed.' }, { status: 500 })
+      console.error('Resend error:', (result as any).error)
+      return NextResponse.json({ error: 'Failed to send email.' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
     console.error('owner-summary route error:', error)
-    return NextResponse.json({ error: error?.message || 'Failed to send owner summary.' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to send email.' }, { status: 500 })
   }
 }

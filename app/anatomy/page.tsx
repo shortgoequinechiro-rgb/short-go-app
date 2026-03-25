@@ -8,6 +8,7 @@ import { useSearchParams } from 'next/navigation'
 import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { supabase } from '../lib/supabase'
+import { secureStorage } from '../lib/secureStorage'
 
 type LayerState = {
   Skin: boolean
@@ -335,6 +336,7 @@ function AnatomyContent() {
 
   const [horseId, setHorseId] = useState('')
   const [loadingHorseLink, setLoadingHorseLink] = useState(true)
+  const [currentUserId, setCurrentUserId] = useState('')
 
   const [layers, setLayers] = useState<LayerState>(INITIAL_LAYERS)
   const [selectedLandmark, setSelectedLandmark] = useState<LandmarkInfo | null>(null)
@@ -548,6 +550,13 @@ function AnatomyContent() {
     loadHorseIdForVisit(visitId)
   }, [visitId])
 
+  // ── Fetch current user ID for encrypted storage ────────────────────────────
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) setCurrentUserId(user.id)
+    })
+  }, [])
+
   // ── Load notes ───────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -578,18 +587,18 @@ function AnatomyContent() {
         return
       }
 
-      if (typeof window === 'undefined') return
+      if (typeof window === 'undefined' || !currentUserId) return
 
       try {
-        const saved = window.localStorage.getItem(NOTES_STORAGE_KEY)
-        setNotesByLandmark(saved ? JSON.parse(saved) : {})
+        const saved = await secureStorage.getItem<Record<string, string>>(NOTES_STORAGE_KEY, currentUserId)
+        setNotesByLandmark(saved || {})
       } catch {
         setNotesByLandmark({})
       }
     }
 
     loadNotes()
-  }, [visitId])
+  }, [visitId, currentUserId])
 
   useEffect(() => {
     if (!selectedLandmark) {
@@ -605,12 +614,8 @@ function AnatomyContent() {
 
   function persistLocalNotes(nextNotes: Record<string, string>) {
     setNotesByLandmark(nextNotes)
-    if (typeof window === 'undefined') return
-    try {
-      window.localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(nextNotes))
-    } catch {
-      // ignore
-    }
+    if (typeof window === 'undefined' || !currentUserId) return
+    secureStorage.setItem(NOTES_STORAGE_KEY, nextNotes, currentUserId).catch(() => {})
   }
 
   function toggleLayer(layer: keyof LayerState) {

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, Suspense } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../../lib/supabase'
+import { secureStorage } from '../../../lib/secureStorage'
 import { getCachedHorseById, getCachedVisitsByHorse, offlineDb } from '../../../lib/offlineDb'
 import {
   SUBJECTIVE_CHIPS, OBJECTIVE_CHIPS, ASSESSMENT_CHIPS, PLAN_CHIPS,
@@ -707,8 +708,8 @@ function SpineVisitInner() {
       try {
         const localVisitId = crypto.randomUUID()
 
-        // Save spine assessment to localStorage (same as saveSpineOnly offline)
-        const pendingSpines = JSON.parse(localStorage.getItem('pendingSpineAssessments') || '[]')
+        // Save spine assessment to encrypted localStorage
+        const pendingSpines = await secureStorage.getItem<any[]>('pendingSpineAssessments', userId) || []
         pendingSpines.push({
           localId: crypto.randomUUID(),
           horse_id: horseId,
@@ -717,7 +718,7 @@ function SpineVisitInner() {
           notes: spineNotes,
           assessed_at: new Date().toISOString(),
         })
-        localStorage.setItem('pendingSpineAssessments', JSON.stringify(pendingSpines))
+        await secureStorage.setItem('pendingSpineAssessments', pendingSpines, userId)
 
         // Save visit to IndexedDB pending queue
         await offlineDb.pendingVisits.add({
@@ -860,7 +861,7 @@ function SpineVisitInner() {
 
     if (!navigator.onLine) {
       try {
-        const pending = JSON.parse(localStorage.getItem('pendingSpineAssessments') || '[]')
+        const pending = await secureStorage.getItem<any[]>('pendingSpineAssessments', userId) || []
         pending.push({
           localId: crypto.randomUUID(),
           horse_id: horseId,
@@ -869,7 +870,7 @@ function SpineVisitInner() {
           notes: spineNotes,
           assessed_at: new Date().toISOString(),
         })
-        localStorage.setItem('pendingSpineAssessments', JSON.stringify(pending))
+        await secureStorage.setItem('pendingSpineAssessments', pending, userId)
         setSaving(false)
         setLastSaved(new Date().toISOString())
         setSaveMsg('Saved offline — will sync when back online.')

@@ -75,7 +75,8 @@ export async function POST(
       .eq('id', invoiceId);
 
     if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+      console.error('Failed to update invoice with payment link:', updateError)
+      return NextResponse.json({ error: 'Failed to create payment link.' }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -87,7 +88,8 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     if (error instanceof Error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('Payment link route error:', error)
+      return NextResponse.json({ error: 'Failed to create payment link.' }, { status: 500 });
     }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

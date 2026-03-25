@@ -200,7 +200,7 @@ export async function POST(
     if (emailResponse.error) {
       console.error('Email send error:', emailResponse.error)
       return NextResponse.json(
-        { error: 'Failed to send email: ' + emailResponse.error.message },
+        { error: 'Failed to send email.' },
         { status: 500 }
       )
     }

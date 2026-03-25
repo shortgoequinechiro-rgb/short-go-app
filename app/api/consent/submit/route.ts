@@ -59,7 +59,8 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error('Failed to insert consent form:', error)
+    return NextResponse.json({ error: 'Failed to save consent.' }, { status: 500 })
   }
 
   // If the client consented to SMS, update their opt-in status

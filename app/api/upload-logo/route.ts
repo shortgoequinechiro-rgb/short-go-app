@@ -36,6 +36,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'File must be an image' }, { status: 400 })
     }
 
+    // Enforce 5 MB file size limit
+    if (file.size > 5 * 1024 * 1024) {
+      return NextResponse.json({ error: 'Logo must be under 5 MB' }, { status: 400 })
+    }
+
     // Get file extension
     const ext = file.type.split('/')[1] || 'png'
 

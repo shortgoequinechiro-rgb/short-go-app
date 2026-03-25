@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { secureStorage } from '../lib/secureStorage'
 import { syncPendingData, getPendingCount, refreshOfflineCache } from '../lib/offlineDb'
 
 export default function OfflineSync() {
@@ -9,13 +10,31 @@ export default function OfflineSync() {
   const [pendingCount, setPendingCount] = useState(0)
   const [syncing, setSyncing] = useState(false)
   const [justSynced, setJustSynced] = useState(false)
+  const userIdRef = useRef<string | null>(null)
 
-  // Sync pending spine assessments stored in localStorage
+  // Helper to get the current user ID (cached in ref)
+  const getUserId = useCallback(async (): Promise<string | null> => {
+    if (userIdRef.current) return userIdRef.current
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) userIdRef.current = user.id
+    return user?.id || null
+  }, [])
+
+  // Helper to get pending spine count (encrypted)
+  const getSpinePendingCount = useCallback(async (): Promise<number> => {
+    const uid = await getUserId()
+    if (!uid) return 0
+    const pending = await secureStorage.getItem<any[]>('pendingSpineAssessments', uid)
+    return pending?.length || 0
+  }, [getUserId])
+
+  // Sync pending spine assessments stored in encrypted localStorage
   const syncPendingSpineAssessments = useCallback(async () => {
     try {
-      const pending = JSON.parse(localStorage.getItem('pendingSpineAssessments') || '[]')
+      const uid = await getUserId()
+      if (!uid) return
+      const pending = await secureStorage.getItem<any[]>('pendingSpineAssessments', uid) || []
       if (pending.length === 0) return
-      const { data: { user } } = await supabase.auth.getUser()
       const synced: string[] = []
       for (const item of pending) {
         const { error } = await supabase.from('spine_assessments').insert({
@@ -24,37 +43,37 @@ export default function OfflineSync() {
           findings: item.findings,
           notes: item.notes,
           assessed_at: item.assessed_at,
-          practitioner_id: user?.id,
+          practitioner_id: uid,
         })
         if (!error || error.code === '23505') synced.push(item.localId)
       }
       const remaining = pending.filter((p: { localId: string }) => !synced.includes(p.localId))
-      localStorage.setItem('pendingSpineAssessments', JSON.stringify(remaining))
+      await secureStorage.setItem('pendingSpineAssessments', remaining, uid)
     } catch { /* ignore */ }
-  }, [])
+  }, [getUserId])
 
   const runSync = useCallback(async () => {
     const count = await getPendingCount()
-    const spineCount = JSON.parse(localStorage.getItem('pendingSpineAssessments') || '[]').length
+    const spineCount = await getSpinePendingCount()
     if (count === 0 && spineCount === 0) return
     setSyncing(true)
     await syncPendingData(supabase)
     await syncPendingSpineAssessments()
     const remaining = await getPendingCount()
-    const spineRemaining = JSON.parse(localStorage.getItem('pendingSpineAssessments') || '[]').length
+    const spineRemaining = await getSpinePendingCount()
     setPendingCount(remaining + spineRemaining)
     setSyncing(false)
     if (remaining === 0 && spineRemaining === 0) {
       setJustSynced(true)
       setTimeout(() => setJustSynced(false), 4000)
     }
-  }, [syncPendingSpineAssessments])
+  }, [syncPendingSpineAssessments, getSpinePendingCount])
 
   // Check initial state, refresh cache, and sync pending
   useEffect(() => {
     setIsOnline(navigator.onLine)
-    getPendingCount().then(c => {
-      const spineCount = JSON.parse(localStorage.getItem('pendingSpineAssessments') || '[]').length
+    getPendingCount().then(async c => {
+      const spineCount = await getSpinePendingCount()
       setPendingCount(c + spineCount)
     })
 
@@ -64,7 +83,7 @@ export default function OfflineSync() {
       // Also sync any pending items from a previous offline session
       runSync()
     }
-  }, [runSync])
+  }, [runSync, getSpinePendingCount])
 
   // Listen for connectivity changes
   useEffect(() => {
@@ -89,11 +108,11 @@ export default function OfflineSync() {
   useEffect(() => {
     const interval = setInterval(async () => {
       const count = await getPendingCount()
-      const spineCount = JSON.parse(localStorage.getItem('pendingSpineAssessments') || '[]').length
+      const spineCount = await getSpinePendingCount()
       setPendingCount(count + spineCount)
     }, 5000)
     return () => clearInterval(interval)
-  }, [])
+  }, [getSpinePendingCount])
 
   // Offline banner
   if (!isOnline) {

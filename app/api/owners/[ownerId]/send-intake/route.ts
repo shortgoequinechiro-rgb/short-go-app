@@ -43,8 +43,8 @@ export async function POST(
     .single()
 
   if (error || !owner) {
-    const detail = error?.message || 'No owner row returned'
-    return NextResponse.json({ error: `Owner not found: ${detail}` }, { status: 404 })
+    console.error('Failed to load owner:', error)
+    return NextResponse.json({ error: 'Owner not found.' }, { status: 404 })
   }
 
   let practitioner: any = null
@@ -121,8 +121,9 @@ export async function POST(
   })
 
   if ((result as any)?.error) {
+    console.error('Resend error:', (result as any).error)
     return NextResponse.json(
-      { error: (result as any).error.message || 'Failed to send email.' },
+      { error: 'Failed to send email.' },
       { status: 500 }
     )
   }

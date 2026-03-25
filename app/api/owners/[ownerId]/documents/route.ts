@@ -100,6 +100,23 @@ export async function POST(
       return NextResponse.json({ error: 'File must be under 20 MB.' }, { status: 400 })
     }
 
+    // Validate MIME type against whitelist
+    const ALLOWED_MIME_TYPES = [
+      'application/pdf',
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'image/gif',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ]
+    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+      return NextResponse.json(
+        { error: 'File type not allowed. Accepted: PDF, JPEG, PNG, WebP, GIF, DOC, DOCX.' },
+        { status: 400 }
+      )
+    }
+
     // Read file
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)

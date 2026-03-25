@@ -185,7 +185,8 @@ async function buildVisitPdf(visitId: string) {
     .eq('visit_id', visitId)
 
   if (anatomyError) {
-    throw new Error(`Error loading anatomy notes: ${anatomyError.message}`)
+    console.error('Failed to load anatomy notes:', anatomyError)
+    throw new Error('Failed to load anatomy data.')
   }
 
   const { data: spineData } = await supabase
@@ -203,7 +204,8 @@ async function buildVisitPdf(visitId: string) {
     .order('taken_at', { ascending: true })
 
   if (photosError) {
-    throw new Error(`Error loading visit photos: ${photosError.message}`)
+    console.error('Failed to load visit photos:', photosError)
+    throw new Error('Failed to load visit photos.')
   }
 
   const pdfDoc = await PDFDocument.create()
@@ -660,7 +662,7 @@ ${practiceName}`,
     if ((result as any)?.error) {
       console.error('Resend send error:', (result as any).error)
       return NextResponse.json(
-        { error: (result as any).error.message || 'Resend failed to send email.' },
+        { error: 'Failed to send email.' },
         { status: 500 }
       )
     }
@@ -672,7 +674,7 @@ ${practiceName}`,
   } catch (error: any) {
     console.error('email route error:', error)
     return NextResponse.json(
-      { error: error?.message || 'Failed to email PDF.' },
+      { error: 'Failed to send email.' },
       { status: 500 }
     )
   }

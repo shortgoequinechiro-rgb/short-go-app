@@ -86,8 +86,9 @@ export async function POST(req: NextRequest) {
         .single()
 
       if (horseError || !newHorse) {
+        console.error(`Failed to create horse record for "${resolvedAnimalName}":`, horseError)
         return NextResponse.json(
-          { error: `Could not create patient record for "${resolvedAnimalName}": ${horseError?.message || 'unknown error'}` },
+          { error: 'Failed to save patient record.' },
           { status: 500 }
         )
       }
@@ -127,12 +128,13 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (formError) {
+      console.error(`Failed to insert intake form for "${resolvedAnimalName}":`, formError)
       // If form insert fails and we just created a horse, clean it up
       if (animal.selectedHorseId === 'new' && resolvedHorseId) {
         await supabase.from('horses').delete().eq('id', resolvedHorseId)
       }
       return NextResponse.json(
-        { error: `Submission error for "${resolvedAnimalName}": ${formError.message}` },
+        { error: 'Failed to submit intake form.' },
         { status: 500 }
       )
     }
