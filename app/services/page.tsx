@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '../lib/supabase'
-import { ChevronUp, ChevronDown, Trash2, Plus, X } from 'lucide-react'
+import { ChevronUp, ChevronDown, Trash2, Plus, X, Pencil } from 'lucide-react'
 
 interface Service {
   id: string
@@ -20,6 +20,9 @@ export default function ServicesPage() {
   const [error, setError] = useState('')
   const [showAddForm, setShowAddForm] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editData, setEditData] = useState({ name: '', description: '', price: '' })
+  const [saving, setSaving] = useState(false)
 
   const [formData, setFormData] = useState({
     name: '',
@@ -127,6 +130,49 @@ export default function ServicesPage() {
       setDeleteConfirm(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error deleting service')
+    }
+  }
+
+  const startEditing = (service: Service) => {
+    setEditingId(service.id)
+    setEditData({
+      name: service.name,
+      description: service.description || '',
+      price: (service.price_cents / 100).toFixed(2),
+    })
+  }
+
+  const cancelEditing = () => {
+    setEditingId(null)
+    setEditData({ name: '', description: '', price: '' })
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editingId || !editData.name.trim()) {
+      setError('Service name is required')
+      return
+    }
+
+    try {
+      setSaving(true)
+      const priceInCents = Math.round(parseFloat(editData.price || '0') * 100)
+      if (priceInCents < 0) {
+        setError('Price cannot be negative')
+        return
+      }
+
+      await handleUpdateService(editingId, {
+        name: editData.name.trim(),
+        description: editData.description.trim() || null,
+        price_cents: priceInCents,
+      } as Partial<Service>)
+
+      setEditingId(null)
+      setEditData({ name: '', description: '', price: '' })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error saving changes')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -322,61 +368,125 @@ export default function ServicesPage() {
 
                   {/* Service Details */}
                   <div className="flex-1">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-slate-900">{service.name}</h3>
-                        {service.description && (
-                          <p className="text-sm text-slate-600 mt-1">{service.description}</p>
-                        )}
-                        <p className="text-lg font-semibold text-slate-900 mt-2">
-                          {formatPrice(service.price_cents)}
-                        </p>
-                      </div>
-
-                      {/* Status and Actions */}
-                      <div className="flex flex-col items-end gap-3">
-                        <div className="flex items-center gap-3">
-                          {/* Active Toggle */}
-                          <label className="flex items-center gap-2 cursor-pointer">
+                    {editingId === service.id ? (
+                      /* ── Edit Mode ── */
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-medium text-slate-500 mb-1">Name</label>
+                          <input
+                            type="text"
+                            value={editData.name}
+                            onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:border-slate-900"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-500 mb-1">Description</label>
+                          <input
+                            type="text"
+                            value={editData.description}
+                            onChange={(e) => setEditData({ ...editData, description: e.target.value })}
+                            placeholder="Optional description"
+                            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:border-slate-900"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-500 mb-1">Price</label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-2 text-sm text-slate-600">$</span>
                             <input
-                              type="checkbox"
-                              checked={service.is_active}
-                              onChange={() => handleToggleActive(service.id, service.is_active)}
-                              className="rounded"
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={editData.price}
+                              onChange={(e) => setEditData({ ...editData, price: e.target.value })}
+                              className="w-full rounded-xl border border-slate-300 pl-7 pr-3 py-2 text-sm focus:outline-none focus:border-slate-900"
                             />
-                            <span className="text-sm text-slate-600">
-                              {service.is_active ? 'Active' : 'Inactive'}
-                            </span>
-                          </label>
-
-                          {/* Delete Button */}
-                          {deleteConfirm === service.id ? (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => handleDeleteService(service.id)}
-                                className="rounded-xl bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
-                              >
-                                Confirm
-                              </button>
-                              <button
-                                onClick={() => setDeleteConfirm(null)}
-                                className="rounded-xl border border-slate-300 px-3 py-1.5 text-xs hover:bg-slate-50"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => setDeleteConfirm(service.id)}
-                              className="text-slate-400 hover:text-red-600 transition-colors p-1"
-                              aria-label="Delete service"
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          )}
+                          </div>
+                        </div>
+                        <div className="flex gap-2 pt-1">
+                          <button
+                            onClick={handleSaveEdit}
+                            disabled={saving}
+                            className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                          >
+                            {saving ? 'Saving...' : 'Save'}
+                          </button>
+                          <button
+                            onClick={cancelEditing}
+                            className="rounded-xl border border-slate-300 px-4 py-2 text-xs hover:bg-slate-50"
+                          >
+                            Cancel
+                          </button>
                         </div>
                       </div>
-                    </div>
+                    ) : (
+                      /* ── Display Mode ── */
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-slate-900">{service.name}</h3>
+                          {service.description && (
+                            <p className="text-sm text-slate-600 mt-1">{service.description}</p>
+                          )}
+                          <p className="text-lg font-semibold text-slate-900 mt-2">
+                            {formatPrice(service.price_cents)}
+                          </p>
+                        </div>
+
+                        {/* Status and Actions */}
+                        <div className="flex flex-col items-end gap-3">
+                          <div className="flex items-center gap-3">
+                            {/* Edit Button */}
+                            <button
+                              onClick={() => startEditing(service)}
+                              className="text-slate-400 hover:text-blue-600 transition-colors p-1"
+                              aria-label="Edit service"
+                            >
+                              <Pencil size={18} />
+                            </button>
+
+                            {/* Active Toggle */}
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={service.is_active}
+                                onChange={() => handleToggleActive(service.id, service.is_active)}
+                                className="rounded"
+                              />
+                              <span className="text-sm text-slate-600">
+                                {service.is_active ? 'Active' : 'Inactive'}
+                              </span>
+                            </label>
+
+                            {/* Delete Button */}
+                            {deleteConfirm === service.id ? (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleDeleteService(service.id)}
+                                  className="rounded-xl bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
+                                >
+                                  Confirm
+                                </button>
+                                <button
+                                  onClick={() => setDeleteConfirm(null)}
+                                  className="rounded-xl border border-slate-300 px-3 py-1.5 text-xs hover:bg-slate-50"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setDeleteConfirm(service.id)}
+                                className="text-slate-400 hover:text-red-600 transition-colors p-1"
+                                aria-label="Delete service"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

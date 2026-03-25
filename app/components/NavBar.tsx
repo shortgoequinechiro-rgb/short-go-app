@@ -59,6 +59,7 @@ export default function NavBar() {
   const isInvoices = pathname?.startsWith('/invoices')
   const isReports = pathname?.startsWith('/reports')
   const isComms = pathname?.startsWith('/communications')
+  const isServices = pathname?.startsWith('/services')
   const isAccount = pathname?.startsWith('/account') || pathname?.startsWith('/billing')
 
   // Mobile nav links — show all pages for easy access
@@ -68,6 +69,7 @@ export default function NavBar() {
     { href: '/invoices', label: '\u{1F4B0} Invoices', icon: 'invoices' },
     { href: '/reports', label: '\u{1F4CA} Reports', icon: 'reports' },
     { href: '/communications', label: '\u{1F4E8} Messages', icon: 'comms' },
+    { href: '/services', label: '\u{1F4CB} Services', icon: 'services' },
     { href: '/account', label: '\u{2699}\u{FE0F} Account', icon: 'account' },
   ]
 
@@ -147,6 +149,14 @@ export default function NavBar() {
                 className="whitespace-nowrap rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/20"
               >
                 Messages
+              </Link>
+            )}
+            {!isServices && (
+              <Link
+                href="/services"
+                className="whitespace-nowrap rounded-xl border border-white/25 bg-white/10 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/20"
+              >
+                Services
               </Link>
             )}
             {!isAccount && (

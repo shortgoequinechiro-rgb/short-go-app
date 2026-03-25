@@ -473,7 +473,7 @@ export default function InvoiceDetailPage() {
           {invoice.owner_phone && <p className="text-slate-600 text-sm">{invoice.owner_phone}</p>}
         </div>
         <div className="rounded-3xl bg-white p-5 shadow-sm">
-          <h3 className="text-sm font-semibold text-slate-600 mb-3 uppercase">Horse/Patient</h3>
+          <h3 className="text-sm font-semibold text-slate-600 mb-3 uppercase">Patient</h3>
           <p className="text-lg font-medium text-slate-900">{invoice.horse_name}</p>
         </div>
       </div>
