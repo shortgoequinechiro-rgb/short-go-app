@@ -343,6 +343,31 @@ export function buildPlanSentence(selectedIds: Set<string>): string {
 // QUICK ADD CHIPS UI COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
 
+const VISIBLE_PER_CATEGORY = 5
+
+/**
+ * Sort chips within a category by usage frequency (descending),
+ * then split into visible (top 5) and overflow.
+ */
+function splitByUsage(
+  chips: { id: string; label: string; output: string }[],
+  usageMap: Record<string, number>,
+): {
+  visible: { id: string; label: string; output: string }[]
+  overflow: { id: string; label: string; output: string }[]
+} {
+  // Sort by use_count descending, preserve original order as tiebreaker
+  const sorted = [...chips].sort((a, b) => {
+    const countA = usageMap[a.id] || 0
+    const countB = usageMap[b.id] || 0
+    return countB - countA
+  })
+  return {
+    visible: sorted.slice(0, VISIBLE_PER_CATEGORY),
+    overflow: sorted.slice(VISIBLE_PER_CATEGORY),
+  }
+}
+
 type QuickAddChipsSectionProps = {
   categories: ChipCategory[]
   selectedIds: Set<string>
@@ -351,6 +376,8 @@ type QuickAddChipsSectionProps = {
   generatedText: string
   onFill: () => void
   sectionLabel: string
+  /** Chip usage frequency map (chip_id → use_count). Pass empty object if not loaded yet. */
+  usageMap?: Record<string, number>
 }
 
 export function QuickAddChipsSection({
@@ -361,49 +388,56 @@ export function QuickAddChipsSection({
   generatedText,
   onFill,
   sectionLabel,
+  usageMap = {},
 }: QuickAddChipsSectionProps) {
   const [expanded, setExpanded] = useState(false)
   const hasSelections = selectedIds.size > 0
 
-  // Show first group always, rest behind "More"
-  const visibleCategories = expanded ? categories : categories.slice(0, 1)
-  const hasMore = categories.length > 1
+  // Check if any category has overflow chips
+  const hasOverflow = categories.some(
+    (cat) => splitByUsage(cat.chips, usageMap).overflow.length > 0,
+  )
 
   return (
     <div className="mt-2 space-y-2">
       {/* Chip groups */}
       <div className="space-y-2">
-        {visibleCategories.map((cat) => (
-          <div key={cat.groupLabel}>
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-              {cat.groupLabel}
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {cat.chips.map((chip) => {
-                const isSelected = selectedIds.has(chip.id)
-                return (
-                  <button
-                    key={chip.id}
-                    type="button"
-                    onClick={() => onToggle(chip.id)}
-                    className={[
-                      'rounded-lg border px-2.5 py-1 text-xs font-medium transition',
-                      isSelected
-                        ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
-                        : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-400 hover:bg-slate-100',
-                    ].join(' ')}
-                  >
-                    {chip.label}
-                  </button>
-                )
-              })}
+        {categories.map((cat) => {
+          const { visible, overflow } = splitByUsage(cat.chips, usageMap)
+          const chipsToShow = expanded ? [...visible, ...overflow] : visible
+
+          return (
+            <div key={cat.groupLabel}>
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                {cat.groupLabel}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {chipsToShow.map((chip) => {
+                  const isSelected = selectedIds.has(chip.id)
+                  return (
+                    <button
+                      key={chip.id}
+                      type="button"
+                      onClick={() => onToggle(chip.id)}
+                      className={[
+                        'rounded-lg border px-2.5 py-1 text-xs font-medium transition',
+                        isSelected
+                          ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
+                          : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-400 hover:bg-slate-100',
+                      ].join(' ')}
+                    >
+                      {chip.label}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* More / Less toggle */}
-      {hasMore && (
+      {hasOverflow && (
         <button
           type="button"
           onClick={() => setExpanded(!expanded)}

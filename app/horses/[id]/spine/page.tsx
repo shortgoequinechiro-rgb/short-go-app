@@ -11,6 +11,7 @@ import {
   buildSubjectiveSentence, buildObjectiveSentence, buildAssessmentSentence, buildPlanSentence,
   QuickAddChipsSection,
 } from '../../../components/QuickAddChips'
+import { useChipUsage } from '../../../hooks/useChipUsage'
 
 // ── Equine spine sections & segments ──────────────────────────────────────
 const EQUINE_SPINE_SECTIONS = [
@@ -317,6 +318,9 @@ function SpineVisitInner() {
   const [objectiveChips, setObjectiveChips] = useState<Set<string>>(new Set())
   const [assessmentChips, setAssessmentChips] = useState<Set<string>>(new Set())
   const [planChips, setPlanChips] = useState<Set<string>>(new Set())
+
+  // ── Chip usage tracking (most-used-first sorting) ──
+  const { usageMap, recordUsage } = useChipUsage(userId || null)
 
   // ── Collapsible spine sections ──
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
@@ -849,6 +853,17 @@ function SpineVisitInner() {
       }
     }
 
+    // Record chip usage for most-used-first sorting
+    const allUsedChips = [
+      ...Array.from(subjectiveChips),
+      ...Array.from(objectiveChips),
+      ...Array.from(assessmentChips),
+      ...Array.from(planChips),
+    ]
+    if (allUsedChips.length > 0) {
+      recordUsage(allUsedChips)
+    }
+
     setSaving(false)
     // Navigate to patient page with option to create invoice
     router.push(`/horses/${horseId}?tab=visits&savedVisitId=${savedVisitId}`)
@@ -1111,6 +1126,7 @@ function SpineVisitInner() {
                       generatedText={buildSubjectiveSentence(subjectiveChips)}
                       onFill={() => setSubjective(buildSubjectiveSentence(subjectiveChips))}
                       sectionLabel="Subjective"
+                      usageMap={usageMap}
                     />
                   </Field>
                 </div>
@@ -1301,6 +1317,7 @@ function SpineVisitInner() {
                       generatedText={buildObjectiveSentence(objectiveChips, getSpineRegionSummary())}
                       onFill={() => setObjective(buildObjectiveSentence(objectiveChips, getSpineRegionSummary()))}
                       sectionLabel="Objective"
+                      usageMap={usageMap}
                     />
                   </Field>
                 </div>
@@ -1322,6 +1339,7 @@ function SpineVisitInner() {
                       generatedText={buildAssessmentSentence(assessmentChips)}
                       onFill={() => setAssessment(buildAssessmentSentence(assessmentChips))}
                       sectionLabel="Assessment"
+                      usageMap={usageMap}
                     />
                   </Field>
                 </div>
@@ -1349,6 +1367,7 @@ function SpineVisitInner() {
                         if (selFU.length > 0) setFollowUp(selFU.map(c => c.label).join(', '))
                       }}
                       sectionLabel="Plan"
+                      usageMap={usageMap}
                     />
                   </Field>
                 </div>
@@ -1405,34 +1424,38 @@ function SpineVisitInner() {
                     />
                   </Field>
 
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    {/* Generate from chip selections (rule-based) */}
+                  {quickNotes && (
+                    <div className="mt-2 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setQuickNotes('')}
+                        className="rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition"
+                      >
+                        Clear notes
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Sticky Generate SOAP bar ── */}
+                <div className="md:col-span-2 sticky bottom-0 z-20">
+                  <div className="rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-sm px-4 py-3 shadow-lg flex flex-wrap items-center gap-2">
                     {(subjectiveChips.size > 0 || objectiveChips.size > 0 || assessmentChips.size > 0 || planChips.size > 0) && (
                       <button
                         type="button"
                         onClick={generateFromSelections}
-                        className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700 transition shadow-sm"
+                        className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 transition shadow-sm"
                       >
                         Generate SOAP from Selections
                       </button>
                     )}
-                    {/* Generate with AI (from quick notes) */}
                     <button
                       onClick={generateSoap}
                       disabled={generatingSoap}
-                      className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 disabled:opacity-50"
+                      className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 hover:bg-slate-50 disabled:opacity-50 transition"
                     >
                       {generatingSoap ? 'Generating SOAP...' : 'Generate SOAP with AI'}
                     </button>
-                    {quickNotes && (
-                      <button
-                        type="button"
-                        onClick={() => setQuickNotes('')}
-                        className="rounded-xl border border-slate-200 px-3 py-3 text-xs text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition"
-                      >
-                        Clear
-                      </button>
-                    )}
                   </div>
                 </div>
 
