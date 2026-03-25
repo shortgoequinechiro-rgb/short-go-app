@@ -9,19 +9,22 @@ import {
   PawPrint,
   FileText,
   Pencil,
-  Trash2,
   DollarSign,
   Calendar,
   Send,
   BarChart3,
   Settings,
-  ClipboardList,
   Search,
-  PlusCircle,
-  Eye,
   CheckCircle,
-  ArrowRight,
   HelpCircle,
+  Bone,
+  Camera,
+  ClipboardCheck,
+  FileDown,
+  CalendarCheck,
+  MessageSquare,
+  CreditCard,
+  Rocket,
 } from 'lucide-react'
 
 interface Step {
@@ -300,6 +303,292 @@ const guides: Guide[] = [
       },
     ],
   },
+  {
+    id: 'anatomy-viewer',
+    title: 'Use the Anatomy Viewer',
+    description: 'Explore interactive 3D anatomy models, annotate findings, and save notes to specific body regions.',
+    icon: <Bone size={24} />,
+    color: 'bg-violet-500',
+    steps: [
+      {
+        title: 'Open a patient record',
+        description: 'From the dashboard, click on a patient to open their profile. Then click the "Anatomy" or "3D Viewer" button to launch the anatomy viewer.',
+      },
+      {
+        title: 'Choose the anatomy model',
+        description: 'The viewer automatically loads the correct model based on the patient\'s species (equine or canine).',
+      },
+      {
+        title: 'Toggle anatomy layers',
+        description: 'Use the layer controls to show or hide different systems — skeleton, muscles, organs, and more. This helps you focus on the area you\'re examining.',
+      },
+      {
+        title: 'Rotate and zoom',
+        description: 'Click and drag to rotate the model. Use preset viewing angles (front, rear, left, right, top) for quick repositioning, or zoom in on specific areas.',
+      },
+      {
+        title: 'Draw and annotate',
+        description: 'Use the drawing tools to mark findings directly on the anatomy overlay. Choose pen, circles, arrows, or text. Select your color and brush size.',
+        tip: 'Annotations are great for documenting subluxations, areas of tension, or treatment plans visually.',
+      },
+      {
+        title: 'Save region notes',
+        description: 'Click on a specific spine segment or joint to open a note panel. Type your findings and save — these notes are tied to that exact body region and visit.',
+      },
+      {
+        title: 'Capture a photo',
+        description: 'Use the photo capture button to save an annotated screenshot of the current view. This gets stored in the patient\'s photo gallery.',
+      },
+    ],
+  },
+  {
+    id: 'patient-records',
+    title: 'Manage Patient Records & Photos',
+    description: 'Upload documents, take visit photos, track spine assessments, and view treatment history.',
+    icon: <Camera size={24} />,
+    color: 'bg-teal-500',
+    steps: [
+      {
+        title: 'Open a patient profile',
+        description: 'From the dashboard, click on an owner, then click on the patient you want to manage.',
+      },
+      {
+        title: 'View patient tabs',
+        description: 'The patient profile has multiple tabs: Info, Visits, Photos, and Records. Click each tab to switch between sections.',
+      },
+      {
+        title: 'Edit patient info',
+        description: 'On the Info tab, click "Edit" to update the patient\'s name, breed, age, sex, species, barn location, or any other details.',
+      },
+      {
+        title: 'Upload documents',
+        description: 'On the Records tab, click "Upload" to add files like PDFs, X-rays, lab results, or other documents. Add a note to describe what each file is.',
+        tip: 'Accepted file types include PDFs, images (JPG, PNG), and common document formats.',
+      },
+      {
+        title: 'View visit history',
+        description: 'On the Visits tab, see a timeline of all visits for this patient including dates, findings, and any spine assessments recorded.',
+      },
+      {
+        title: 'Browse photos',
+        description: 'On the Photos tab, view all photos taken during visits. These include anatomy viewer captures and any manually uploaded images.',
+      },
+      {
+        title: 'Track spine assessments',
+        description: 'If spine assessments have been recorded, you can see the history of findings per segment over time — showing left and right side results for each visit.',
+      },
+    ],
+  },
+  {
+    id: 'consent-intake',
+    title: 'Send Consent & Intake Forms',
+    description: 'Collect digital signatures and patient intake information from owners before their first visit.',
+    icon: <ClipboardCheck size={24} />,
+    color: 'bg-orange-500',
+    steps: [
+      {
+        title: 'Navigate to the owner profile',
+        description: 'From the dashboard, find and click on the owner you need forms from.',
+      },
+      {
+        title: 'Send a consent form',
+        description: 'Look for the "Consent Form" or "Send Consent" option on the owner\'s profile. This generates a unique link the owner can use to review and sign.',
+      },
+      {
+        title: 'What the owner sees',
+        description: 'The owner receives a branded form with your practice logo and name. They review agreements covering scope of care, risk acknowledgment, health records authorization, photography consent, payment responsibility, and SMS opt-in.',
+        tip: 'The form is mobile-friendly — owners can sign right from their phone.',
+      },
+      {
+        title: 'Owner signs digitally',
+        description: 'The owner draws their signature on screen and submits the form. The date and time are recorded automatically.',
+      },
+      {
+        title: 'Send an intake form',
+        description: 'Similarly, send an intake form link to the owner. This collects detailed information about each animal — species, breed, age, health history, medications, reason for care, and more.',
+      },
+      {
+        title: 'Review submitted forms',
+        description: 'Once submitted, the intake information populates the patient\'s records. You can review all submitted forms from the owner\'s profile.',
+      },
+    ],
+  },
+  {
+    id: 'record-visit',
+    title: 'Record a Visit',
+    description: 'Document a patient visit with findings, spine assessments, photos, and treatment notes.',
+    icon: <PawPrint size={24} />,
+    color: 'bg-cyan-500',
+    steps: [
+      {
+        title: 'Open the patient profile',
+        description: 'Navigate to the patient you\'re treating by clicking on them from the dashboard or the owner\'s profile.',
+      },
+      {
+        title: 'Start a new visit',
+        description: 'Click "New Visit" or "Add Visit" to begin documenting. This creates a new visit record tied to today\'s date.',
+      },
+      {
+        title: 'Record your findings',
+        description: 'Enter your clinical observations, findings, and notes for this visit. Be as detailed as needed.',
+      },
+      {
+        title: 'Perform a spine assessment',
+        description: 'If applicable, use the spine assessment tool to mark findings on individual vertebrae segments. Record left and right side findings for each segment.',
+        tip: 'Spine assessments build a history over time, making it easy to track progress across visits.',
+      },
+      {
+        title: 'Take photos',
+        description: 'Capture photos during the visit using the camera tool or anatomy viewer. These are automatically linked to this visit.',
+      },
+      {
+        title: 'Save the visit',
+        description: 'Click "Save" to finalize the visit record. It will appear in the patient\'s visit history timeline.',
+      },
+    ],
+  },
+  {
+    id: 'invoice-pdf',
+    title: 'Download an Invoice as PDF',
+    description: 'Generate and download a PDF copy of any invoice to share or print.',
+    icon: <FileDown size={24} />,
+    color: 'bg-pink-500',
+    steps: [
+      {
+        title: 'Go to Invoices',
+        description: 'Click "Invoices" in the navigation bar to see your invoice list.',
+      },
+      {
+        title: 'Find the invoice',
+        description: 'Scroll through the list or use filters to find the invoice you want to download.',
+      },
+      {
+        title: 'Click the PDF button',
+        description: 'On the invoice row, click the "PDF" button. This generates a formatted PDF of the invoice with all line items, totals, and your practice details.',
+      },
+      {
+        title: 'Save or print',
+        description: 'The PDF will download to your device. From there you can print it, attach it to an email, or save it for your records.',
+        tip: 'PDFs include your practice logo if you\'ve uploaded one in Account settings.',
+      },
+    ],
+  },
+  {
+    id: 'calendar-export',
+    title: 'Export Appointments to Your Calendar',
+    description: 'Add appointments to Apple Calendar, Google Calendar, or other calendar apps.',
+    icon: <CalendarCheck size={24} />,
+    color: 'bg-lime-500',
+    steps: [
+      {
+        title: 'Go to Scheduler',
+        description: 'Click "Scheduler" in the navigation bar to open your appointment calendar.',
+      },
+      {
+        title: 'Find the appointment',
+        description: 'Navigate to the date and click on the appointment you want to export.',
+      },
+      {
+        title: 'Click the export/calendar button',
+        description: 'Look for the calendar export option on the appointment detail. This generates an ICS file.',
+      },
+      {
+        title: 'Open with your calendar app',
+        description: 'The ICS file automatically opens in your default calendar app (Apple Calendar, Google Calendar, Outlook, etc.) and adds the appointment with all the details.',
+        tip: 'You can also send appointment confirmations to owners, which include a link they can use to add it to their own calendar.',
+      },
+    ],
+  },
+  {
+    id: 'communications-log',
+    title: 'View Your Communications Log',
+    description: 'Track all emails and text messages sent to clients, with delivery status and filters.',
+    icon: <MessageSquare size={24} />,
+    color: 'bg-fuchsia-500',
+    steps: [
+      {
+        title: 'Go to Messages',
+        description: 'Click "Messages" in the navigation bar to open the communications log.',
+      },
+      {
+        title: 'Browse all communications',
+        description: 'The page shows a chronological list of every email and SMS sent through the system, including invoice notifications, appointment reminders, and manual messages.',
+      },
+      {
+        title: 'Filter by channel',
+        description: 'Use the channel filter buttons to show only emails, only SMS messages, or both.',
+      },
+      {
+        title: 'Filter by owner',
+        description: 'Use the owner filter to see all communications sent to a specific client.',
+      },
+      {
+        title: 'Check delivery status',
+        description: 'Each message shows its delivery status — sent, delivered, failed, or bounced. This helps you identify if a client didn\'t receive a message.',
+        tip: 'If a message shows "failed" or "bounced," double-check the owner\'s email address or phone number in their profile.',
+      },
+    ],
+  },
+  {
+    id: 'billing-subscription',
+    title: 'Manage Your Subscription',
+    description: 'View your plan, start or renew your subscription, and manage payment details.',
+    icon: <CreditCard size={24} />,
+    color: 'bg-yellow-500',
+    steps: [
+      {
+        title: 'Go to Account, then Billing',
+        description: 'Click "More" in the nav bar, then "Account." From your account page, navigate to the billing section.',
+      },
+      {
+        title: 'View your current plan',
+        description: 'See your subscription status (active, trialing, past due, or cancelled), what plan you\'re on, and when your next billing date is.',
+      },
+      {
+        title: 'Choose a plan',
+        description: 'If you\'re on a free trial or need to subscribe, choose between the Monthly plan ($49/month) or the Annual plan ($499/year — save 15%).',
+        tip: 'The annual plan saves you about $89 per year compared to monthly billing.',
+      },
+      {
+        title: 'Enter payment details',
+        description: 'Click "Subscribe" on your chosen plan. You\'ll be directed to a secure Stripe checkout to enter your payment information.',
+      },
+      {
+        title: 'Confirmation',
+        description: 'After successful payment, you\'ll see a confirmation and your subscription status will update to "Active." All features are now fully unlocked.',
+      },
+    ],
+  },
+  {
+    id: 'onboarding-setup',
+    title: 'First-Time Setup (Onboarding)',
+    description: 'Set up your practice when you first sign up — name, details, and logo.',
+    icon: <Rocket size={24} />,
+    color: 'bg-gradient-to-r from-blue-500 to-purple-500',
+    steps: [
+      {
+        title: 'Create your account',
+        description: 'Sign up at the Stride website with your email and password. You\'ll be directed to the onboarding wizard automatically.',
+      },
+      {
+        title: 'Step 1 — Your name',
+        description: 'Enter your full name as the practitioner. This is how you\'ll be identified in the system.',
+      },
+      {
+        title: 'Step 2 — Practice details',
+        description: 'Enter your practice name, select which animals you treat (horses, dogs, or both), and add your practice location.',
+      },
+      {
+        title: 'Step 3 — Upload your logo',
+        description: 'Upload your practice logo (PNG, JPG, or SVG). This will appear on invoices, consent forms, intake forms, and emails sent to clients.',
+        tip: 'You can skip the logo for now and add it later from your Account settings.',
+      },
+      {
+        title: 'Start using Stride',
+        description: 'After completing the wizard, you\'ll land on your dashboard. From there, add your first client and patient to get started!',
+      },
+    ],
+  },
 ]
 
 function StepCard({ step, stepNumber, isLast }: { step: Step; stepNumber: number; isLast: boolean }) {
@@ -392,19 +681,23 @@ export default function HelpPage() {
   const categories = [
     {
       label: 'Getting Started',
-      ids: ['add-owner', 'add-patient'],
+      ids: ['onboarding-setup', 'add-owner', 'add-patient'],
+    },
+    {
+      label: 'Patient Care',
+      ids: ['record-visit', 'anatomy-viewer', 'patient-records', 'consent-intake'],
     },
     {
       label: 'Invoicing & Billing',
-      ids: ['create-invoice', 'edit-invoice', 'manage-services'],
+      ids: ['create-invoice', 'edit-invoice', 'invoice-pdf', 'manage-services'],
     },
     {
       label: 'Scheduling & Communication',
-      ids: ['schedule-appointment', 'send-communications'],
+      ids: ['schedule-appointment', 'calendar-export', 'send-communications', 'communications-log'],
     },
     {
       label: 'Insights & Settings',
-      ids: ['view-reports', 'account-settings'],
+      ids: ['view-reports', 'account-settings', 'billing-subscription'],
     },
   ]
 
