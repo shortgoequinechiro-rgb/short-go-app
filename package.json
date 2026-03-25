@@ -9,7 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@ducanh2912/next-pwa": "^10.2.9",
+    "@ducanh2912/next-pwa": "^10.2.6",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
     "@stripe/stripe-js": "^8.11.0",
@@ -17,7 +17,7 @@
     "dexie": "^4.3.0",
     "framer-motion": "^12.38.0",
     "lucide-react": "^0.577.0",
-    "next": "16.1.6",
+    "next": "^16.2.1",
     "openai": "^6.27.0",
     "pdf-lib": "^1.17.1",
     "react": "19.2.3",
@@ -26,6 +26,9 @@
     "stripe": "^20.4.1",
     "three": "^0.183.2",
     "twilio": "^5.12.2"
+  },
+  "overrides": {
+    "serialize-javascript": "^7.0.3"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
