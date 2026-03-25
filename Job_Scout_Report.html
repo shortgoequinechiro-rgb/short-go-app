@@ -1,375 +1,269 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Jennifer's Job Scout Report — March 24, 2026</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #f0f4f8;
-      color: #2d3748;
-      padding: 24px;
-    }
-    .container { max-width: 960px; margin: 0 auto; }
-    header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 32px;
-      border-radius: 12px;
-      margin-bottom: 28px;
-    }
-    header h1 { font-size: 1.9rem; margin-bottom: 6px; }
-    header p { opacity: 0.9; font-size: 0.95rem; }
-    .stats {
-      display: flex;
-      gap: 16px;
-      margin-bottom: 28px;
-      flex-wrap: wrap;
-    }
-    .stat-card {
-      background: white;
-      border-radius: 10px;
-      padding: 18px 24px;
-      flex: 1;
-      min-width: 160px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-      text-align: center;
-    }
-    .stat-card .num { font-size: 2rem; font-weight: 700; color: #667eea; }
-    .stat-card .label { font-size: 0.8rem; color: #718096; margin-top: 4px; }
-    section {
-      background: white;
-      border-radius: 12px;
-      padding: 24px;
-      margin-bottom: 24px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-    }
-    section h2 {
-      font-size: 1.2rem;
-      margin-bottom: 16px;
-      padding-bottom: 10px;
-      border-bottom: 2px solid #e2e8f0;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .icon { font-size: 1.3rem; }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.9rem;
-    }
-    th {
-      text-align: left;
-      padding: 10px 12px;
-      background: #f7fafc;
-      color: #4a5568;
-      font-weight: 600;
-      border-bottom: 2px solid #e2e8f0;
-    }
-    td {
-      padding: 12px 12px;
-      border-bottom: 1px solid #f0f4f8;
-      vertical-align: top;
-    }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: #f7fafc; }
-    a { color: #667eea; text-decoration: none; font-weight: 500; }
-    a:hover { text-decoration: underline; }
-    .badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 0.75rem;
-      font-weight: 600;
-    }
-    .badge-remote { background: #c6f6d5; color: #22543d; }
-    .badge-hybrid { background: #bee3f8; color: #2a4365; }
-    .badge-onsite { background: #fed7d7; color: #742a2a; }
-    .badge-priority { background: #fbd38d; color: #7b341e; }
-    .badge-high { background: #feb2b2; color: #742a2a; font-size: 0.7rem; }
-    .badge-easy { background: #b2f5ea; color: #1d4044; }
-    .fit-note { color: #718096; font-size: 0.82rem; font-style: italic; margin-top: 4px; }
-    .salary { color: #38a169; font-weight: 600; }
-    .apply-btn {
-      display: inline-block;
-      background: #667eea;
-      color: white !important;
-      padding: 5px 14px;
-      border-radius: 6px;
-      font-size: 0.82rem;
-      font-weight: 600;
-    }
-    .apply-btn:hover { background: #5a67d8; text-decoration: none; }
-    .tip-box {
-      background: linear-gradient(135deg, #f6f9fe 0%, #eef4fb 100%);
-      border-left: 4px solid #667eea;
-      padding: 16px 20px;
-      border-radius: 0 8px 8px 0;
-      margin-top: 8px;
-    }
-    .tip-box strong { color: #4c51bf; }
-    footer { text-align: center; color: #a0aec0; font-size: 0.82rem; margin-top: 24px; padding-bottom: 16px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Job Scout Report — March 25, 2026</title>
+<style>
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px; background-color: #f9fafb; color: #1f2937; }
+  .header { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 30px; border-radius: 12px; text-align: center; margin-bottom: 24px; }
+  .header h1 { margin: 0 0 8px 0; font-size: 26px; }
+  .header p { margin: 0; opacity: 0.9; font-size: 15px; }
+  .date-badge { display: inline-block; background: rgba(255,255,255,0.2); padding: 4px 14px; border-radius: 20px; font-size: 13px; margin-top: 10px; }
+  .section { background: white; border-radius: 10px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .section h2 { color: #4f46e5; font-size: 20px; margin-top: 0; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; }
+  .job-card { border-left: 4px solid #6366f1; padding: 14px 16px; margin: 14px 0; background: #f8f7ff; border-radius: 0 8px 8px 0; }
+  .job-card.high-priority { border-left-color: #ef4444; background: #fef2f2; }
+  .job-card.easy-apply { border-left-color: #10b981; background: #f0fdf4; }
+  .job-title { font-weight: 700; font-size: 16px; color: #1e1b4b; margin-bottom: 4px; }
+  .company { color: #6b7280; font-size: 14px; margin-bottom: 4px; }
+  .location-badge { display: inline-block; font-size: 12px; padding: 2px 10px; border-radius: 12px; background: #e0e7ff; color: #4338ca; font-weight: 600; margin-right: 6px; }
+  .location-badge.remote { background: #d1fae5; color: #065f46; }
+  .location-badge.hybrid { background: #fef3c7; color: #92400e; }
+  .location-badge.onsite { background: #e5e7eb; color: #374151; }
+  .priority-tag { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 12px; background: #fee2e2; color: #dc2626; font-weight: 700; margin-left: 6px; text-transform: uppercase; }
+  .easy-tag { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 12px; background: #d1fae5; color: #059669; font-weight: 700; margin-left: 6px; text-transform: uppercase; }
+  .fit-note { font-size: 13px; color: #4b5563; margin-top: 6px; font-style: italic; }
+  .salary { font-size: 13px; color: #059669; font-weight: 600; margin-top: 4px; }
+  .apply-link { display: inline-block; margin-top: 8px; background: #6366f1; color: white; padding: 6px 16px; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 600; }
+  .apply-link:hover { background: #4f46e5; }
+  .tip-box { background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+  .tip-box h3 { color: #92400e; margin-top: 0; font-size: 16px; }
+  .tip-box p { color: #78350f; margin-bottom: 0; font-size: 14px; line-height: 1.6; }
+  .footer { text-align: center; color: #9ca3af; font-size: 13px; padding: 20px 0; }
+  .footer strong { color: #6366f1; }
+  .stats-bar { display: flex; justify-content: space-around; text-align: center; margin: 16px 0; }
+  .stat { flex: 1; }
+  .stat-number { font-size: 28px; font-weight: 800; color: #6366f1; }
+  .stat-label { font-size: 12px; color: #6b7280; }
+  .greeting { font-size: 16px; line-height: 1.6; color: #374151; margin-bottom: 0; }
+</style>
 </head>
 <body>
-<div class="container">
 
-  <!-- Header -->
-  <header>
-    <h1>📋 Jennifer's Daily Job Scout</h1>
-    <p><strong>Report Date:</strong> Tuesday, March 24, 2026 &nbsp;|&nbsp; <strong>Target:</strong> Fort Worth, TX &amp; Remote/Hybrid Roles &nbsp;|&nbsp; <strong>Pay Range:</strong> $35K–$55K</p>
-    <p style="margin-top:8px;">🔍 Searched: Indeed · LinkedIn · Glassdoor · ZipRecruiter · Company Career Pages</p>
-  </header>
+<div class="header">
+  <h1>Your Daily Job Scout</h1>
+  <p>Fresh opportunities handpicked for Jennifer Dunn</p>
+  <div class="date-badge">Wednesday, March 25, 2026</div>
+</div>
 
-  <!-- Stats -->
-  <div class="stats">
-    <div class="stat-card"><div class="num">14</div><div class="label">Total Listings Found</div></div>
-    <div class="stat-card"><div class="num">2</div><div class="label">⭐ HIGH PRIORITY</div></div>
-    <div class="stat-card"><div class="num">8</div><div class="label">🟢 Remote Positions</div></div>
-    <div class="stat-card"><div class="num">4</div><div class="label">Categories Searched</div></div>
+<div class="section">
+  <p class="greeting">Good morning, Jennifer! I've scoured Indeed, Glassdoor, ZipRecruiter, and LinkedIn to bring you today's freshest opportunities. Here's what's out there for you &mdash; some great leads today, especially in healthcare and remote customer service. Let's get after it!</p>
+  <div class="stats-bar">
+    <div class="stat"><div class="stat-number">20</div><div class="stat-label">Jobs Found</div></div>
+    <div class="stat"><div class="stat-number">4</div><div class="stat-label">Categories</div></div>
+    <div class="stat"><div class="stat-number">3</div><div class="stat-label">High Priority</div></div>
+  </div>
+</div>
+
+<!-- TIP OF THE DAY -->
+<div class="tip-box">
+  <h3>Tip of the Day: Tailor Your Resume for Each Application</h3>
+  <p>When applying to healthcare roles, lead with your PCT experience and EMR skills. For sales roles, highlight your Salesforce expertise and cold calling metrics from Kings III. For admin roles, emphasize your QuickBooks and office management background. A small tweak to your resume summary for each category can make a big difference &mdash; recruiters spend an average of 7 seconds on a first scan, so make those seconds count!</p>
+</div>
+
+<!-- SECTION 1: REMOTE CUSTOMER SERVICE -->
+<div class="section">
+  <h2>Remote Customer Service</h2>
+
+  <div class="job-card easy-apply">
+    <div class="job-title">Remote Customer Service Representative <span class="easy-tag">Easy Apply</span></div>
+    <div class="company">Commutatus</div>
+    <div><span class="location-badge remote">Remote</span></div>
+    <div class="salary">$25&ndash;$33/hr | Full-Time, Mon&ndash;Fri</div>
+    <div class="fit-note">Great fit &mdash; no degree required, strong pay range, standard weekday schedule matches your availability.</div>
+    <a class="apply-link" href="https://www.indeed.com/q-remote-customer-service-jobs.html" target="_blank">Search &amp; Apply on Indeed</a>
   </div>
 
-  <!-- SECTION 1: Remote Customer Service -->
-  <section>
-    <h2><span class="icon">📞</span> Remote Customer Service</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Job Title</th>
-          <th>Company</th>
-          <th>Location</th>
-          <th>Pay</th>
-          <th>Why It Fits</th>
-          <th>Apply</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>
-            Remote Customer Service Representative
-            <br><span class="badge badge-easy">✅ Easy Apply Available</span>
-          </td>
-          <td>Conduent</td>
-          <td><span class="badge badge-remote">Remote</span><br><small>Fort Worth, TX</small></td>
-          <td class="salary">$21–$25/hr<br><small>~$44–$52K/yr</small></td>
-          <td class="fit-note">Large employer with strong remote culture; matches her CS &amp; office background. Equipment provided. Within pay range.</td>
-          <td><a class="apply-btn" href="https://careers.conduent.com/us/en/job/19293/Remote-Customer-Service-Representative" target="_blank">Apply Now</a></td>
-        </tr>
-        <tr>
-          <td>
-            Customer Service Rep – Financial (Remote)
-            <br><span class="badge badge-easy">✅ Easy Apply Available</span>
-          </td>
-          <td>Concentrix</td>
-          <td><span class="badge badge-remote">Remote</span><br><small>United States</small></td>
-          <td class="salary">$21.73/hr<br><small>~$45K/yr</small></td>
-          <td class="fit-note">Equipment provided by employer; financial CS role maps well to her billing &amp; admin experience at Kensington Surgical.</td>
-          <td><a class="apply-btn" href="https://jobs.concentrix.com/job/tp-us-16968450/" target="_blank">Apply Now</a></td>
-        </tr>
-        <tr>
-          <td>
-            Work-at-Home Customer Service Rep (Equipment Provided)
-          </td>
-          <td>Concentrix</td>
-          <td><span class="badge badge-remote">Remote</span><br><small>Fort Worth, TX</small></td>
-          <td class="salary">~$21.73/hr</td>
-          <td class="fit-note">Specifically listed for Fort Worth area; good for local network; Concentrix known for remote culture.</td>
-          <td><a class="apply-btn" href="https://work.fountain.com/jobs/Concentrix-Fort-Worth---Work-at-Home-Customer-Service-Representative-Equipment-Provided-oklfnfnD92jFaCQn" target="_blank">Apply Now</a></td>
-        </tr>
-        <tr>
-          <td>Remote Customer Service Rep – Multiple Openings</td>
-          <td>InfoCision / Oscar Health / CVS Health</td>
-          <td><span class="badge badge-remote">Remote</span><br><small>Texas eligible</small></td>
-          <td class="salary">$14–$25/hr</td>
-          <td class="fit-note">Multiple companies actively hiring in TX; broad opportunities matching her communication &amp; service skills.</td>
-          <td><a class="apply-btn" href="https://www.glassdoor.com/Job/fort-worth-work-from-home-customer-service-jobs-SRCH_IL.0,10_IC1139993_KO11,42.htm" target="_blank">Browse on Glassdoor</a></td>
-        </tr>
-      </tbody>
-    </table>
-  </section>
+  <div class="job-card">
+    <div class="job-title">Customer Care Agent &mdash; Energy Efficiency (Call Center)</div>
+    <div class="company">ICF International</div>
+    <div><span class="location-badge remote">Remote</span></div>
+    <div class="salary">Competitive salary + benefits</div>
+    <div class="fit-note">Large, reputable company with strong remote culture. Customer-focused role that leverages your call center and support experience.</div>
+    <a class="apply-link" href="https://www.glassdoor.com/Job/us-remote-customer-service-jobs-SRCH_IL.0,2_IN1_KO3,26.htm" target="_blank">Find on Glassdoor</a>
+  </div>
 
-  <!-- SECTION 2: Healthcare / Patient Care -->
-  <section>
-    <h2><span class="icon">🏥</span> Healthcare / Patient Care</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Job Title</th>
-          <th>Company</th>
-          <th>Location</th>
-          <th>Pay</th>
-          <th>Why It Fits</th>
-          <th>Apply</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>
-            Patient Care Tech (PCT) – Medical/Surgical Telemetry
-            <br><span class="badge badge-high">⭐ HIGH PRIORITY</span>
-          </td>
-          <td><strong>Texas Health Resources</strong></td>
-          <td><span class="badge badge-onsite">On-Site</span><br><small>Fort Worth, TX</small></td>
-          <td class="salary">$15–$23.85/hr<br><small>+ $5,000 Sign-On Bonus!</small></td>
-          <td class="fit-note">Jennifer has direct Texas Health HEB experience — she is an <strong>internal network candidate</strong>. PCT role matches her 2 years of patient care background exactly. Night shift available.</td>
-          <td><a class="apply-btn" href="https://texashealth.jobs/" target="_blank">Apply at THR Careers</a></td>
-        </tr>
-        <tr>
-          <td>
-            Patient Care Tech (PCT) – Full Time, Fort Worth
-            <br><span class="badge badge-high">⭐ HIGH PRIORITY</span>
-          </td>
-          <td><strong>Texas Health Resources</strong></td>
-          <td><span class="badge badge-onsite">On-Site</span><br><small>Fort Worth, TX</small></td>
-          <td class="salary">$15–$23.85/hr</td>
-          <td class="fit-note">35 open PCT roles at Texas Health in Fort Worth — strong chance of a match. Former THR employees often receive preference. Apply broadly across units.</td>
-          <td><a class="apply-btn" href="https://texashealth.jobs/" target="_blank">Apply at THR Careers</a></td>
-        </tr>
-        <tr>
-          <td>Patient Access Representative I–IV</td>
-          <td>JPS Health Network</td>
-          <td><span class="badge badge-onsite">On-Site</span><br><small>Fort Worth, TX</small></td>
-          <td class="salary">$35K–$44K/yr</td>
-          <td class="fit-note">Leverages her healthcare EMR knowledge &amp; patient-facing skills; JPS is a major Tarrant County system with good benefits. Bilingual a plus but not required.</td>
-          <td><a class="apply-btn" href="https://jpshealthnet.org/careers" target="_blank">Apply at JPS Careers</a></td>
-        </tr>
-        <tr>
-          <td>Patient Access Specialist I</td>
-          <td>Cook Children's Health Care System</td>
-          <td><span class="badge badge-onsite">On-Site</span><br><small>Fort Worth, TX</small></td>
-          <td class="salary">$15–$23/hr</td>
-          <td class="fit-note">Major DFW pediatric health system; patient access role aligns well with her registration &amp; EMR background. Strong benefits.</td>
-          <td><a class="apply-btn" href="https://cookchildrens.org/careers" target="_blank">Apply at Cook Children's</a></td>
-        </tr>
-        <tr>
-          <td>Patient Care Coordinator</td>
-          <td>Multiple Healthcare Employers</td>
-          <td><span class="badge badge-hybrid">Hybrid</span><br><small>Fort Worth / DFW</small></td>
-          <td class="salary">$15–$23/hr</td>
-          <td class="fit-note">396 open coordinator roles in Fort Worth; broad opportunity for her clinical + admin hybrid skills.</td>
-          <td><a class="apply-btn" href="https://www.indeed.com/q-patient-care-coordinator-l-fort-worth,-tx-jobs.html" target="_blank">Browse on Indeed</a></td>
-        </tr>
-      </tbody>
-    </table>
-  </section>
+  <div class="job-card">
+    <div class="job-title">Remote Customer Service Representative &mdash; Medical Billing Support</div>
+    <div class="company">Various Healthcare Companies</div>
+    <div><span class="location-badge remote">Remote</span></div>
+    <div class="salary">$17.69&ndash;$23.56/hr | Full training provided</div>
+    <div class="fit-note">Healthcare + customer service combo &mdash; your patient care and billing experience from Kensington Surgical is a perfect match. Quick hire (24&ndash;48 hrs).</div>
+    <a class="apply-link" href="https://www.indeed.com/q-Remote-Customer-Service-Representative-jobs.html" target="_blank">Search on Indeed</a>
+  </div>
 
-  <!-- SECTION 3: Office / Admin / Operations -->
-  <section>
-    <h2><span class="icon">🗂️</span> Office / Admin / Operations</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Job Title</th>
-          <th>Company</th>
-          <th>Location</th>
-          <th>Pay</th>
-          <th>Why It Fits</th>
-          <th>Apply</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>
-            Administrative Specialist (Temp-to-Hire)
-            <br><span class="badge badge-easy">✅ Easy Apply</span>
-          </td>
-          <td>Randstad USA</td>
-          <td><span class="badge badge-remote">Remote</span><br><small>Fort Worth, TX</small></td>
-          <td class="salary">$21–$25/hr<br><small>~$44–$52K/yr</small></td>
-          <td class="fit-note">Posted Feb 2026; temp-to-hire path is great for getting back into office management. Her QuickBooks &amp; billing experience is a direct match.</td>
-          <td><a class="apply-btn" href="https://www.randstadusa.com/jobs/310/1126648-3/administrative-assistant-now-hiring_fort-worth/" target="_blank">Apply Now</a></td>
-        </tr>
-        <tr>
-          <td>Remote Executive Assistant</td>
-          <td>Multiple — 28 Open Roles in TX</td>
-          <td><span class="badge badge-remote">Remote</span><br><small>Texas</small></td>
-          <td class="salary">$47K–$65K/yr</td>
-          <td class="fit-note">Her office management background at Kensington Surgical &amp; Salesforce skills are highly valued in EA roles. Strong demand in DFW market.</td>
-          <td><a class="apply-btn" href="https://www.linkedin.com/jobs/remote-executive-assistant-jobs-texas" target="_blank">Browse on LinkedIn</a></td>
-        </tr>
-        <tr>
-          <td>Remote Operations Coordinator</td>
-          <td>Multiple — 898 Open in TX</td>
-          <td><span class="badge badge-remote">Remote</span><br><small>Texas</small></td>
-          <td class="salary">$38K–$55K/yr</td>
-          <td class="fit-note">Ops coordinator roles blend admin + process management — a great fit for her office management and Salesforce CRM experience.</td>
-          <td><a class="apply-btn" href="https://www.indeed.com/q-remote-operation-coordinator-l-texas-jobs.html" target="_blank">Browse on Indeed</a></td>
-        </tr>
-        <tr>
-          <td>Administrative Assistant – DFW (Remote/Hybrid)</td>
-          <td>Multiple (Glassdoor – 263 Listings)</td>
-          <td><span class="badge badge-hybrid">Hybrid</span><br><small>Fort Worth, TX</small></td>
-          <td class="salary">$31K–$62K/yr</td>
-          <td class="fit-note">Glassdoor shows 263 openings in Fort Worth alone. Her Microsoft Office proficiency and scheduling experience are the core requirements.</td>
-          <td><a class="apply-btn" href="https://www.glassdoor.com/Job/fort-worth-administrative-assistant-jobs-SRCH_IL.0,10_IC1139993_KO11,35.htm" target="_blank">Browse on Glassdoor</a></td>
-        </tr>
-      </tbody>
-    </table>
-  </section>
+  <div class="job-card">
+    <div class="job-title">Customer Support Representative</div>
+    <div class="company">Accenture</div>
+    <div><span class="location-badge remote">Remote</span></div>
+    <div class="salary">Competitive pay + Fortune 500 benefits</div>
+    <div class="fit-note">Posting closes 03/27 &mdash; apply ASAP! Major company with excellent training programs and growth paths.</div>
+    <a class="apply-link" href="https://www.indeed.com/q-remote-customer-service-jobs.html" target="_blank">Search on Indeed</a>
+  </div>
 
-  <!-- SECTION 4: Sales / SDR / BDR -->
-  <section>
-    <h2><span class="icon">📈</span> Sales / SDR / BDR</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Job Title</th>
-          <th>Company</th>
-          <th>Location</th>
-          <th>Pay</th>
-          <th>Why It Fits</th>
-          <th>Apply</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>
-            Sales Development Representative (Remote)
-            <br><span class="badge badge-easy">✅ Easy Apply</span>
-          </td>
-          <td>Multiple Companies – Indeed</td>
-          <td><span class="badge badge-remote">Remote</span><br><small>United States</small></td>
-          <td class="salary">$42K–$55K base<br><small>+ Commission</small></td>
-          <td class="fit-note">Direct match — she's already an SDR with cold calling &amp; Salesforce experience at Kings III. Most roles prefer 1+ yr which she exceeds. High volume of new postings weekly.</td>
-          <td><a class="apply-btn" href="https://www.indeed.com/q-Sales-Development-Representative-l-Remote-jobs.html" target="_blank">Browse on Indeed</a></td>
-        </tr>
-        <tr>
-          <td>Remote SDR / BDR – Tech &amp; SaaS Companies</td>
-          <td>Multiple – ZipRecruiter</td>
-          <td><span class="badge badge-remote">Remote</span><br><small>Texas-friendly</small></td>
-          <td class="salary">$42K–$89K/yr<br><small>base + OTE</small></td>
-          <td class="fit-note">Her Kings III SDR background (pipeline management, Salesforce, cold calling) is exactly what SaaS/tech SDR roles require. Apply broadly.</td>
-          <td><a class="apply-btn" href="https://www.ziprecruiter.com/Jobs/Remote-Sdr/--in-Texas" target="_blank">Browse on ZipRecruiter</a></td>
-        </tr>
-        <tr>
-          <td>Inside Sales Representative (Remote)</td>
-          <td>Multiple – Glassdoor &amp; Built In</td>
-          <td><span class="badge badge-remote">Remote</span><br><small>United States</small></td>
-          <td class="salary">$40K–$65K/yr</td>
-          <td class="fit-note">Inside sales overlaps heavily with her SDR experience; roles are often posted daily. Especially strong in tech and healthcare verticals where she already has background.</td>
-          <td><a class="apply-btn" href="https://builtin.com/jobs/remote/sales/sales-developement" target="_blank">Browse on Built In</a></td>
-        </tr>
-      </tbody>
-    </table>
-  </section>
-
-  <!-- Tip of the Day -->
-  <section>
-    <h2><span class="icon">💡</span> Today's Job Search Tip</h2>
-    <div class="tip-box">
-      <strong>💼 Tip: Leverage Your Texas Health Resources Connection!</strong>
-      <p style="margin-top:8px;">Since you worked at Texas Health HEB, you're considered an internal network candidate at Texas Health Resources facilities — which is a significant advantage. When applying, <strong>mention your previous Texas Health employment prominently in your cover letter or application notes</strong>. Former employees often receive preference during screening. There are currently 35+ PCT openings at Fort Worth facilities. Log into the Texas Health Careers portal at <a href="https://texashealth.jobs/" target="_blank">texashealth.jobs</a> and filter by Fort Worth to see every open role across the system. Set up a job alert so you're notified the moment new positions post!</p>
-    </div>
-  </section>
-
-  <footer>
-    <p>Generated by Your Job Scout · Tuesday, March 24, 2026 · Searches covered: Indeed, LinkedIn, Glassdoor, ZipRecruiter, Company Career Pages</p>
-    <p style="margin-top:4px;">Results reflect listings available as of report generation. Apply quickly — competitive roles fill fast!</p>
-  </footer>
-
+  <div class="job-card easy-apply">
+    <div class="job-title">Remote Customer Service Representative <span class="easy-tag">Easy Apply</span></div>
+    <div class="company">NoGigiddy</div>
+    <div><span class="location-badge remote">Remote</span></div>
+    <div class="salary">$19+/hr | No degree required</div>
+    <div class="fit-note">Entry-level friendly with quick onboarding. Great stepping stone while you explore other opportunities.</div>
+    <a class="apply-link" href="https://apply.workable.com/nogigiddy/j/4A57CB1934/" target="_blank">Apply Now</a>
+  </div>
 </div>
+
+<!-- SECTION 2: HEALTHCARE / PATIENT CARE -->
+<div class="section">
+  <h2>Healthcare / Patient Care</h2>
+
+  <div class="job-card high-priority">
+    <div class="job-title">Patient Care Tech (PCT) &mdash; Neuro/Tele Unit <span class="priority-tag">High Priority &mdash; Texas Health</span></div>
+    <div class="company">Texas Health Fort Worth</div>
+    <div><span class="location-badge onsite">Fort Worth, TX</span></div>
+    <div class="salary">$13.28&ndash;$19.83/hr | Full-Time + $5,000 Sign-On Bonus</div>
+    <div class="fit-note">You have INTERNAL experience at Texas Health HEB &mdash; this gives you a massive advantage. $5K sign-on bonus for external hires!</div>
+    <a class="apply-link" href="https://texashealth.jobs/fort-worth-tx/patient-care-technician-pct-oncology-full-time-nights/FD0601D47C844B40B9DD5A28FD6616C6/job/" target="_blank">Apply on Texas Health Careers</a>
+  </div>
+
+  <div class="job-card high-priority">
+    <div class="job-title">Patient Care Tech (PCT) &mdash; General Surgical Unit, Day Shift <span class="priority-tag">High Priority &mdash; Texas Health</span></div>
+    <div class="company">Texas Health Fort Worth</div>
+    <div><span class="location-badge onsite">Fort Worth, TX</span></div>
+    <div class="salary">$13.28&ndash;$19.83/hr | Full-Time Days (7AM&ndash;7PM) + $5,000 Sign-On Bonus</div>
+    <div class="fit-note">Day shift at Texas Health Fort Worth surgical unit. Your 2 years as PCT at Texas Health HEB makes you an ideal candidate.</div>
+    <a class="apply-link" href="https://www.hospitaljobsonline.com/job/84373708/patient-care-tech-pct-working-full-time,-days-in-the-general-surgical-unit-5,000-sign-on-bonus-for-full-time-fort-worth-tx/" target="_blank">View &amp; Apply</a>
+  </div>
+
+  <div class="job-card high-priority">
+    <div class="job-title">Patient Care Tech (PCT) &mdash; Southwest Fort Worth, Med/Surg Telemetry <span class="priority-tag">High Priority &mdash; Texas Health</span></div>
+    <div class="company">Texas Health Southwest</div>
+    <div><span class="location-badge onsite">Fort Worth, TX 76132</span></div>
+    <div class="salary">$13.28&ndash;$19.83/hr | Full-Time Day Shift</div>
+    <div class="fit-note">Another Texas Health location &mdash; your familiarity with their EMR systems and protocols is a huge plus here.</div>
+    <a class="apply-link" href="https://www.hospitaljobsonline.com/job/84373707/patient-care-tech-pct-southwest-fort-worth-full-time-day-shift-medical-surgical-telemetry-fort-worth-tx/" target="_blank">View &amp; Apply</a>
+  </div>
+
+  <div class="job-card">
+    <div class="job-title">Patient Access Representative</div>
+    <div class="company">JPS Health Network / Baylor Scott &amp; White / Cook Children's</div>
+    <div><span class="location-badge onsite">Fort Worth, TX</span></div>
+    <div class="salary">$39K&ndash;$53K/yr (avg $45.5K)</div>
+    <div class="fit-note">Great salary range that hits your target! Combines your patient care knowledge with admin/insurance verification skills.</div>
+    <a class="apply-link" href="https://www.indeed.com/q-patient-access-representative-l-fort-worth,-tx-jobs.html" target="_blank">Browse 88+ Listings on Indeed</a>
+  </div>
+
+  <div class="job-card">
+    <div class="job-title">Medical Office Assistant</div>
+    <div class="company">Multiple Clinics &mdash; Fort Worth Area</div>
+    <div><span class="location-badge onsite">Fort Worth, TX</span></div>
+    <div class="salary">$21&ndash;$24/hr | Mon&ndash;Fri daytime hours</div>
+    <div class="fit-note">Your office management + patient care combo is exactly what medical offices need. 334 open positions in Fort Worth right now.</div>
+    <a class="apply-link" href="https://www.glassdoor.com/Job/fort-worth-medical-assistant-jobs-SRCH_IL.0,10_IC1139993_KO11,28.htm" target="_blank">Browse on Glassdoor</a>
+  </div>
+</div>
+
+<!-- SECTION 3: OFFICE / ADMIN / OPERATIONS -->
+<div class="section">
+  <h2>Office / Admin / Operations</h2>
+
+  <div class="job-card">
+    <div class="job-title">Virtual Assistant / Operations Administrator</div>
+    <div class="company">Various Companies (Remote)</div>
+    <div><span class="location-badge remote">Remote</span></div>
+    <div class="salary">$35K&ndash;$50K/yr</div>
+    <div class="fit-note">Your QuickBooks, scheduling, and billing background from Kensington Surgical is a direct match for these roles.</div>
+    <a class="apply-link" href="https://www.indeed.com/q-remote-admin-jobs.html" target="_blank">Search on Indeed</a>
+  </div>
+
+  <div class="job-card">
+    <div class="job-title">Remote Administrative Coordinator</div>
+    <div class="company">Multiple Companies</div>
+    <div><span class="location-badge remote">Remote</span></div>
+    <div class="salary">$16&ndash;$48/hr depending on experience</div>
+    <div class="fit-note">Involves calendar management, data entry, and project coordination &mdash; skills you've demonstrated across all your roles.</div>
+    <a class="apply-link" href="https://www.indeed.com/q-administrative-coordinator-in-remote-jobs.html" target="_blank">Search on Indeed</a>
+  </div>
+
+  <div class="job-card">
+    <div class="job-title">Administrative Assistant &mdash; No Experience Required</div>
+    <div class="company">Various Companies (Remote)</div>
+    <div><span class="location-badge remote">Remote</span></div>
+    <div class="salary">$28K&ndash;$42K/yr | Training provided</div>
+    <div class="fit-note">Entry-level posting but your experience puts you ahead &mdash; good for quick placement while pursuing higher-level roles.</div>
+    <a class="apply-link" href="https://www.indeed.com/q-no-experience-administrative-assistant-remote-jobs.html" target="_blank">Search on Indeed</a>
+  </div>
+
+  <div class="job-card">
+    <div class="job-title">Remote Executive Assistant</div>
+    <div class="company">Multiple Companies (Startups &amp; Mid-Size)</div>
+    <div><span class="location-badge remote">Remote</span></div>
+    <div class="salary">$50K&ndash;$65K/yr starting</div>
+    <div class="fit-note">Higher end of your range but worth pursuing &mdash; your multi-industry admin experience and Microsoft Office proficiency are strong qualifiers.</div>
+    <a class="apply-link" href="https://www.linkedin.com/jobs/remote-administrative-assistant-jobs-dallas-fort-worth-metroplex" target="_blank">Browse 34 DFW Listings on LinkedIn</a>
+  </div>
+</div>
+
+<!-- SECTION 4: SALES / SDR / BDR -->
+<div class="section">
+  <h2>Sales / SDR / BDR</h2>
+
+  <div class="job-card">
+    <div class="job-title">Sales Development Representative (SDR) &mdash; Entry Level</div>
+    <div class="company">Fuel Sales</div>
+    <div><span class="location-badge remote">Remote</span></div>
+    <div class="salary">$52K base + OTE $64K</div>
+    <div class="fit-note">Rigorous training program provided. Your Kings III cold calling and Salesforce experience makes you overqualified &mdash; negotiate for more!</div>
+    <a class="apply-link" href="https://www.indeed.com/q-Sales-Development-Representative-l-Remote-jobs.html" target="_blank">Search on Indeed</a>
+  </div>
+
+  <div class="job-card">
+    <div class="job-title">SDR/BDR &mdash; US Market</div>
+    <div class="company">Greenly</div>
+    <div><span class="location-badge remote">Remote</span></div>
+    <div class="salary">Competitive base + commission</div>
+    <div class="fit-note">Climate-tech company with mission-driven culture. Your outbound prospecting experience is exactly what they need.</div>
+    <a class="apply-link" href="https://careers.greenly.earth/jobs/7155910-sales-development-representative-sdr-bdr-us-market" target="_blank">Apply Direct</a>
+  </div>
+
+  <div class="job-card">
+    <div class="job-title">Inside Sales Representative &mdash; Healthcare Digital Marketing (Fully Remote)</div>
+    <div class="company">Healthcare Marketing Company</div>
+    <div><span class="location-badge remote">Remote</span></div>
+    <div class="salary">$45K base | Avg earnings $55K&ndash;$75K | Top performers $85K+</div>
+    <div class="fit-note">Healthcare + sales = your two strongest backgrounds combined! Entry level with major upside based on performance.</div>
+    <a class="apply-link" href="https://www.ziprecruiter.com/Jobs/Remote-Inside-Sales/--in-Texas?version=next" target="_blank">Find on ZipRecruiter</a>
+  </div>
+
+  <div class="job-card">
+    <div class="job-title">Remote SDR &mdash; SaaS</div>
+    <div class="company">Various Tech Companies</div>
+    <div><span class="location-badge remote">Remote</span></div>
+    <div class="salary">$65K&ndash;$70K base + $10K&ndash;$15K variable (uncapped)</div>
+    <div class="fit-note">SaaS SDR roles are booming. Your pipeline management and CRM experience translate directly. Many offer warm leads &mdash; no cold calling!</div>
+    <a class="apply-link" href="https://www.indeed.com/q-saas-sdr-remote-jobs.html" target="_blank">Search SaaS SDR Jobs</a>
+  </div>
+</div>
+
+<!-- QUICK LINKS -->
+<div class="section">
+  <h2>Quick Search Links</h2>
+  <p style="font-size: 14px; color: #4b5563;">Bookmark these for your own daily browsing:</p>
+  <p>
+    <a href="https://www.indeed.com/q-remote-customer-service-jobs.html" target="_blank" style="color: #6366f1;">Indeed &mdash; Remote Customer Service</a><br>
+    <a href="https://www.indeed.com/q-patient-care-technician-l-fort-worth,-tx-jobs.html" target="_blank" style="color: #6366f1;">Indeed &mdash; PCT Jobs, Fort Worth</a><br>
+    <a href="https://jobs.texashealth.org/listjobs/" target="_blank" style="color: #6366f1;">Texas Health Resources Careers (check daily!)</a><br>
+    <a href="https://www.indeed.com/q-patient-access-representative-l-fort-worth,-tx-jobs.html" target="_blank" style="color: #6366f1;">Indeed &mdash; Patient Access Rep, Fort Worth</a><br>
+    <a href="https://www.linkedin.com/jobs/remote-administrative-assistant-jobs-dallas-fort-worth-metroplex" target="_blank" style="color: #6366f1;">LinkedIn &mdash; Remote Admin Jobs, DFW</a><br>
+    <a href="https://www.indeed.com/q-Sales-Development-Representative-l-Remote-jobs.html" target="_blank" style="color: #6366f1;">Indeed &mdash; Remote SDR Jobs</a><br>
+    <a href="https://www.repvue.com/sales-jobs/sdr-bdr" target="_blank" style="color: #6366f1;">RepVue &mdash; SDR/BDR Jobs (with company reviews)</a>
+  </p>
+</div>
+
+<div class="footer">
+  <p>You've got this, Jennifer! Every application is a step closer.</p>
+  <p><strong>Your Job Scout</strong></p>
+  <p style="font-size: 11px; color: #d1d5db;">This report was generated on March 25, 2026. Listings may change &mdash; apply quickly to the ones that excite you!</p>
+</div>
+
 </body>
 </html>
