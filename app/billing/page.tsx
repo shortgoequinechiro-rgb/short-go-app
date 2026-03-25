@@ -95,7 +95,7 @@ function BillingContent() {
         <div className="w-full max-w-md rounded-3xl bg-white/95 p-10 text-center shadow-2xl backdrop-blur-sm">
           <div className="mb-4 text-5xl">🎉</div>
           <h2 className="text-2xl font-bold text-slate-900">You&apos;re all set!</h2>
-          <p className="mt-3 text-slate-500">Your subscription is active. Welcome to STRIDE.</p>
+          <p className="mt-3 text-slate-500">Your subscription is active. Welcome to Chiro Stride.</p>
           <Link
             href="/dashboard"
             className="mt-6 inline-block rounded-xl bg-slate-900 px-8 py-3 text-sm font-semibold text-white transition hover:bg-[#162d55]"
@@ -117,7 +117,7 @@ function BillingContent() {
 
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold tracking-widest text-white">STRIDE</h1>
+          <h1 className="text-3xl font-bold tracking-widest text-white">CHIRO STRIDE</h1>
           <p className="mt-1 text-sm text-blue-300 uppercase tracking-widest">
             Chiropractic Practice Management
           </p>
@@ -127,7 +127,7 @@ function BillingContent() {
         {trialExpired && (
           <div className="mb-6 rounded-2xl bg-amber-500/10 border border-amber-500/30 px-5 py-4 text-center">
             <p className="text-amber-200 font-semibold">Your 7-day free trial has ended.</p>
-            <p className="text-amber-200/70 text-sm mt-1">Choose a plan below to continue using STRIDE.</p>
+            <p className="text-amber-200/70 text-sm mt-1">Choose a plan below to continue using Chiro Stride.</p>
           </div>
         )}
         {isCanceled && (
@@ -222,7 +222,7 @@ function BillingContent() {
 
         {/* What's included */}
         <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6">
-          <p className="text-xs font-semibold uppercase tracking-wider text-blue-400 mb-4">Everything in STRIDE Pro</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-blue-400 mb-4">Everything in Chiro Stride Pro</p>
           <div className="grid grid-cols-2 gap-2 text-sm text-blue-200/80">
             <div>&#10003; Unlimited patients</div>
             <div>&#10003; SOAP notes & visits</div>

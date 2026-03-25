@@ -45,7 +45,7 @@ export default function MarketingNav() {
             <div className="relative">
               <Image
                 src="/stride-logo-gold.png"
-                alt="Stride"
+                alt="Chiro Stride"
                 width={40}
                 height={40}
                 className="transition-transform duration-300 group-hover:scale-110"
@@ -53,7 +53,7 @@ export default function MarketingNav() {
               <div className="absolute inset-0 bg-[#c9a227]/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
             <span className="text-xl font-bold tracking-tight">
-              <span className="text-white">STRIDE</span>
+              <span className="text-white">CHIRO STRIDE</span>
               <span className="text-[#c9a227]/60 text-xs ml-2 tracking-widest uppercase hidden sm:inline">
                 Equine & Canine Chiro
               </span>

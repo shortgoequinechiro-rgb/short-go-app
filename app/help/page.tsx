@@ -52,7 +52,7 @@ const guides: Guide[] = [
     steps: [
       {
         title: 'Go to your Dashboard',
-        description: 'From the top navigation bar, click "STRIDE" or "Dashboard" to go to your main dashboard.',
+        description: 'From the top navigation bar, click "CHIRO STRIDE" or "Dashboard" to go to your main dashboard.',
       },
       {
         title: 'Click "New Owner"',
@@ -568,7 +568,7 @@ const guides: Guide[] = [
     steps: [
       {
         title: 'Create your account',
-        description: 'Sign up at the Stride website with your email and password. You\'ll be directed to the onboarding wizard automatically.',
+        description: 'Sign up at the Chiro Stride website with your email and password. You\'ll be directed to the onboarding wizard automatically.',
       },
       {
         title: 'Step 1 — Your name',
@@ -584,7 +584,7 @@ const guides: Guide[] = [
         tip: 'You can skip the logo for now and add it later from your Account settings.',
       },
       {
-        title: 'Start using Stride',
+        title: 'Start using Chiro Stride',
         description: 'After completing the wizard, you\'ll land on your dashboard. From there, add your first client and patient to get started!',
       },
     ],
@@ -711,7 +711,7 @@ export default function HelpPage() {
           </div>
           <h1 className="text-3xl font-bold text-slate-900">How-To Guides</h1>
           <p className="text-slate-600 mt-2 max-w-lg mx-auto">
-            Step-by-step instructions for everything you can do in Stride. Click any guide to expand it.
+            Step-by-step instructions for everything you can do in Chiro Stride. Click any guide to expand it.
           </p>
         </div>
 

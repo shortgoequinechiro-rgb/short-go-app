@@ -65,7 +65,7 @@ export default function LoginPage() {
           {/* Brand */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold tracking-widest text-slate-900">
-              STRIDE
+              CHIRO STRIDE
             </h1>
             <p className="mt-1 text-sm font-medium text-slate-500 uppercase tracking-widest">
               Equine &amp; Canine Chiropractic

@@ -45,8 +45,8 @@ export default function MarketingFooter() {
           {/* Brand column */}
           <div className="lg:col-span-2">
             <Link href="/" className="flex items-center gap-3 mb-5">
-              <Image src="/stride-logo-gold.png" alt="Stride" width={36} height={36} />
-              <span className="text-lg font-bold tracking-tight text-white">STRIDE</span>
+              <Image src="/stride-logo-gold.png" alt="Chiro Stride" width={36} height={36} />
+              <span className="text-lg font-bold tracking-tight text-white">CHIRO STRIDE</span>
             </Link>
             <p className="text-white/40 text-sm leading-relaxed max-w-sm mb-6">
               Practice management software built by animal chiropractors, for animal chiropractors.
@@ -113,7 +113,7 @@ export default function MarketingFooter() {
         {/* Bottom row */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-white/20 text-xs">
-            &copy; {new Date().getFullYear()} Stride Equine & Canine Chiropractic Software. All rights reserved.
+            &copy; {new Date().getFullYear()} Chiro Stride Equine & Canine Chiropractic Software. All rights reserved.
           </p>
           <div className="flex items-center gap-6 text-xs text-white/20">
             <a href="#" className="hover:text-white/40 transition">Privacy Policy</a>

@@ -25,7 +25,7 @@ const posts = [
     category: "Product",
     title: "How AI SOAP Notes Save You 30 Minutes Per Patient",
     excerpt:
-      "See how Stride's AI-powered SOAP note generation works — from quick clinical observations to professional documentation in one click.",
+      "See how Chiro Stride's AI-powered SOAP note generation works — from quick clinical observations to professional documentation in one click.",
     readTime: "4 min read",
     date: "Coming Soon",
   },
@@ -70,7 +70,7 @@ const posts = [
     category: "Feature Spotlight",
     title: "Inside the 3D Anatomy Viewer: Annotate, Educate, Document",
     excerpt:
-      "A deep dive into Stride's interactive 3D anatomy tool — toggle layers, draw annotations, and educate clients visually.",
+      "A deep dive into Chiro Stride's interactive 3D anatomy tool — toggle layers, draw annotations, and educate clients visually.",
     readTime: "5 min read",
     date: "Coming Soon",
   },
@@ -95,7 +95,7 @@ export default function BlogPage() {
             className="inline-flex items-center gap-2 bg-[#c9a227]/10 border border-[#c9a227]/20 px-4 py-2 rounded-full mb-6"
           >
             <BookOpen className="w-4 h-4 text-[#c9a227]" />
-            <span className="text-[#c9a227] text-sm font-medium">Stride Blog</span>
+            <span className="text-[#c9a227] text-sm font-medium">Chiro Stride Blog</span>
           </motion.div>
           <motion.h1
             initial={{ opacity: 0, y: 30 }}
