@@ -1021,6 +1021,19 @@ export default function HorseDetailPage() {
       return
     }
 
+    // Ensure we have a valid practitioner ID before saving
+    let currentUserId = userId
+    if (!currentUserId) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        currentUserId = user.id
+        setUserId(user.id)
+      } else {
+        setMessage('Unable to verify your session. Please refresh and try again.')
+        return
+      }
+    }
+
     const payload = {
       horse_id: horseId,
       owner_id: horse?.owner_id || null,
@@ -1035,7 +1048,7 @@ export default function HorseDetailPage() {
       treated_areas: treatedAreas || null,
       recommendations: recommendations || null,
       follow_up: followUp || null,
-      practitioner_id: userId,
+      practitioner_id: currentUserId,
     }
 
     // Offline: queue new visits (edits require online)

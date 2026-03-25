@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "NEXT_PUBLIC_BYPASS_BILLING=true npx playwright test e2e/stride.spec.ts",
+    "test:all": "NEXT_PUBLIC_BYPASS_BILLING=true npx playwright test"
   },
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.6",

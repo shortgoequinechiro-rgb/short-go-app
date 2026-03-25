@@ -29,6 +29,12 @@ export default function BillingGate({ children }: { children: React.ReactNode })
       return
     }
 
+    // E2E testing bypass — skip billing checks when env var is set
+    if (process.env.NEXT_PUBLIC_BYPASS_BILLING === 'true') {
+      setReady(true)
+      return
+    }
+
     // Only run once per mount cycle to avoid double-checks
     if (checked.current) return
     checked.current = true
