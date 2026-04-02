@@ -19,36 +19,25 @@ export async function GET(
       .select(
         `
         *,
-        line_items (
+        invoice_line_items (
           id,
           description,
           quantity,
-          unit_price,
-          total
+          unit_price_cents
         )
       `
       )
       .eq('id', invoiceId)
+      .eq('practitioner_id', user.id)
       .single()
 
     if (invoiceError || !invoice) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
     }
 
-    // Verify user owns this invoice or is the practitioner
-    const { data: practitionerCheck } = await supabaseAdmin
-      .from('invoices')
-      .select('practitioner_id')
-      .eq('id', invoiceId)
-      .single()
-
-    if (practitionerCheck?.practitioner_id !== user.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
-    }
-
     // Fetch owner info
     const { data: owner, error: ownerError } = await supabaseAdmin
-      .from('users')
+      .from('owners')
       .select('full_name, email, phone, address')
       .eq('id', invoice.owner_id)
       .single()
@@ -70,7 +59,7 @@ export async function GET(
 
     // Fetch practitioner info
     const { data: practitioner, error: practitionerError } = await supabaseAdmin
-      .from('users')
+      .from('practitioners')
       .select('full_name, practice_name, location')
       .eq('id', invoice.practitioner_id)
       .single()
@@ -79,10 +68,28 @@ export async function GET(
       return NextResponse.json({ error: 'Practitioner not found' }, { status: 404 })
     }
 
+    // Convert cents to dollars for PDF generation
+    const lineItemsForPdf = invoice.invoice_line_items.map(
+      (item: { id: string; description: string; quantity: number; unit_price_cents: number }) => ({
+        id: item.id,
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: item.unit_price_cents / 100,
+        total: (item.unit_price_cents * item.quantity) / 100,
+      })
+    )
+
+    const invoiceForPdf = {
+      ...invoice,
+      subtotal: invoice.subtotal_cents / 100,
+      tax: (invoice.tax_cents || 0) / 100,
+      total: invoice.total_cents / 100,
+    }
+
     // Generate PDF
     const pdfBytes = await generateInvoicePdf(
-      invoice,
-      invoice.line_items,
+      invoiceForPdf,
+      lineItemsForPdf,
       owner,
       horse,
       practitioner

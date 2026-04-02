@@ -752,13 +752,31 @@ export default function InvoiceDetailPage() {
           )}
 
           {invoice.status === 'paid' && (
-            <a
-              href={`/api/invoices/${invoiceId}/pdf`}
-              download={`${invoice.invoice_number}.pdf`}
-              className="block w-full bg-slate-500 hover:bg-slate-600 text-white font-semibold py-3 rounded-xl transition text-center"
+            <button
+              onClick={async () => {
+                try {
+                  const { data: { session } } = await supabase.auth.getSession();
+                  const res = await fetch(`/api/invoices/${invoiceId}/pdf`, {
+                    headers: { Authorization: `Bearer ${session?.access_token}` }
+                  });
+                  if (!res.ok) throw new Error('Failed to generate PDF');
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `${invoice.invoice_number}.pdf`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                } catch {
+                  setError('Failed to download PDF');
+                }
+              }}
+              className="w-full bg-slate-500 hover:bg-slate-600 text-white font-semibold py-3 rounded-xl transition"
             >
               Download PDF
-            </a>
+            </button>
           )}
 
           <Link
