@@ -21,6 +21,26 @@ async function getPractitionerByCustomer(customerId: string): Promise<string | n
   return data?.id ?? null
 }
 
+/** Check if a webhook event has already been processed */
+async function isEventProcessed(eventId: string): Promise<boolean> {
+  const { data } = await supabaseAdmin
+    .from('webhook_events')
+    .select('id')
+    .eq('stripe_event_id', eventId)
+    .single()
+  return !!data
+}
+
+/** Mark a webhook event as processed */
+async function markEventProcessed(eventId: string): Promise<void> {
+  await supabaseAdmin
+    .from('webhook_events')
+    .insert({
+      stripe_event_id: eventId,
+      created_at: new Date().toISOString(),
+    })
+}
+
 export async function POST(req: Request) {
   const body = await req.text()
   const sig = req.headers.get('stripe-signature')
@@ -37,6 +57,12 @@ export async function POST(req: Request) {
   } catch (err) {
     console.error('Webhook signature verification failed:', err)
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
+  }
+
+  // Check idempotency: skip if we've already processed this event
+  if (await isEventProcessed(event.id)) {
+    console.log(`Webhook event ${event.id} already processed, skipping`)
+    return NextResponse.json({ received: true })
   }
 
   try {
@@ -57,7 +83,7 @@ export async function POST(req: Request) {
         // Map Stripe status to our simplified status
         const status = subscription.status === 'trialing' ? 'trialing' : 'active'
 
-        await supabaseAdmin
+        const { error } = await supabaseAdmin
           .from('practitioners')
           .update({
             subscription_id: subscription.id,
@@ -69,6 +95,9 @@ export async function POST(req: Request) {
             updated_at: new Date().toISOString(),
           })
           .eq('id', userId)
+
+        if (error) throw error
+        await markEventProcessed(event.id)
         break
       }
 
@@ -83,7 +112,7 @@ export async function POST(req: Request) {
 
         if (!userId) break
 
-        await supabaseAdmin
+        const { error } = await supabaseAdmin
           .from('practitioners')
           .update({
             subscription_id: sub.id,
@@ -94,6 +123,9 @@ export async function POST(req: Request) {
             updated_at: new Date().toISOString(),
           })
           .eq('id', userId)
+
+        if (error) throw error
+        await markEventProcessed(event.id)
         break
       }
 
@@ -107,7 +139,7 @@ export async function POST(req: Request) {
         const gracePeriodEnd = new Date()
         gracePeriodEnd.setDate(gracePeriodEnd.getDate() + 7)
 
-        await supabaseAdmin
+        const { error } = await supabaseAdmin
           .from('practitioners')
           .update({
             subscription_status: 'canceled',
@@ -116,6 +148,9 @@ export async function POST(req: Request) {
             updated_at: new Date().toISOString(),
           })
           .eq('id', userId)
+
+        if (error) throw error
+        await markEventProcessed(event.id)
         break
       }
 
@@ -129,7 +164,7 @@ export async function POST(req: Request) {
         const gracePeriodEnd = new Date()
         gracePeriodEnd.setDate(gracePeriodEnd.getDate() + 7)
 
-        await supabaseAdmin
+        const { error } = await supabaseAdmin
           .from('practitioners')
           .update({
             subscription_status: 'past_due',
@@ -137,6 +172,9 @@ export async function POST(req: Request) {
             updated_at: new Date().toISOString(),
           })
           .eq('id', userId)
+
+        if (error) throw error
+        await markEventProcessed(event.id)
         break
       }
 
@@ -149,7 +187,7 @@ export async function POST(req: Request) {
         const userId = await getPractitionerByCustomer(invoice.customer as string)
         if (!userId) break
 
-        await supabaseAdmin
+        const { error } = await supabaseAdmin
           .from('practitioners')
           .update({
             subscription_status: 'active',
@@ -157,8 +195,47 @@ export async function POST(req: Request) {
             updated_at: new Date().toISOString(),
           })
           .eq('id', userId)
+
+        if (error) throw error
+        await markEventProcessed(event.id)
         break
       }
+
+      // Fired when a subscription is paused
+      case 'customer.subscription.paused': {
+        const sub = event.data.object as Stripe.Subscription
+        const userId = await getPractitionerByCustomer(sub.customer as string)
+        if (!userId) break
+
+        const { error } = await supabaseAdmin
+          .from('practitioners')
+          .update({
+            subscription_status: 'paused',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', userId)
+
+        if (error) throw error
+        await markEventProcessed(event.id)
+        break
+      }
+
+      // Unhandled event type
+      default: {
+        console.log(`Unhandled webhook event type: ${event.type}`)
+        break
+      }
+    }
+
+    // Mark event as processed on success
+    if (event.type !== 'customer.subscription.paused' &&
+        event.type !== 'checkout.session.completed' &&
+        event.type !== 'customer.subscription.updated' &&
+        event.type !== 'customer.subscription.deleted' &&
+        event.type !== 'invoice.payment_failed' &&
+        event.type !== 'invoice.payment_succeeded') {
+      // For unhandled events, still mark as processed to avoid spam
+      await markEventProcessed(event.id)
     }
 
     return NextResponse.json({ received: true })

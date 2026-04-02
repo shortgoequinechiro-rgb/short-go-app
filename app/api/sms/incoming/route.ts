@@ -12,6 +12,25 @@ import { createNotification } from '../../../lib/notifications'
  *   https://short-go-app.vercel.app/api/sms/incoming
  */
 
+// ── In-memory rate limiter (per phone number, resets on deploy) ──
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
+const RATE_LIMIT_WINDOW_MS = 60 * 1000 // 1 minute
+const MAX_REQUESTS_PER_MINUTE = 10
+
+function isRateLimited(phoneNumber: string): boolean {
+  const now = Date.now()
+  const entry = rateLimitMap.get(phoneNumber)
+
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(phoneNumber, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
+    return false
+  }
+
+  entry.count++
+  if (entry.count > MAX_REQUESTS_PER_MINUTE) return true
+  return false
+}
+
 function getAdminSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -37,6 +56,7 @@ export async function POST(req: NextRequest) {
   const params: Record<string, string> = {}
   urlParams.forEach((value, key) => { params[key] = value })
 
+  // Validate Twilio request signature
   const isValid = twilio.validateRequest(twilioAuthToken, twilioSignature, webhookUrl, params)
   if (!isValid) {
     console.warn('[sms/incoming] Invalid Twilio signature — rejecting request')
@@ -46,6 +66,12 @@ export async function POST(req: NextRequest) {
   // Twilio sends form-encoded data
   const from = params['From'] || null
   const body = (params['Body'] || '').trim().toUpperCase()
+
+  // ── Rate limiting per phone number ──
+  if (from && isRateLimited(from)) {
+    console.warn(`[sms/incoming] Rate limit exceeded for ${from}`)
+    return new NextResponse('Too Many Requests', { status: 429 })
+  }
 
   if (!from) {
     return twimlResponse('')
@@ -85,6 +111,17 @@ export async function POST(req: NextRequest) {
   const optInKeywords = ['YES', 'Y', 'OPTIN', 'OPT IN', 'START', 'SUBSCRIBE']
   const optOutKeywords = ['STOP', 'NO', 'N', 'OPTOUT', 'OPT OUT', 'UNSUBSCRIBE', 'CANCEL', 'QUIT']
 
+  // Fetch practice name if available
+  let practiceName = 'Your Care Provider'
+  if (owner.practitioner_id) {
+    const { data: practitioner } = await supabase
+      .from('practitioners')
+      .select('practice_name')
+      .eq('id', owner.practitioner_id)
+      .single()
+    if (practitioner?.practice_name) practiceName = practitioner.practice_name
+  }
+
   if (optInKeywords.includes(body)) {
     await supabase.rpc('update_sms_consent', {
       p_owner_id: owner.id,
@@ -115,7 +152,7 @@ export async function POST(req: NextRequest) {
     }
 
     return twimlResponse(
-      "You're now opted in to receive texts from Short Go Equine Chiropractic. Reply STOP at any time to unsubscribe."
+      `You're now opted in to receive texts from ${practiceName}. Reply STOP at any time to unsubscribe.`
     )
   }
 
@@ -135,7 +172,7 @@ export async function POST(req: NextRequest) {
     )
 
     return twimlResponse(
-      "You've been unsubscribed from Short Go Equine Chiropractic texts. You will not receive any more messages. Reply YES to re-subscribe."
+      `You've been unsubscribed from ${practiceName} texts. You will not receive any more messages. Reply YES to re-subscribe.`
     )
   }
 

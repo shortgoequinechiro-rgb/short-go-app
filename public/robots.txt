@@ -1,0 +1,35 @@
+# Robots.txt for Chiro Stride
+# Allow public marketing pages, disallow app and admin pages
+
+User-agent: *
+Allow: /
+Allow: /about
+Allow: /pricing
+Allow: /features
+Allow: /contact
+Allow: /help
+Allow: /login
+Allow: /signup
+Allow: /terms
+Allow: /privacy
+
+Disallow: /dashboard
+Disallow: /horses
+Disallow: /calendar
+Disallow: /invoices
+Disallow: /account
+Disallow: /api
+Disallow: /onboarding
+Disallow: /billing
+Disallow: /services
+Disallow: /reports
+Disallow: /communications
+Disallow: /anatomy
+Disallow: /intake
+Disallow: /appointments
+Disallow: /confirmed
+Disallow: /.next
+Disallow: /node_modules
+
+# Sitemap reference
+Sitemap: https://shortgochiro.com/sitemap.xml

@@ -20,6 +20,8 @@ const footerSections = [
     links: [
       { label: "About", href: "/about" },
       { label: "Contact", href: "/contact" },
+      { label: "Terms", href: "/terms" },
+      { label: "Privacy", href: "/privacy" },
     ],
   },
   {
@@ -115,8 +117,8 @@ export default function MarketingFooter() {
             &copy; {new Date().getFullYear()} Chiro Stride Animal Chiropractic Software. All rights reserved.
           </p>
           <div className="flex items-center gap-6 text-xs text-white/50">
-            <a href="#" className="hover:text-white/70 transition">Privacy Policy</a>
-            <a href="#" className="hover:text-white/70 transition">Terms of Service</a>
+            <Link href="/privacy" className="hover:text-white/70 transition">Privacy Policy</Link>
+            <Link href="/terms" className="hover:text-white/70 transition">Terms of Service</Link>
           </div>
         </div>
       </div>

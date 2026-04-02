@@ -155,6 +155,14 @@ export default function Home() {
 
   const [usingCachedData, setUsingCachedData] = useState(false)
 
+  // Loading and pagination states
+  const [loadingOwners, setLoadingOwners] = useState(true)
+  const [loadingHorses, setLoadingHorses] = useState(true)
+  const [totalOwners, setTotalOwners] = useState(0)
+  const [totalHorses, setTotalHorses] = useState(0)
+  const [ownersOffset, setOwnersOffset] = useState(0)
+  const [horsesOffset, setHorsesOffset] = useState(0)
+
   const findRecordsRef = useRef<HTMLDivElement>(null)
 
   function handleStatCardClick() {
@@ -490,12 +498,28 @@ export default function Home() {
     }
   }
 
-  async function loadOwners() {
+  async function loadOwners(isLoadMore: boolean = false) {
+    if (!isLoadMore) {
+      setLoadingOwners(true)
+    }
+
+    const currentOffset = isLoadMore ? ownersOffset + 50 : 0
+
+    // Get total count
+    const { count: totalCount } = await supabase
+      .from('owners')
+      .select('*', { count: 'exact', head: true })
+      .eq('archived', false)
+
     const { data, error } = await supabase
       .from('owners')
       .select('*')
       .eq('archived', false)
       .order('full_name', { ascending: true })
+      .limit(50)
+      .range(currentOffset, currentOffset + 49)
+
+    setLoadingOwners(false)
 
     if (error) {
       // Offline fallback: try Dexie cache
@@ -504,7 +528,7 @@ export default function Home() {
           const cached = await getCachedOwners(userId)
           if (cached.length > 0) {
             const mapped = cached.map(c => ({ ...c, created_at: '' })) as unknown as Owner[]
-            setOwners(mapped)
+            setOwners(isLoadMore ? [...owners, ...mapped] : mapped)
             setUsingCachedData(true)
             if (!selectedOwnerIdForAdd && mapped.length > 0) setSelectedOwnerIdForAdd(mapped[0].id)
             return
@@ -516,7 +540,14 @@ export default function Home() {
     }
 
     const ownerData = (data || []) as Owner[]
-    setOwners(ownerData)
+    setTotalOwners(totalCount || 0)
+    setOwnersOffset(currentOffset)
+
+    if (isLoadMore) {
+      setOwners(prev => [...prev, ...ownerData])
+    } else {
+      setOwners(ownerData)
+    }
 
     // Cache for offline use
     try {
@@ -531,7 +562,19 @@ export default function Home() {
     }
   }
 
-  async function loadHorses() {
+  async function loadHorses(isLoadMore: boolean = false) {
+    if (!isLoadMore) {
+      setLoadingHorses(true)
+    }
+
+    const currentOffset = isLoadMore ? horsesOffset + 50 : 0
+
+    // Get total count
+    const { count: totalCount } = await supabase
+      .from('horses')
+      .select('*', { count: 'exact', head: true })
+      .eq('archived', false)
+
     const { data, error } = await supabase
       .from('horses')
       .select(
@@ -544,6 +587,10 @@ export default function Home() {
       )
       .eq('archived', false)
       .order('name', { ascending: true })
+      .limit(50)
+      .range(currentOffset, currentOffset + 49)
+
+    setLoadingHorses(false)
 
     if (error) {
       // Offline fallback
@@ -552,7 +599,7 @@ export default function Home() {
           const cached = await getCachedHorses(userId)
           if (cached.length > 0) {
             const mapped = cached.map(c => ({ ...c, created_at: '', owners: null })) as unknown as Horse[]
-            setHorses(mapped)
+            setHorses(isLoadMore ? [...horses, ...mapped] : mapped)
             setUsingCachedData(true)
             return
           }
@@ -563,7 +610,14 @@ export default function Home() {
     }
 
     const horseList = (data || []) as Horse[]
-    setHorses(horseList)
+    setTotalHorses(totalCount || 0)
+    setHorsesOffset(currentOffset)
+
+    if (isLoadMore) {
+      setHorses(prev => [...prev, ...horseList])
+    } else {
+      setHorses(horseList)
+    }
 
     // Cache for offline use
     try {
@@ -1627,8 +1681,8 @@ export default function Home() {
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-lg font-semibold text-slate-900">Results</h3>
                 <span className="text-xs text-slate-500">
-                  {filteredOwners.length} owner{filteredOwners.length === 1 ? '' : 's'}
-                  {filteredPatients.length > 0 ? `, ${filteredPatients.length} patient${filteredPatients.length === 1 ? '' : 's'}` : ''}
+                  {loadingOwners ? 'Loading owners...' : `${filteredOwners.length}/${totalOwners} owner${totalOwners === 1 ? '' : 's'}`}
+                  {!loadingHorses && filteredPatients.length > 0 ? `, ${filteredPatients.length}/${totalHorses} patient${totalHorses === 1 ? '' : 's'}` : ''}
                 </span>
               </div>
 
@@ -1638,36 +1692,74 @@ export default function Home() {
                   {searchTerm.trim() && filteredPatients.length > 0 && (
                     <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400">Owners</p>
                   )}
-                  {filteredOwners.length === 0 ? (
+
+                  {/* Loading skeleton for owners */}
+                  {loadingOwners && owners.length === 0 && (
+                    <div className="space-y-3">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="rounded-2xl border border-slate-200 bg-white p-4">
+                          <div className="h-4 w-24 rounded bg-slate-200 animate-pulse"></div>
+                          <div className="mt-2 h-3 w-32 rounded bg-slate-200 animate-pulse"></div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {!loadingOwners && filteredOwners.length === 0 && !searchTerm.trim() && (
                     <p className="text-sm text-slate-500">No owners found.</p>
-                  ) : (
-                    filteredOwners.map((owner) => {
-                      const isSelected = selectedOwnerId === owner.id
-                      return (
+                  )}
+
+                  {filteredOwners.length > 0 && (
+                    <>
+                      {filteredOwners.map((owner) => {
+                        const isSelected = selectedOwnerId === owner.id
+                        return (
+                          <button
+                            key={owner.id}
+                            onClick={() => {
+                              setSelectedOwnerId(owner.id)
+                              setEditingOwner(false)
+                              setShowInlineAddPatient(false)
+                            }}
+                            onDoubleClick={() => router.push(`/owners/${owner.id}`)}
+                            className={`w-full rounded-2xl border p-4 text-left transition ${
+                              isSelected
+                                ? 'border-[#0f2040] bg-[#0f2040] text-white'
+                                : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
+                            }`}
+                          >
+                            <p className="font-semibold">{owner.full_name}</p>
+                            <p className={`mt-1 text-sm ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
+                              {formatPhone(owner.phone)}
+                            </p>
+                            <p className={`text-sm ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
+                              {owner.email || 'No email'}
+                            </p>
+                          </button>
+                        )
+                      })}
+                      {owners.length < totalOwners && (
                         <button
-                          key={owner.id}
-                          onClick={() => {
-                            setSelectedOwnerId(owner.id)
-                            setEditingOwner(false)
-                            setShowInlineAddPatient(false)
-                          }}
-                          onDoubleClick={() => router.push(`/owners/${owner.id}`)}
-                          className={`w-full rounded-2xl border p-4 text-left transition ${
-                            isSelected
-                              ? 'border-[#0f2040] bg-[#0f2040] text-white'
-                              : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
-                          }`}
+                          onClick={() => loadOwners(true)}
+                          className="w-full rounded-2xl border border-slate-300 bg-white p-3 text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
                         >
-                          <p className="font-semibold">{owner.full_name}</p>
-                          <p className={`mt-1 text-sm ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
-                            {formatPhone(owner.phone)}
-                          </p>
-                          <p className={`text-sm ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
-                            {owner.email || 'No email'}
-                          </p>
+                          Load More Owners
                         </button>
-                      )
-                    })
+                      )}
+                    </>
+                  )}
+
+                  {/* Loading skeleton for horses */}
+                  {loadingHorses && horses.length === 0 && (
+                    <div className="space-y-3">
+                      <p className="pt-2 text-[11px] font-semibold uppercase tracking-widest text-slate-400">Patients</p>
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="rounded-2xl border border-slate-200 bg-white p-4">
+                          <div className="h-4 w-24 rounded bg-slate-200 animate-pulse"></div>
+                          <div className="mt-2 h-3 w-32 rounded bg-slate-200 animate-pulse"></div>
+                        </div>
+                      ))}
+                    </div>
                   )}
 
                   {/* Patients section — only appears when search term matches patients */}
@@ -1689,6 +1781,14 @@ export default function Home() {
                           )}
                         </Link>
                       ))}
+                      {horses.length < totalHorses && (
+                        <button
+                          onClick={() => loadHorses(true)}
+                          className="w-full rounded-2xl border border-slate-300 bg-white p-3 text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
+                        >
+                          Load More Patients
+                        </button>
+                      )}
                     </>
                   )}
                 </div>

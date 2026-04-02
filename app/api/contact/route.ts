@@ -4,6 +4,20 @@ import { Resend } from 'resend'
 const resend = new Resend(process.env.RESEND_API_KEY)
 const fromEmail = process.env.FROM_EMAIL
 
+/**
+ * Escapes HTML special characters to prevent XSS injection
+ */
+function escapeHtml(text: string): string {
+  const map: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#x27;',
+  }
+  return text.replace(/[&<>"']/g, (char) => map[char])
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { name, email, phone, practiceName, message } = await req.json()
@@ -23,6 +37,13 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Escape all user inputs to prevent XSS
+    const escapedName = escapeHtml(name)
+    const escapedEmail = escapeHtml(email)
+    const escapedPhone = escapeHtml(phone || '')
+    const escapedPracticeName = escapeHtml(practiceName || '')
+    const escapedMessage = escapeHtml(message)
+
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #0f2040; border-bottom: 2px solid #c9a227; padding-bottom: 8px;">
@@ -31,24 +52,24 @@ export async function POST(req: NextRequest) {
         <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
           <tr>
             <td style="padding: 8px 12px; font-weight: bold; color: #0f2040; width: 140px;">Name</td>
-            <td style="padding: 8px 12px;">${name}</td>
+            <td style="padding: 8px 12px;">${escapedName}</td>
           </tr>
           <tr style="background: #f8f8f8;">
             <td style="padding: 8px 12px; font-weight: bold; color: #0f2040;">Email</td>
-            <td style="padding: 8px 12px;"><a href="mailto:${email}">${email}</a></td>
+            <td style="padding: 8px 12px;"><a href="mailto:${escapedEmail}">${escapedEmail}</a></td>
           </tr>
           ${phone ? `<tr>
             <td style="padding: 8px 12px; font-weight: bold; color: #0f2040;">Phone</td>
-            <td style="padding: 8px 12px;">${phone}</td>
+            <td style="padding: 8px 12px;">${escapedPhone}</td>
           </tr>` : ''}
           ${practiceName ? `<tr style="background: #f8f8f8;">
             <td style="padding: 8px 12px; font-weight: bold; color: #0f2040;">Practice</td>
-            <td style="padding: 8px 12px;">${practiceName}</td>
+            <td style="padding: 8px 12px;">${escapedPracticeName}</td>
           </tr>` : ''}
         </table>
         <div style="margin-top: 20px; padding: 16px; background: #f0f4f8; border-radius: 8px;">
           <p style="font-weight: bold; color: #0f2040; margin: 0 0 8px;">Message</p>
-          <p style="margin: 0; white-space: pre-wrap; color: #333;">${message}</p>
+          <p style="margin: 0; white-space: pre-wrap; color: #333;">${escapedMessage}</p>
         </div>
       </div>
     `

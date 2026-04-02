@@ -23,7 +23,7 @@ export async function GET(req: Request) {
     .eq('practitioner_id', user!.id)
     .eq('horse_id', horseId)
     .eq('status', 'active')
-    .lt('expires_at', new Date().toISOString().split('T')[0])
+    .lte('expires_at', new Date().toISOString().split('T')[0])
 
   const { data, error: fetchError } = await supabaseAdmin
     .from('vet_authorizations')

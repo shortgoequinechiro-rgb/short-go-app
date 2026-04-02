@@ -55,6 +55,17 @@ export async function POST(
     )
   }
 
+  // Fetch practice name from practitioner
+  let practiceName = 'Your Care Provider'
+  if (owner.practitioner_id) {
+    const { data: prac } = await supabase
+      .from('practitioners')
+      .select('practice_name')
+      .eq('id', owner.practitioner_id)
+      .single()
+    if (prac?.practice_name) practiceName = prac.practice_name
+  }
+
   const digits = owner.phone.replace(/\D/g, '')
   const toNumber = digits.startsWith('1') ? `+${digits}` : `+1${digits}`
   const firstName = owner.full_name?.split(' ')[0] || owner.full_name || 'there'
@@ -65,7 +76,7 @@ export async function POST(
     const message = await client.messages.create({
       from: fromNumber,
       to: toNumber,
-      body: `Hi ${firstName}! Short Go Equine Chiropractic would like to send you appointment reminders, intake forms, and consent forms via text. Reply YES to opt in or STOP to opt out. Msg & data rates may apply.`,
+      body: `Hi ${firstName}! ${practiceName} would like to send you appointment reminders, intake forms, and consent forms via text. Reply YES to opt in or STOP to opt out. Msg & data rates may apply.`,
     })
 
     if (message.errorCode) {

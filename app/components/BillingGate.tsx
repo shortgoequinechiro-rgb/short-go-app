@@ -16,6 +16,7 @@ export default function BillingGate({ children }: { children: React.ReactNode })
   const router = useRouter()
   const pathname = usePathname()
   const [ready, setReady] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const checked = useRef(false)
 
   const isPublic =
@@ -29,8 +30,8 @@ export default function BillingGate({ children }: { children: React.ReactNode })
       return
     }
 
-    // E2E testing bypass — skip billing checks when env var is set
-    if (process.env.NEXT_PUBLIC_BYPASS_BILLING === 'true') {
+    // E2E testing bypass — skip billing checks when env var is set (development only)
+    if (process.env.NEXT_PUBLIC_BYPASS_BILLING === 'true' && process.env.NODE_ENV === 'development') {
       setReady(true)
       return
     }
@@ -70,9 +71,9 @@ export default function BillingGate({ children }: { children: React.ReactNode })
         })
 
         if (!res.ok) {
-          // If the check fails, don't block the user — fail open
+          // If the check fails, deny access and show error
           console.error('BillingGate: ensure-practitioner returned', res.status)
-          setReady(true)
+          setError('Unable to verify your subscription. Please check your connection and reload.')
           return
         }
 
@@ -97,20 +98,23 @@ export default function BillingGate({ children }: { children: React.ReactNode })
         const graceEnd = practitioner.grace_period_ends_at
           ? new Date(practitioner.grace_period_ends_at)
           : null
-        const inGracePeriod = graceEnd ? graceEnd > now : false
+        // Grace period expired if end time is in the past
+        const gracePeriodExpired = graceEnd ? graceEnd < now : false
 
         const hasAccess =
           status === 'active' ||
           (status === 'trialing' && !trialExpired) ||
-          ((status === 'canceled' || status === 'past_due') && inGracePeriod)
+          ((status === 'canceled' || status === 'past_due') && !gracePeriodExpired)
 
         if (!hasAccess) {
           router.push('/billing')
           return
         }
       } catch (err) {
-        // On network error, fail open so we don't lock users out unexpectedly
+        // On network error, deny access to protect billing integrity
         console.error('BillingGate error:', err)
+        setError('Unable to verify your subscription. Please check your connection and reload.')
+        return
       }
 
       setReady(true)
@@ -118,6 +122,28 @@ export default function BillingGate({ children }: { children: React.ReactNode })
 
     checkAccess()
   }, [pathname, isPublic, router])
+
+  // Show error state if subscription verification failed
+  if (error) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 p-4">
+        <div className="max-w-md text-center">
+          <div className="text-red-600 text-sm mb-4">{error}</div>
+          <button
+            onClick={() => {
+              setError(null)
+              setReady(false)
+              checked.current = false
+              window.location.reload()
+            }}
+            className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   // Show a minimal loading state while checking (only on gated routes)
   if (!ready && !isPublic) {

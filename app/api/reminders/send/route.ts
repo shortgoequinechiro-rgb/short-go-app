@@ -134,6 +134,28 @@ function normalizePhone(raw: string): string {
   return digits.startsWith('1') ? `+${digits}` : `+1${digits}`
 }
 
+// ── Retry helper for email sending ────────────────────────────────────────
+async function sendEmailWithRetry(
+  resend: Resend,
+  options: { from: string; to: string; subject: string; text: string; html: string },
+  maxRetries: number = 2
+) {
+  let lastError: any
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await resend.emails.send(options)
+      return result
+    } catch (err: any) {
+      lastError = err
+      if (attempt < maxRetries) {
+        // Wait 1 second before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
+    }
+  }
+  throw lastError
+}
+
 // ── Main handler ──────────────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
@@ -165,8 +187,10 @@ export async function GET(req: NextRequest) {
   const smsClient = hasSms ? twilio(twilioSid!, twilioToken!) : null
 
   // ── Find appointments to remind ───────────────────────────────────────────
-  // We remind for appointments happening tomorrow OR the day after (catches
-  // timezone edge cases where "tomorrow" slips a day). De-dupe by reminder_sent.
+  // We check a 3-day window (yesterday through day-after-tomorrow) to catch
+  // timezone edge cases where UTC dates may not match local appointment dates.
+  // Using reminder_sent flag prevents duplicate sends.
+  const yesterday    = daysFromNow(-1)
   const tomorrow     = daysFromNow(1)
   const dayAfter     = daysFromNow(2)
 
@@ -187,7 +211,7 @@ export async function GET(req: NextRequest) {
       owners ( id, full_name, email, phone, sms_consent_status, practitioner_id ),
       horses ( name, species, owners ( full_name, email, phone, sms_consent_status ) )
     `)
-    .in('appointment_date', [tomorrow, dayAfter])
+    .in('appointment_date', [yesterday, tomorrow, dayAfter])
     .eq('reminder_sent', false)
     .in('status', ['scheduled', 'confirmed'])
 
@@ -259,7 +283,7 @@ export async function GET(req: NextRequest) {
           confirmUrl,
         })
 
-        const emailResult = await resend.emails.send({
+        const emailResult = await sendEmailWithRetry(resend, {
           from: fromEmail!,
           to: owner.email,
           subject,
@@ -269,12 +293,14 @@ export async function GET(req: NextRequest) {
 
         if ((emailResult as any)?.error) {
           result.error = `Email error: ${(emailResult as any).error.message}`
+          console.error(`[reminders] Email failed for ${owner.email}:`, result.error)
         } else {
           result.email = owner.email
           anySent = true
         }
       } catch (err: any) {
         result.error = `Email exception: ${err?.message}`
+        console.error(`[reminders] Email exception for ${owner.email}:`, err?.message)
       }
     }
 
