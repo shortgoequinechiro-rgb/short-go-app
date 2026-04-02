@@ -51,6 +51,13 @@ export async function GET(
       return NextResponse.json({ error: fetchError.message }, { status: 500 });
     }
 
+    // Fetch practitioner payment links
+    const { data: practitionerData } = await supabaseAdmin
+      .from('practitioners')
+      .select('venmo_handle, paypal_email, zelle_info')
+      .eq('id', user.id)
+      .single();
+
     const ownerData = invoice.owner as unknown as Record<string, string> | null;
     const ownerArr = Array.isArray(invoice.owner) ? invoice.owner[0] : null;
     const result = {
@@ -59,6 +66,9 @@ export async function GET(
       owner_email: ownerData?.email || ownerArr?.email,
       owner_phone: ownerData?.phone || ownerArr?.phone,
       horse_name: (invoice.horse as unknown as Record<string, string> | null)?.name || (Array.isArray(invoice.horse) ? invoice.horse[0]?.name : undefined),
+      venmo_handle: practitionerData?.venmo_handle || null,
+      paypal_email: practitionerData?.paypal_email || null,
+      zelle_info: practitionerData?.zelle_info || null,
       owner: undefined,
       horse: undefined,
     };

@@ -31,6 +31,9 @@ interface Invoice {
   payment_method?: string;
   paid_at?: string;
   payment_reference?: string;
+  venmo_handle?: string;
+  paypal_email?: string;
+  zelle_info?: string;
 }
 
 const statusColors: Record<string, string> = {
@@ -655,6 +658,52 @@ export default function InvoiceDetailPage() {
               <p>
                 <span className="font-medium">Reference:</span> {invoice.payment_reference}
               </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Payment Options (Venmo / PayPal / Zelle) */}
+      {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (invoice.venmo_handle || invoice.paypal_email || invoice.zelle_info) && (
+        <div className="rounded-3xl bg-white p-5 shadow-sm mb-4">
+          <h3 className="text-lg font-semibold text-slate-900 mb-3">Payment Options</h3>
+          <div className="space-y-3">
+            {invoice.venmo_handle && (
+              <a
+                href={`https://venmo.com/${invoice.venmo_handle.replace('@', '')}?txn=pay&amount=${(invoice.total_cents / 100).toFixed(2)}&note=Invoice%20${encodeURIComponent(invoice.invoice_number)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 w-full rounded-xl border border-slate-200 px-4 py-3 hover:bg-blue-50 hover:border-blue-300 transition"
+              >
+                <span className="flex items-center justify-center w-10 h-10 rounded-full bg-[#008CFF] text-white font-bold text-sm">V</span>
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">Pay with Venmo</p>
+                  <p className="text-xs text-slate-500">{invoice.venmo_handle}</p>
+                </div>
+              </a>
+            )}
+            {invoice.paypal_email && (
+              <a
+                href={`https://paypal.me/${invoice.paypal_email}/${(invoice.total_cents / 100).toFixed(2)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 w-full rounded-xl border border-slate-200 px-4 py-3 hover:bg-blue-50 hover:border-blue-300 transition"
+              >
+                <span className="flex items-center justify-center w-10 h-10 rounded-full bg-[#003087] text-white font-bold text-sm">P</span>
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">Pay with PayPal</p>
+                  <p className="text-xs text-slate-500">{invoice.paypal_email}</p>
+                </div>
+              </a>
+            )}
+            {invoice.zelle_info && (
+              <div className="flex items-center gap-3 w-full rounded-xl border border-slate-200 px-4 py-3 bg-purple-50/30">
+                <span className="flex items-center justify-center w-10 h-10 rounded-full bg-[#6D1ED4] text-white font-bold text-sm">Z</span>
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">Pay with Zelle</p>
+                  <p className="text-xs text-slate-500">Send to: {invoice.zelle_info}</p>
+                </div>
+              </div>
             )}
           </div>
         </div>

@@ -65,7 +65,7 @@ export async function POST(
     // Fetch practitioner info
     const { data: practitionerRaw, error: practitionerError } = await supabaseAdmin
       .from('practitioners')
-      .select('full_name, practice_name, location')
+      .select('full_name, practice_name, location, venmo_handle, paypal_email, zelle_info')
       .eq('id', invoice.practitioner_id)
       .single()
 
@@ -78,6 +78,9 @@ export async function POST(
       full_name: practitionerRaw.full_name || 'Practitioner',
       practice_name: practitionerRaw.practice_name || 'Stride Chiropractic',
       location: practitionerRaw.location || '',
+      venmo_handle: practitionerRaw.venmo_handle || '',
+      paypal_email: practitionerRaw.paypal_email || '',
+      zelle_info: practitionerRaw.zelle_info || '',
     }
 
     // Map line items for PDF (convert cents to dollars for display)
@@ -171,6 +174,25 @@ export async function POST(
         </div>
 
         ${paymentLinkHtml}
+
+        ${(practitioner.venmo_handle || practitioner.paypal_email || practitioner.zelle_info) ? `
+        <div style="margin: 30px 0; padding: 20px; background-color: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
+          <h3 style="color: #333; margin: 0 0 15px 0; font-size: 16px;">Payment Options</h3>
+          <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            ${practitioner.venmo_handle ? `<tr><td style="padding: 8px 0;">
+              <a href="https://venmo.com/${practitioner.venmo_handle.replace('@', '')}?txn=pay&amount=${totalDollars.toFixed(2)}&note=Invoice%20${encodeURIComponent(invoice.invoice_number)}" style="color: #008CFF; text-decoration: none; font-weight: bold;">Pay with Venmo</a>
+              <span style="color: #999; font-size: 13px;"> &mdash; ${practitioner.venmo_handle}</span>
+            </td></tr>` : ''}
+            ${practitioner.paypal_email ? `<tr><td style="padding: 8px 0;">
+              <a href="https://paypal.me/${practitioner.paypal_email}/${totalDollars.toFixed(2)}" style="color: #003087; text-decoration: none; font-weight: bold;">Pay with PayPal</a>
+              <span style="color: #999; font-size: 13px;"> &mdash; ${practitioner.paypal_email}</span>
+            </td></tr>` : ''}
+            ${practitioner.zelle_info ? `<tr><td style="padding: 8px 0;">
+              <span style="color: #6D1ED4; font-weight: bold;">Pay with Zelle</span>
+              <span style="color: #999; font-size: 13px;"> &mdash; Send to: ${practitioner.zelle_info}</span>
+            </td></tr>` : ''}
+          </table>
+        </div>` : ''}
 
         <p style="color: #666; font-size: 14px; margin-top: 20px;">If you have any questions about this invoice, please don't hesitate to contact us.</p>
 

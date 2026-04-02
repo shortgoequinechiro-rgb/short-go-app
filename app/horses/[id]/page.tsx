@@ -18,6 +18,7 @@ import {
   QuickAddChipsSection,
 } from '../../components/QuickAddChips'
 import { useChipUsage } from '../../hooks/useChipUsage'
+import VetAuthSection from '../../components/VetAuthSection'
 
 type SpeciesType = 'equine' | 'canine' | 'feline' | 'bovine' | 'porcine' | 'exotic'
 
@@ -216,6 +217,7 @@ export default function HorseDetailPage() {
   type IntakeForm = { id: string; submitted_at: string; signed_name: string | null; animal_name: string; reason_for_care: string | null; health_problems: string | null; medications_supplements: string | null; previous_chiro_care: boolean | null; referral_source: string[] | null; archived: boolean | null }
   const [intakeForms, setIntakeForms] = useState<IntakeForm[]>([])
   const [showArchivedIntake, setShowArchivedIntake] = useState(false)
+  const [hasValidVetAuth, setHasValidVetAuth] = useState(false)
 
   // Multi-contact roles
   type HorseContact = { id: string; horse_id: string; name: string; role: string; phone: string | null; email: string | null; notes: string | null }
@@ -1038,7 +1040,21 @@ export default function HorseDetailPage() {
       }
     }
 
-    const payload = {
+    // Vet authorization soft warning
+    let vetAuthOverride = false
+    let vetAuthOverrideReason: string | null = null
+    if (!hasValidVetAuth && !editingVisitId) {
+      const proceed = confirm(
+        'No valid veterinary authorization on file for this animal.\n\n' +
+        'Texas law requires vet authorization before providing chiropractic care.\n\n' +
+        'Do you want to proceed anyway?'
+      )
+      if (!proceed) return
+      vetAuthOverride = true
+      vetAuthOverrideReason = 'Practitioner acknowledged and proceeded without valid vet authorization'
+    }
+
+    const payload: Record<string, unknown> = {
       horse_id: horseId,
       owner_id: horse?.owner_id || null,
       visit_date: visitDate,
@@ -1053,6 +1069,7 @@ export default function HorseDetailPage() {
       recommendations: recommendations || null,
       follow_up: followUp || null,
       practitioner_id: currentUserId,
+      ...(vetAuthOverride ? { vet_auth_override: true, vet_auth_override_reason: vetAuthOverrideReason } : {}),
     }
 
     // Offline: queue new visits (edits require online)
@@ -2381,6 +2398,13 @@ export default function HorseDetailPage() {
                 </div>
               )
             })()}
+
+            {/* ── Vet Authorization Card ── */}
+            <VetAuthSection
+              horseId={horseId as string}
+              horseName={horse?.name || ''}
+              onAuthStatusChange={setHasValidVetAuth}
+            />
 
             {/* ── Additional Contacts Card ── */}
             <div className="rounded-3xl bg-white p-6 shadow-md">
