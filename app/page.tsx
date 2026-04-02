@@ -29,6 +29,7 @@ import {
   Shield,
   Globe,
   BookOpen,
+  ShieldCheck,
 } from "lucide-react";
 
 /* ───────────────────────── feature data ───────────────────────── */
@@ -69,6 +70,11 @@ const features = [
     title: "QuickBooks Sync",
     desc: "Connect QuickBooks Online in one click. Invoices and payments sync automatically — no double entry, no bookkeeping headaches.",
   },
+  {
+    icon: ShieldCheck,
+    title: "Vet Authorization",
+    desc: "Track veterinary supervision authorizations required by state law. Send digital forms to vets, collect e-signatures, and stay compliant automatically.",
+  },
 ];
 
 const pricingFeatures = [
@@ -80,6 +86,7 @@ const pricingFeatures = [
   "SMS & email reminders",
   "Offline mode & PWA",
   "QuickBooks integration",
+  "Vet authorization tracking",
   "Custom practice branding",
 ];
 

@@ -23,6 +23,7 @@ import {
   CreditCard,
   Mail,
   Shield,
+  ShieldCheck,
   Zap,
   Camera,
   FileText,
@@ -114,6 +115,21 @@ const heroFeatures = [
       "Install on your phone like a native app",
       "Background sync when connectivity returns",
       "Offline data stored securely on-device",
+    ],
+  },
+  {
+    id: "vet-auth",
+    icon: ShieldCheck,
+    title: "Vet Authorization",
+    tagline: "Compliance. Documented.",
+    description:
+      "Many states require veterinary supervision before an animal can receive chiropractic care. Chiro Stride handles the entire authorization workflow — send a digital form to the vet, collect their e-signature, and track expiration dates automatically.",
+    bullets: [
+      "Digital authorization forms with e-signature — no paper needed",
+      "Send requests to vets via email or SMS with one tap",
+      "Automatic expiration tracking with visual warnings",
+      "Soft compliance check when creating new visits",
+      "Full authorization history per patient for your records",
     ],
   },
 ];
