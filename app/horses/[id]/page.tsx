@@ -2127,6 +2127,7 @@ export default function HorseDetailPage() {
 
         {/* Info Tab */}
         {activeTab === 'info' && (
+        <>
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
           <div className="space-y-6">
             <div className="rounded-3xl bg-white p-6 shadow-md">
@@ -2520,6 +2521,7 @@ export default function HorseDetailPage() {
               Archiving hides the record from active lists but preserves all data. Deleting is permanent and cannot be undone.
             </p>
           </div>
+        </>
         )}
 
         {/* Visits Tab */}
