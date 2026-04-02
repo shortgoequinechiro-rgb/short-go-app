@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, supabaseAdmin } from '../../../../lib/auth';
 import { createNotification } from '../../../../lib/notifications';
+import { getQBConnection, syncPaymentToQB } from '../../../../lib/quickbooks';
 
 export async function POST(
   request: NextRequest,
@@ -116,6 +117,14 @@ export async function POST(
       owner: undefined,
       horse: undefined,
     };
+
+    // Fire-and-forget: sync payment to QuickBooks if connected
+    getQBConnection(user.id).then((conn) => {
+      if (conn) {
+        syncPaymentToQB(user.id, invoiceId, updatedInvoice.total_cents || 0, payment_method)
+          .catch((err: unknown) => console.error('QB payment sync failed:', err))
+      }
+    }).catch(() => { /* QB not configured, skip */ })
 
     return NextResponse.json(result);
   } catch (error) {

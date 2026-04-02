@@ -542,6 +542,144 @@ function SecurityTab() {
   )
 }
 
+// ── QuickBooks Connection Section ─────────────────────────────────────────────
+
+type QBConnection = {
+  realm_id: string
+  company_name: string | null
+  connected_at: string
+  last_synced_at: string | null
+}
+
+function QuickBooksSection() {
+  const [loading, setLoading] = useState(true)
+  const [connected, setConnected] = useState(false)
+  const [connection, setConnection] = useState<QBConnection | null>(null)
+  const [connecting, setConnecting] = useState(false)
+  const [disconnecting, setDisconnecting] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    loadStatus()
+  }, [])
+
+  async function loadStatus() {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      const res = await fetch('/api/quickbooks/status', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      const data = await res.json()
+      setConnected(data.connected)
+      setConnection(data.connection)
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleConnect() {
+    setConnecting(true)
+    setError('')
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      const res = await fetch('/api/quickbooks/auth', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        setError(data.error || 'Failed to start QuickBooks connection')
+      }
+    } catch {
+      setError('Failed to connect to QuickBooks')
+    } finally {
+      setConnecting(false)
+    }
+  }
+
+  async function handleDisconnect() {
+    setDisconnecting(true)
+    setError('')
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      await fetch('/api/quickbooks/status', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      setConnected(false)
+      setConnection(null)
+    } catch {
+      setError('Failed to disconnect')
+    } finally {
+      setDisconnecting(false)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="h-px bg-[#244770]" />
+      <div>
+        <h3 className="text-base font-bold text-white flex items-center gap-2">
+          <span className="text-lg">📗</span> QuickBooks
+        </h3>
+        <p className="text-sm text-blue-300 mt-0.5">
+          Sync invoices and payments to QuickBooks Online automatically.
+        </p>
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-white/50">Loading…</p>
+      ) : connected && connection ? (
+        <div className="space-y-3">
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-emerald-300 flex items-center gap-1.5">
+                  <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
+                  Connected
+                </p>
+                <p className="text-xs text-emerald-400/70 mt-0.5">
+                  {connection.company_name || `Company ${connection.realm_id}`}
+                </p>
+                <p className="text-[11px] text-blue-400/50 mt-1">
+                  Connected {new Date(connection.connected_at).toLocaleDateString()}
+                  {connection.last_synced_at && ` · Last synced ${new Date(connection.last_synced_at).toLocaleDateString()}`}
+                </p>
+              </div>
+              <button
+                onClick={handleDisconnect}
+                disabled={disconnecting}
+                className="text-xs text-red-400 hover:text-red-300 transition"
+              >
+                {disconnecting ? 'Disconnecting…' : 'Disconnect'}
+              </button>
+            </div>
+          </div>
+          <p className="text-xs text-blue-400/60">
+            New invoices and payments are automatically synced to your QuickBooks account.
+          </p>
+        </div>
+      ) : (
+        <button
+          onClick={handleConnect}
+          disabled={connecting}
+          className="w-full max-w-sm rounded-xl bg-[#2CA01C] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#249016] transition disabled:opacity-50"
+        >
+          {connecting ? 'Connecting…' : 'Connect QuickBooks'}
+        </button>
+      )}
+
+      {error && <p className="text-sm text-red-400">{error}</p>}
+    </div>
+  )
+}
+
 // ── Billing Tab ───────────────────────────────────────────────────────────────
 
 function BillingTab({ practitioner }: { practitioner: Practitioner }) {
@@ -709,6 +847,9 @@ function BillingTab({ practitioner }: { practitioner: Practitioner }) {
           ))}
         </ul>
       </div>
+
+      {/* QuickBooks integration */}
+      <QuickBooksSection />
     </div>
   )
 }

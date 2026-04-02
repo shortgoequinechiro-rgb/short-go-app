@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, supabaseAdmin } from '../../lib/auth';
 import { createNotification } from '../../lib/notifications';
+import { getQBConnection, syncInvoiceToQB } from '../../lib/quickbooks';
 
 export async function GET(request: NextRequest) {
   try {
@@ -214,6 +215,25 @@ export async function POST(request: NextRequest) {
       'Invoice Created',
       `Invoice ${invoiceNumber} for ${result.owner_name || 'Unknown'}`
     );
+
+    // Fire-and-forget: sync to QuickBooks if connected
+    getQBConnection(user.id).then((conn) => {
+      if (conn) {
+        supabaseAdmin.from('invoices').update({ qb_sync_status: 'pending' }).eq('id', invoice.id).then(() => {
+          syncInvoiceToQB(user.id, {
+            id: invoice.id,
+            invoice_number: invoiceNumber,
+            owner_id,
+            total_cents: totalCents,
+            line_items: line_items.map((li: { description: string; quantity: number; unit_price_cents: number }) => ({
+              description: li.description || '',
+              quantity: li.quantity || 1,
+              unit_price_cents: li.unit_price_cents || 0,
+            })),
+          }).catch((err: unknown) => console.error('QB invoice sync failed:', err))
+        })
+      }
+    }).catch(() => { /* QB not configured, skip */ })
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
