@@ -66,7 +66,6 @@ export default function LoginPage() {
 
       // 4. Use the token_hash to complete sign-in via Supabase OTP
       const { error: otpError } = await supabase.auth.verifyOtp({
-        email: verifyData.email,
         token_hash: verifyData.token_hash,
         type: 'magiclink',
       })
