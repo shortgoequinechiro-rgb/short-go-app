@@ -67,6 +67,19 @@ type OwnerDocument = {
   url: string | null
 }
 
+type VetAuthorization = {
+  id: string
+  horse_id: string
+  horse_name: string
+  vet_name: string
+  vet_practice_name: string | null
+  vet_license_number: string | null
+  authorization_date: string
+  expires_at: string
+  status: string
+  source: string
+}
+
 type Tab = 'profile' | 'records'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -130,6 +143,7 @@ export default function OwnerPage() {
   const [intakeForms, setIntakeForms] = useState<IntakeForm[]>([])
   const [consentForms, setConsentForms] = useState<ConsentForm[]>([])
   const [documents, setDocuments] = useState<OwnerDocument[]>([])
+  const [vetAuthorizations, setVetAuthorizations] = useState<VetAuthorization[]>([])
   const [loadingRecords, setLoadingRecords] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadNote, setUploadNote] = useState('')
@@ -320,6 +334,27 @@ export default function OwnerPage() {
       .order('signed_at', { ascending: false })
 
     setConsentForms((consents || []) as ConsentForm[])
+
+    // Vet authorizations for all of this owner's animals
+    if (animals.length > 0) {
+      const animalIds = animals.map(a => a.id)
+      const { data: authData } = await supabase
+        .from('vet_authorizations')
+        .select('id, horse_id, vet_name, vet_practice_name, vet_license_number, authorization_date, expires_at, status, source')
+        .in('horse_id', animalIds)
+        .order('authorization_date', { ascending: false })
+
+      if (authData) {
+        const animalNameMap: Record<string, string> = {}
+        for (const a of animals) animalNameMap[a.id] = a.name
+        setVetAuthorizations(
+          authData.map(a => ({
+            ...a,
+            horse_name: animalNameMap[a.horse_id] || 'Unknown',
+          })) as VetAuthorization[]
+        )
+      }
+    }
 
     // Uploaded documents
     const { data: { session } } = await supabase.auth.getSession()
@@ -895,14 +930,14 @@ export default function OwnerPage() {
                           <div className="mt-2 flex items-center gap-1.5">
                             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
                               <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                              Vet Auth on File
+                              Vet Authorization
                             </span>
                           </div>
                         ) : (
                           <div className="mt-2 flex items-center gap-1.5">
                             <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-xs font-medium text-amber-700">
                               <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
-                              No Vet Auth
+                              No Vet Authorization
                             </span>
                           </div>
                         )}
@@ -1110,6 +1145,60 @@ export default function OwnerPage() {
                   </div>
                 )}
 
+                {/* ── Vet Authorizations ── */}
+                {vetAuthorizations.length > 0 && (
+                  <div className="rounded-3xl bg-white p-5 shadow-sm md:p-6">
+                    <h3 className="text-base font-semibold text-slate-900 mb-1 flex items-center gap-2">
+                      <span className="text-blue-600">🩺</span>
+                      Vet Authorizations
+                      <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+                        {vetAuthorizations.length}
+                      </span>
+                    </h3>
+                    <p className="text-xs text-slate-500 mb-3">Veterinary authorizations for chiropractic care</p>
+                    <div className="space-y-2">
+                      {vetAuthorizations.map(auth => {
+                        const today = new Date().toISOString().split('T')[0]
+                        const isActive = auth.status === 'active' && auth.expires_at >= today
+                        const isExpired = auth.status === 'expired' || auth.expires_at < today
+                        const isRevoked = auth.status === 'revoked'
+
+                        return (
+                          <div
+                            key={auth.id}
+                            className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 hover:bg-white hover:shadow-sm transition"
+                          >
+                            <span className="text-lg">
+                              {isActive ? '✅' : isRevoked ? '🚫' : '⏳'}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-800 truncate">
+                                Dr. {auth.vet_name}{auth.vet_practice_name ? ` — ${auth.vet_practice_name}` : ''}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                {auth.horse_name} · {auth.source === 'digital_form' ? 'Digital form' : auth.source === 'upload' ? 'Uploaded' : 'Manual entry'}
+                                {auth.vet_license_number ? ` · Lic. ${auth.vet_license_number}` : ''}
+                              </p>
+                              <p className="text-xs text-slate-400">
+                                {formatDate(auth.authorization_date)} → Expires {formatDate(auth.expires_at)}
+                              </p>
+                            </div>
+                            <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                              isActive
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : isRevoked
+                                  ? 'bg-red-100 text-red-700'
+                                  : 'bg-slate-200 text-slate-600'
+                            }`}>
+                              {isActive ? 'Active' : isRevoked ? 'Revoked' : isExpired ? 'Expired' : auth.status}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* ── Uploaded Documents ── */}
                 <div className="rounded-3xl bg-white p-5 shadow-sm md:p-6">
                   <h3 className="text-base font-semibold text-slate-900 mb-1 flex items-center gap-2">
@@ -1173,7 +1262,7 @@ export default function OwnerPage() {
                 </div>
 
                 {/* ── Empty state for no records at all ── */}
-                {intakeForms.length === 0 && consentForms.length === 0 && documents.length === 0 && (
+                {intakeForms.length === 0 && consentForms.length === 0 && vetAuthorizations.length === 0 && documents.length === 0 && (
                   <div className="rounded-3xl bg-white p-10 text-center shadow-sm">
                     <p className="text-3xl">📂</p>
                     <p className="mt-3 font-semibold text-slate-700">No records yet</p>
