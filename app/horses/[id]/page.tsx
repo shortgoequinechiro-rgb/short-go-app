@@ -1137,6 +1137,8 @@ export default function HorseDetailPage() {
 
       savedVisitId = data.id
       setMessage('Visit saved successfully.')
+      setInvoicePromptVisitId(data.id)
+      setActiveTab('visits')
     }
 
     // Link spine assessment to the new visit if we came from the new visit flow
