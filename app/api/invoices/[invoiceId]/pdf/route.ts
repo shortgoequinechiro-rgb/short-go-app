@@ -58,29 +58,47 @@ export async function GET(
     }
 
     // Fetch practitioner info
-    const { data: practitioner, error: practitionerError } = await supabaseAdmin
+    const { data: practitionerRaw, error: practitionerError } = await supabaseAdmin
       .from('practitioners')
       .select('full_name, practice_name, location')
       .eq('id', invoice.practitioner_id)
       .single()
 
-    if (practitionerError || !practitioner) {
+    if (practitionerError || !practitionerRaw) {
       return NextResponse.json({ error: 'Practitioner not found' }, { status: 404 })
     }
 
+    // Ensure no null values for PDF generation
+    const practitioner = {
+      full_name: practitionerRaw.full_name || 'Practitioner',
+      practice_name: practitionerRaw.practice_name || 'Stride Chiropractic',
+      location: practitionerRaw.location || '',
+    }
+
+    const safeOwner = {
+      full_name: owner.full_name || 'Client',
+      email: owner.email || '',
+      phone: owner.phone || undefined,
+      address: owner.address || undefined,
+    }
+
     // Convert cents to dollars for PDF generation
-    const lineItemsForPdf = invoice.invoice_line_items.map(
+    const lineItemsForPdf = (invoice.invoice_line_items || []).map(
       (item: { id: string; description: string; quantity: number; unit_price_cents: number }) => ({
         id: item.id,
-        description: item.description,
-        quantity: item.quantity,
-        unit_price: item.unit_price_cents / 100,
-        total: (item.unit_price_cents * item.quantity) / 100,
+        description: item.description || 'Service',
+        quantity: item.quantity || 1,
+        unit_price: (item.unit_price_cents || 0) / 100,
+        total: ((item.unit_price_cents || 0) * (item.quantity || 1)) / 100,
       })
     )
 
     const invoiceForPdf = {
       ...invoice,
+      invoice_number: invoice.invoice_number || 'N/A',
+      invoice_date: invoice.invoice_date || new Date().toISOString(),
+      due_date: invoice.due_date || invoice.invoice_date || new Date().toISOString(),
+      status: invoice.status || 'draft',
       subtotal: invoice.subtotal_cents / 100,
       tax: (invoice.tax_cents || 0) / 100,
       total: invoice.total_cents / 100,
@@ -90,7 +108,7 @@ export async function GET(
     const pdfBytes = await generateInvoicePdf(
       invoiceForPdf,
       lineItemsForPdf,
-      owner,
+      safeOwner,
       horse,
       practitioner
     )
