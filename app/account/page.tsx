@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { supabase } from '../lib/supabase'
+import { startRegistration, browserSupportsWebAuthn } from '@simplewebauthn/browser'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -277,6 +278,169 @@ function ProfileTab({ practitioner, onSaved }: { practitioner: Practitioner; onS
   )
 }
 
+// ── Biometric / Face ID Section ───────────────────────────────────────────────
+
+type PasskeyCredential = {
+  id: string
+  device_name: string | null
+  created_at: string
+  last_used_at: string | null
+}
+
+function BiometricSection() {
+  const [supported, setSupported] = useState<boolean | null>(null)
+  const [passkeys, setPasskeys] = useState<PasskeyCredential[]>([])
+  const [loading, setLoading] = useState(true)
+  const [enrolling, setEnrolling] = useState(false)
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
+
+  const loadPasskeys = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return
+    const { data } = await supabase
+      .from('passkey_credentials')
+      .select('id, device_name, created_at, last_used_at')
+      .order('created_at', { ascending: false })
+    setPasskeys(data || [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    setSupported(browserSupportsWebAuthn())
+    loadPasskeys()
+  }, [loadPasskeys])
+
+  async function handleEnroll() {
+    setEnrolling(true)
+    setError('')
+    setMessage('')
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+
+      // 1. Get registration options from server
+      const optionsRes = await fetch('/api/webauthn/register-options', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      const options = await optionsRes.json()
+      if (!optionsRes.ok) throw new Error(options.error || 'Failed to get options')
+
+      // 2. Prompt the user's device for biometric (Face ID, Touch ID, etc.)
+      const registration = await startRegistration({ optionsJSON: options })
+
+      // 3. Verify with server and store
+      const verifyRes = await fetch('/api/webauthn/register-verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ response: registration, deviceName: getDeviceName() }),
+      })
+      const verifyData = await verifyRes.json()
+      if (!verifyRes.ok) throw new Error(verifyData.error || 'Verification failed')
+
+      setMessage('Biometric login enabled! You can now use Face ID / Touch ID to sign in.')
+      // Set a flag so the login page knows to show the biometric option on this device
+      localStorage.setItem('chirostride_passkey_enrolled', 'true')
+      loadPasskeys()
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Enrollment failed'
+      if (msg.includes('cancelled') || msg.includes('NotAllowedError')) {
+        setError('Enrollment was cancelled.')
+      } else {
+        setError(msg)
+      }
+    } finally {
+      setEnrolling(false)
+    }
+  }
+
+  async function handleRemove(id: string) {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return
+    await supabase.from('passkey_credentials').delete().eq('id', id)
+    loadPasskeys()
+  }
+
+  if (supported === false) return null // Don't show on unsupported browsers
+
+  return (
+    <div className="space-y-4">
+      <div className="h-px bg-[#244770]" />
+      <div>
+        <h3 className="text-base font-bold text-white flex items-center gap-2">
+          <span className="text-xl">👆</span> Biometric Login
+        </h3>
+        <p className="text-sm text-blue-300 mt-0.5">
+          Use Face ID, Touch ID, or fingerprint to sign in without a password.
+        </p>
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-white/50">Loading…</p>
+      ) : (
+        <>
+          {passkeys.length > 0 && (
+            <div className="space-y-2">
+              {passkeys.map((pk) => (
+                <div
+                  key={pk.id}
+                  className="flex items-center justify-between rounded-xl border border-[#244770] bg-[#0f2040] px-4 py-3"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-white">
+                      {pk.device_name || 'Passkey'}
+                    </p>
+                    <p className="text-xs text-blue-400/60">
+                      Added {new Date(pk.created_at).toLocaleDateString()}
+                      {pk.last_used_at && ` · Last used ${new Date(pk.last_used_at).toLocaleDateString()}`}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleRemove(pk.id)}
+                    className="text-xs text-red-400 hover:text-red-300 transition"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button
+            onClick={handleEnroll}
+            disabled={enrolling}
+            className="w-full max-w-sm rounded-xl bg-[#c9a227] px-6 py-2.5 text-sm font-semibold text-[#0f2040] hover:bg-[#b89020] transition disabled:opacity-50"
+          >
+            {enrolling
+              ? 'Waiting for biometric…'
+              : passkeys.length > 0
+                ? 'Add Another Device'
+                : 'Enable Face ID / Biometric Login'}
+          </button>
+
+          {error && <p className="text-sm text-red-400">{error}</p>}
+          {message && <p className="text-sm text-emerald-400 font-medium">{message}</p>}
+        </>
+      )}
+    </div>
+  )
+}
+
+function getDeviceName(): string {
+  if (typeof navigator === 'undefined') return 'Unknown device'
+  const ua = navigator.userAgent
+  if (/iPhone/.test(ua)) return 'iPhone'
+  if (/iPad/.test(ua)) return 'iPad'
+  if (/Macintosh/.test(ua)) return 'Mac'
+  if (/Android/.test(ua)) return 'Android'
+  if (/Windows/.test(ua)) return 'Windows'
+  return 'Device'
+}
+
 // ── Security Tab ──────────────────────────────────────────────────────────────
 
 function SecurityTab() {
@@ -315,7 +479,7 @@ function SecurityTab() {
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-bold text-white">Security</h2>
-        <p className="text-sm text-blue-300 mt-0.5">Change your login password.</p>
+        <p className="text-sm text-blue-300 mt-0.5">Manage your login credentials.</p>
       </div>
 
       <div className="max-w-sm space-y-4">
@@ -371,6 +535,9 @@ function SecurityTab() {
           {saving ? 'Updating…' : 'Update Password'}
         </button>
       </div>
+
+      {/* Biometric / Face ID enrollment */}
+      <BiometricSection />
     </div>
   )
 }
