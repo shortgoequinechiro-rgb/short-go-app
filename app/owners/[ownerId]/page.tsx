@@ -135,6 +135,14 @@ export default function OwnerPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Edit owner
+  const [editing, setEditing] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editPhone, setEditPhone] = useState('')
+  const [editEmail, setEditEmail] = useState('')
+  const [editAddress, setEditAddress] = useState('')
+  const [savingOwner, setSavingOwner] = useState(false)
+
   // Sending state
   const [sendingIntake, setSendingIntake] = useState(false)
   const [sendingIntakeSms, setSendingIntakeSms] = useState(false)
@@ -469,6 +477,55 @@ export default function OwnerPage() {
     finally { setSendingConsentSms(false) }
   }
 
+  // ── Edit owner ──────────────────────────────────────────────────────────
+
+  function startEditing() {
+    if (!owner) return
+    setEditName(owner.full_name || '')
+    setEditPhone(owner.phone || '')
+    setEditEmail(owner.email || '')
+    setEditAddress(owner.address || '')
+    setEditing(true)
+  }
+
+  async function saveOwner() {
+    if (!owner) return
+    setSavingOwner(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+
+      const { error: updateErr } = await supabase
+        .from('owners')
+        .update({
+          full_name: editName.trim(),
+          phone: editPhone.trim() || null,
+          email: editEmail.trim() || null,
+          address: editAddress.trim() || null,
+        })
+        .eq('id', owner.id)
+
+      if (updateErr) {
+        setMessage(`Failed to update: ${updateErr.message}`)
+      } else {
+        setOwner({
+          ...owner,
+          full_name: editName.trim(),
+          phone: editPhone.trim() || null,
+          email: editEmail.trim() || null,
+          address: editAddress.trim() || null,
+        })
+        setEditing(false)
+        setMessage('Owner updated successfully.')
+        setTimeout(() => setMessage(''), 3000)
+      }
+    } catch {
+      setMessage('Failed to update owner.')
+    } finally {
+      setSavingOwner(false)
+    }
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (checkingAuth) return null
@@ -568,63 +625,134 @@ export default function OwnerPage() {
             <div className="rounded-3xl bg-white p-4 shadow-sm md:p-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 
-                {/* Left: contact info */}
-                <div className="space-y-1">
-                  <h2 className="text-2xl font-bold text-slate-900">{owner.full_name}</h2>
-                  {owner.phone ? (
-                    <a
-                      href={`tel:${owner.phone}`}
-                      className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 transition w-fit"
-                    >
-                      <span className="text-slate-400">📞</span>
-                      {formatPhone(owner.phone)}
-                    </a>
+                {/* Left: contact info or edit form */}
+                <div className="space-y-1 flex-1 min-w-0">
+                  {editing ? (
+                    <div className="space-y-3 max-w-sm">
+                      <div>
+                        <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1">Full Name</label>
+                        <input
+                          type="text"
+                          value={editName}
+                          onChange={e => setEditName(e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 focus:border-[#0f2040] focus:bg-white focus:outline-none transition"
+                          placeholder="Full name"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1">Phone</label>
+                        <input
+                          type="tel"
+                          value={editPhone}
+                          onChange={e => setEditPhone(e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 focus:border-[#0f2040] focus:bg-white focus:outline-none transition"
+                          placeholder="(555) 123-4567"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1">Email</label>
+                        <input
+                          type="email"
+                          value={editEmail}
+                          onChange={e => setEditEmail(e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 focus:border-[#0f2040] focus:bg-white focus:outline-none transition"
+                          placeholder="email@example.com"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1">Address</label>
+                        <input
+                          type="text"
+                          value={editAddress}
+                          onChange={e => setEditAddress(e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 focus:border-[#0f2040] focus:bg-white focus:outline-none transition"
+                          placeholder="123 Main St, City, ST"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          onClick={saveOwner}
+                          disabled={savingOwner || !editName.trim()}
+                          className="rounded-xl bg-[#0f2040] px-4 py-2 text-sm font-semibold text-white hover:bg-[#162d55] transition disabled:opacity-50"
+                        >
+                          {savingOwner ? 'Saving…' : 'Save'}
+                        </button>
+                        <button
+                          onClick={() => setEditing(false)}
+                          className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 transition"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
                   ) : (
-                    <p className="flex items-center gap-1.5 text-sm text-slate-400">
-                      <span>📞</span> No phone on file
-                    </p>
-                  )}
-                  {owner.email ? (
-                    <a
-                      href={`mailto:${owner.email}`}
-                      className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 transition w-fit"
-                    >
-                      <span className="text-slate-400">✉️</span>
-                      {owner.email}
-                    </a>
-                  ) : (
-                    <p className="flex items-center gap-1.5 text-sm text-slate-400">
-                      <span>✉️</span> No email on file
-                    </p>
-                  )}
-                  {owner.address && (
-                    <p className="flex items-center gap-1.5 text-sm text-slate-500">
-                      <span className="text-slate-400">📍</span>
-                      {owner.address}
-                    </p>
-                  )}
+                    <>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-2xl font-bold text-slate-900">{owner.full_name}</h2>
+                        <button
+                          onClick={startEditing}
+                          className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition"
+                          title="Edit owner"
+                        >
+                          Edit
+                        </button>
+                      </div>
+                      {owner.phone ? (
+                        <a
+                          href={`tel:${owner.phone}`}
+                          className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 transition w-fit"
+                        >
+                          <span className="text-slate-400">📞</span>
+                          {formatPhone(owner.phone)}
+                        </a>
+                      ) : (
+                        <p className="flex items-center gap-1.5 text-sm text-slate-400">
+                          <span>📞</span> No phone on file
+                        </p>
+                      )}
+                      {owner.email ? (
+                        <a
+                          href={`mailto:${owner.email}`}
+                          className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 transition w-fit"
+                        >
+                          <span className="text-slate-400">✉️</span>
+                          {owner.email}
+                        </a>
+                      ) : (
+                        <p className="flex items-center gap-1.5 text-sm text-slate-400">
+                          <span>✉️</span> No email on file
+                        </p>
+                      )}
+                      {owner.address && (
+                        <p className="flex items-center gap-1.5 text-sm text-slate-500">
+                          <span className="text-slate-400">📍</span>
+                          {owner.address}
+                        </p>
+                      )}
 
-                  {/* ── Intake / Consent status badges ── */}
-                  <div className="pt-2 flex flex-wrap items-center gap-2">
-                    {hasIntake ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                        ✓ Intake on file
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-600">
-                        ✗ No intake on file
-                      </span>
-                    )}
-                    {hasConsent ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                        ✓ Consent on file
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-600">
-                        ✗ No consent on file
-                      </span>
-                    )}
-                  </div>
+                      {/* ── Intake / Consent status badges ── */}
+                      <div className="pt-2 flex flex-wrap items-center gap-2">
+                        {hasIntake ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                            ✓ Intake on file
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-600">
+                            ✗ No intake on file
+                          </span>
+                        )}
+                        {hasConsent ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                            ✓ Consent on file
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-600">
+                            ✗ No consent on file
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Right: actions */}
