@@ -85,9 +85,9 @@ export default function SignupPage() {
       }
     }
 
-    // 3. If we have a session (email confirmation disabled), go straight in
+    // 3. If we have a session (email confirmation disabled), go straight to onboarding
     if (session) {
-      router.push('/select-mode')
+      router.push('/onboarding')
       return
     }
 

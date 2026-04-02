@@ -69,12 +69,13 @@ Rules:
 - Output JSON only.
 `.trim()
 
-    const response = await client.responses.create({
+    const response = await client.chat.completions.create({
       model: 'gpt-4o-mini',
-      input: prompt,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.4,
     })
 
-    const text = response.output_text?.trim()
+    const text = response.choices?.[0]?.message?.content?.trim()
 
     if (!text) {
       return NextResponse.json(

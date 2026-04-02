@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import OAuthClient from 'intuit-oauth'
 import { requireAuth } from '../../../lib/auth'
 import { getOAuthClient } from '../../../lib/quickbooks'
 
@@ -27,6 +28,3 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Failed to generate QuickBooks auth URL' }, { status: 500 })
   }
 }
-
-// Need to import for the scopes constant
-import OAuthClient from 'intuit-oauth'

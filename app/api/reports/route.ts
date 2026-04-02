@@ -39,17 +39,32 @@ export async function GET(request: NextRequest) {
     const now = new Date()
     const currentMonth = now.getMonth()
     const currentYear = now.getFullYear()
+
+    // Optional date range filtering via query params
+    const url = new URL(request.url)
+    const fromParam = url.searchParams.get('from')
+    const toParam = url.searchParams.get('to')
+    const monthsBack = parseInt(url.searchParams.get('months') || '6', 10)
+
     const sixMonthsAgo = new Date(now)
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - monthsBack)
     const ninetyDaysAgo = new Date(now)
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
 
-    // 1. Get all paid invoices for total revenue
-    const { data: paidInvoices } = await supabaseAdmin
+    // If explicit from/to provided, use those for filtering
+    const dateFrom = fromParam ? new Date(fromParam) : null
+    const dateTo = toParam ? new Date(toParam) : null
+
+    // 1. Get all paid invoices for total revenue (with optional date range)
+    let paidInvoicesQuery = supabaseAdmin
       .from('invoices')
       .select('id, total_cents, invoice_date, paid_at')
       .eq('practitioner_id', practitionerId)
       .eq('status', 'paid')
+    if (dateFrom) paidInvoicesQuery = paidInvoicesQuery.gte('invoice_date', dateFrom.toISOString().split('T')[0])
+    if (dateTo) paidInvoicesQuery = paidInvoicesQuery.lte('invoice_date', dateTo.toISOString().split('T')[0])
+
+    const { data: paidInvoices } = await paidInvoicesQuery
 
     const totalRevenue = (paidInvoices || []).reduce((sum, inv) => sum + (inv.total_cents || 0), 0)
 
@@ -61,11 +76,15 @@ export async function GET(request: NextRequest) {
     })
     const revenueThisMonth = thisMonthPaid.reduce((sum, inv) => sum + (inv.total_cents || 0), 0)
 
-    // 3. Get total visits
-    const { data: allVisits } = await supabaseAdmin
+    // 3. Get total visits (with optional date range)
+    let allVisitsQuery = supabaseAdmin
       .from('visits')
       .select('id, visit_date')
       .eq('practitioner_id', practitionerId)
+    if (dateFrom) allVisitsQuery = allVisitsQuery.gte('visit_date', dateFrom.toISOString().split('T')[0])
+    if (dateTo) allVisitsQuery = allVisitsQuery.lte('visit_date', dateTo.toISOString().split('T')[0])
+
+    const { data: allVisits } = await allVisitsQuery
 
     const totalVisits = allVisits?.length || 0
 
@@ -75,16 +94,7 @@ export async function GET(request: NextRequest) {
       return visitDate.getMonth() === currentMonth && visitDate.getFullYear() === currentYear
     }).length
 
-    // 5. Get active patients (horses with visits in last 90 days)
-    const activeHorses = new Set<string>()
-    ;(allVisits || []).forEach((visit) => {
-      const visitDate = new Date(visit.visit_date)
-      if (visitDate >= ninetyDaysAgo) {
-        // We need horse_id - let's refetch with that
-      }
-    })
-
-    // Better approach for active patients
+    // 5. Get active patients (unique horses with visits in last 90 days)
     const { data: recentVisits } = await supabaseAdmin
       .from('visits')
       .select('horse_id')
