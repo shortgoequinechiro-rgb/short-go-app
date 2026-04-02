@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, supabaseAdmin } from '../../../../lib/auth'
+import { getStripe } from '../../../../lib/stripe'
 import twilio from 'twilio'
 
 const twilioClient = twilio(
@@ -63,10 +64,10 @@ export async function POST(
       .eq('id', invoice.horse_id)
       .single()
 
-    // Fetch practitioner info
+    // Fetch practitioner info (including payment handles)
     const { data: practitioner } = await supabaseAdmin
-      .from('users')
-      .select('practice_name')
+      .from('practitioners')
+      .select('practice_name, venmo_handle, paypal_email, zelle_info, cash_app_handle')
       .eq('id', invoice.practitioner_id)
       .single()
 
@@ -74,7 +75,55 @@ export async function POST(
     const totalDollars = (invoice.total_cents / 100).toFixed(2)
     const horseName = horse?.name || 'your horse'
 
-    // Build SMS message
+    // Auto-generate a Stripe payment link if one doesn't exist yet
+    if (!invoice.stripe_payment_url) {
+      try {
+        const stripe = getStripe()
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+
+        const paymentLink = await stripe.paymentLinks.create({
+          line_items: [
+            {
+              price_data: {
+                currency: 'usd',
+                product_data: {
+                  name: `Invoice ${invoice.invoice_number}`,
+                },
+                unit_amount: invoice.total_cents,
+              },
+              quantity: 1,
+            },
+          ],
+          metadata: {
+            invoiceId,
+            practitionerId: user.id,
+          },
+          after_completion: {
+            type: 'redirect',
+            redirect: {
+              url: `${appUrl}/invoices/${invoiceId}?paid=true`,
+            },
+          },
+        })
+
+        // Save the payment link on the invoice for future use
+        await supabaseAdmin
+          .from('invoices')
+          .update({
+            stripe_payment_link_id: paymentLink.id,
+            stripe_payment_url: paymentLink.url,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', invoiceId)
+      } catch (stripeErr) {
+        console.error('Failed to auto-generate payment link:', stripeErr)
+      }
+    }
+
+    // Build SMS message with a single clean link to the pay page
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const payPageUrl = `${appUrl}/pay/${invoiceId}`
+
     let smsBody = `Hi ${owner.full_name}! This is ${practiceName}. `
     smsBody += `Invoice ${invoice.invoice_number} for ${horseName} — $${totalDollars}.`
 
@@ -82,10 +131,7 @@ export async function POST(
       smsBody += ` Due: ${new Date(invoice.due_date).toLocaleDateString()}.`
     }
 
-    if (invoice.stripe_payment_url) {
-      smsBody += `\n\nPay online: ${invoice.stripe_payment_url}`
-    }
-
+    smsBody += `\n\nView & pay: ${payPageUrl}`
     smsBody += `\n\nQuestions? Reply to this text or contact us directly.`
 
     // Format phone number (ensure it has +1 prefix for US)

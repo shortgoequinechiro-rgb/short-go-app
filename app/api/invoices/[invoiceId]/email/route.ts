@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, supabaseAdmin } from '../../../../lib/auth'
+import { getStripe } from '../../../../lib/stripe'
 import { Resend } from 'resend'
 import { generateInvoicePdf } from '../generateInvoicePdf'
 
@@ -123,10 +124,58 @@ export async function POST(
     const totalDollars = invoice.total_cents / 100
     const subtotalDollars = invoice.subtotal_cents / 100
 
-    // Build Stripe payment link if available
-    const paymentLinkHtml = invoice.stripe_payment_url
+    // Auto-generate a Stripe payment link if one doesn't exist yet
+    let paymentUrl = invoice.stripe_payment_url
+    if (!paymentUrl) {
+      try {
+        const stripe = getStripe()
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+
+        const paymentLink = await stripe.paymentLinks.create({
+          line_items: [
+            {
+              price_data: {
+                currency: 'usd',
+                product_data: {
+                  name: `Invoice ${invoice.invoice_number}`,
+                },
+                unit_amount: invoice.total_cents,
+              },
+              quantity: 1,
+            },
+          ],
+          metadata: {
+            invoiceId,
+            practitionerId: user.id,
+          },
+          after_completion: {
+            type: 'redirect',
+            redirect: {
+              url: `${appUrl}/invoices/${invoiceId}?paid=true`,
+            },
+          },
+        })
+
+        paymentUrl = paymentLink.url
+
+        // Save the payment link on the invoice for future use
+        await supabaseAdmin
+          .from('invoices')
+          .update({
+            stripe_payment_link_id: paymentLink.id,
+            stripe_payment_url: paymentLink.url,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', invoiceId)
+      } catch (stripeErr) {
+        console.error('Failed to auto-generate payment link for email:', stripeErr)
+      }
+    }
+
+    // Build Stripe payment link button
+    const paymentLinkHtml = paymentUrl
       ? `<div style="text-align: center; margin: 30px 0;">
-          <a href="${invoice.stripe_payment_url}" style="display: inline-block; background-color: #4F46E5; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;">Pay Now — $${totalDollars.toFixed(2)}</a>
+          <a href="${paymentUrl}" style="display: inline-block; background-color: #4F46E5; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;">Pay Now — $${totalDollars.toFixed(2)}</a>
         </div>`
       : ''
 
