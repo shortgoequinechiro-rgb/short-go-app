@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chiro Stride — Pre-Launch Checklist</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; line-height: 1.6; padding: 2rem; }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 2rem; color: #f8fafc; margin-bottom: 0.25rem; }
+  .subtitle { color: #94a3b8; margin-bottom: 2rem; }
+
+  .summary-row { display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
+  .summary-card { background: #1e293b; border-radius: 12px; padding: 1.25rem 1.5rem; flex: 1; min-width: 130px; border: 1px solid #334155; text-align: center; }
+  .summary-card .num { font-size: 2rem; font-weight: 700; }
+  .summary-card .lbl { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; }
+  .crit { color: #f87171; }
+  .high { color: #fb923c; }
+  .med { color: #facc15; }
+  .low { color: #60a5fa; }
+
+  .section { background: #1e293b; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid #334155; }
+  .section h2 { font-size: 1.15rem; color: #f8fafc; margin-bottom: 0.75rem; }
+  .section h3 { font-size: 0.95rem; color: #cbd5e1; margin: 1rem 0 0.5rem; border-bottom: 1px solid #334155; padding-bottom: 0.25rem; }
+
+  .item { display: flex; gap: 0.75rem; padding: 0.6rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .item:last-child { border-bottom: none; }
+  .item .sev { flex-shrink: 0; width: 70px; text-align: center; padding: 2px 0; border-radius: 4px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; align-self: flex-start; margin-top: 2px; }
+  .sev-crit { background: #7f1d1d; color: #fca5a5; }
+  .sev-high { background: #7c2d12; color: #fdba74; }
+  .sev-med { background: #713f12; color: #fde047; }
+  .sev-low { background: #1e3a5f; color: #93c5fd; }
+  .item .body { flex: 1; }
+  .item .title { font-weight: 600; color: #f1f5f9; font-size: 0.9rem; }
+  .item .desc { color: #94a3b8; font-size: 0.8rem; margin-top: 0.15rem; }
+  .item .file { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.7rem; color: #60a5fa; margin-top: 0.15rem; }
+  .cb { width: 16px; height: 16px; border: 2px solid #475569; border-radius: 3px; flex-shrink: 0; margin-top: 3px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>Chiro Stride - Pre-Launch Checklist</h1>
+<p class="subtitle">Full audit: April 2, 2026 &nbsp;|&nbsp; 4 agents, 174 tool calls, 51 API routes, 33 pages, 23 tables reviewed</p>
+
+<div class="summary-row">
+  <div class="summary-card"><div class="num crit">7</div><div class="lbl">Critical</div></div>
+  <div class="summary-card"><div class="num high">14</div><div class="lbl">High</div></div>
+  <div class="summary-card"><div class="num med">16</div><div class="lbl">Medium</div></div>
+  <div class="summary-card"><div class="num low">8</div><div class="lbl">Low</div></div>
+  <div class="summary-card"><div class="num" style="color:#e2e8f0;">45</div><div class="lbl">Total Issues</div></div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 1: CRITICAL — DO BEFORE ANYTHING ELSE -->
+<!-- ============================================================ -->
+<div class="section">
+  <h2>BLOCK LAUNCH — Fix Immediately</h2>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-crit">Critical</div>
+    <div class="body">
+      <div class="title">1. Rotate all exposed API keys and secrets</div>
+      <div class="desc">.env.local is committed to Git with live keys: OpenAI, Resend, Supabase service role, Twilio SID + auth token, Stripe secret key, and test login credentials. Rotate every key immediately, then purge from Git history with git-filter-repo.</div>
+      <div class="file">.env.local (lines 1-27)</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-crit">Critical</div>
+    <div class="body">
+      <div class="title">2. Remove .env.local from Git and scrub history</div>
+      <div class="desc">Run: git rm --cached .env.local, verify .gitignore has it, then use git-filter-repo or BFG to purge all secrets from commit history. Anyone who cloned the repo has your keys.</div>
+      <div class="file">.env.local, .gitignore</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-crit">Critical</div>
+    <div class="body">
+      <div class="title">3. Configure real Stripe webhook secret</div>
+      <div class="desc">Currently set to "whsec_REPLACE_ME" — webhook signature verification will always fail. Get the real signing secret from Stripe Dashboard > Webhooks. Without this, anyone can forge billing events (fake subscriptions, bypass payment).</div>
+      <div class="file">.env.local line 16, app/api/billing/webhook/route.ts:36</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-crit">Critical</div>
+    <div class="body">
+      <div class="title">4. Fix XSS in contact form email template</div>
+      <div class="desc">User input (name, email, message, phone, practice name) is interpolated directly into HTML without escaping. Attacker can inject script tags via the contact form. Add an escapeHtml() utility and apply to all user-provided fields in email HTML.</div>
+      <div class="file">app/api/contact/route.ts (lines 34, 38, 46, 51)</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-crit">Critical</div>
+    <div class="body">
+      <div class="title">5. Fix overly permissive RLS on consent_forms, intake_forms, vet_authorizations</div>
+      <div class="desc">These tables have USING (true) policies — any unauthenticated user can read ALL consent/intake/vet auth records from ALL practitioners. Drop the blanket public SELECT policies and restrict to UUID-based access (owner_id in URL as token).</div>
+      <div class="file">migrations/001_add_multi_tenancy.sql (lines 84-108), migrations/034_add_vet_authorizations.sql (lines 61-73)</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-crit">Critical</div>
+    <div class="body">
+      <div class="title">6. BillingGate fails open on network error</div>
+      <div class="desc">If the ensure-practitioner API call fails (network issue, 500 error), the component sets ready=true and grants access to paid features. Users can access premium features during outages without paying. Add fallback to deny access on error.</div>
+      <div class="file">app/components/BillingGate.tsx (lines 76, 111-114)</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-crit">Critical</div>
+    <div class="body">
+      <div class="title">7. Add Terms of Service and Privacy Policy pages</div>
+      <div class="desc">No legal pages exist. You're collecting PII, medical records, payment info, and sending SMS. You need ToS and Privacy Policy before launch. Consider consulting a lawyer familiar with TCPA (SMS) and animal medical records.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 2: HIGH — Fix Before Launch -->
+<!-- ============================================================ -->
+<div class="section">
+  <h2>HIGH — Must Fix Before Launch</h2>
+
+  <h3>Security</h3>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-high">High</div>
+    <div class="body">
+      <div class="title">8. Add rate limiting to all public and sensitive endpoints</div>
+      <div class="desc">Only /api/contact (5/hr) and /api/owners (20/hr) are rate limited. Auth endpoints, SMS incoming webhook, public form endpoints, and AI generation have zero rate limiting. Add per-IP and per-user limits. Current in-memory store also resets on deploy.</div>
+      <div class="file">middleware.ts (lines 10-12)</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-high">High</div>
+    <div class="body">
+      <div class="title">9. Add global error boundary (error.tsx)</div>
+      <div class="desc">No error boundary exists anywhere in the app. One unhandled error in any component crashes the entire app with no fallback UI. Create app/error.tsx with a user-friendly error page and recovery option.</div>
+      <div class="file">app/ (missing error.tsx)</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-high">High</div>
+    <div class="body">
+      <div class="title">10. Add pagination to dashboard queries</div>
+      <div class="desc">loadOwners() and loadHorses() fetch ALL records with no limit. With 500+ owners/horses, this will cause memory issues and slow load times. Add cursor-based or offset pagination with lazy loading.</div>
+      <div class="file">app/dashboard/page.tsx (lines 493-680)</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-high">High</div>
+    <div class="body">
+      <div class="title">11. Fix Stripe webhook idempotency and missing events</div>
+      <div class="desc">No deduplication by event ID — same webhook could be processed twice. Missing handlers for: payment_intent.failed, customer.subscription.paused. Returns 200 even if DB update fails.</div>
+      <div class="file">app/api/billing/webhook/route.ts (lines 43-162)</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-high">High</div>
+    <div class="body">
+      <div class="title">12. Add grace period enforcement cron job</div>
+      <div class="desc">Grace period is SET when subscription cancels but never enforced. No cron job checks if grace period has expired. Users stay logged in with full access after grace period ends. Add a cron that checks and locks out expired accounts.</div>
+      <div class="file">app/api/billing/webhook/route.ts (lines 107-130), BillingGate.tsx</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-high">High</div>
+    <div class="body">
+      <div class="title">13. Fix consent/intake e-signature replay vulnerability</div>
+      <div class="desc">Signature data is stored as plain base64 PNG — can be copied between forms. No timestamp binding, no form-hash binding. Add a signature hash that includes form ID + timestamp to prevent replay.</div>
+      <div class="file">app/api/consent/submit/route.ts (line 55)</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-high">High</div>
+    <div class="body">
+      <div class="title">14. Fix SMS incoming webhook — no rate limiting or flood protection</div>
+      <div class="desc">An attacker sending 1000 SMS from the same number triggers 1000 API calls, each creating a notification and hitting Supabase. Add rate limiting per phone number and implement Twilio request signature validation.</div>
+      <div class="file">app/api/sms/incoming/route.ts (lines 22-150)</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-high">High</div>
+    <div class="body">
+      <div class="title">15. Add error tracking (Sentry or similar)</div>
+      <div class="desc">No error monitoring in production. Unhandled errors, API failures, and crashes go unnoticed. Set up Sentry with source maps for both client and server errors.</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-high">High</div>
+    <div class="body">
+      <div class="title">16. OpenAI prompt injection risk in SOAP generation</div>
+      <div class="desc">User-provided quick notes are embedded directly in the AI prompt. A practitioner (or attacker) can inject instructions to manipulate clinical output. Use structured prompts with delimiters and add output validation.</div>
+      <div class="file">app/api/generate-soap/route.ts (lines 45-70)</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-high">High</div>
+    <div class="body">
+      <div class="title">17. Offline sync has silent data loss on conflict</div>
+      <div class="desc">syncPendingData() inserts without conflict checking. If unique violation (23505), the record is deleted from local DB silently — user never knows their data was lost. Show a user-facing conflict resolution UI.</div>
+      <div class="file">app/lib/offlineDb.ts (lines 279-396)</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-high">High</div>
+    <div class="body">
+      <div class="title">18. Remove NEXT_PUBLIC_BYPASS_BILLING from production</div>
+      <div class="desc">Test scripts set this flag to bypass billing checks. If accidentally deployed to production, all subscription enforcement is disabled. Add a guard that only checks this flag in development.</div>
+      <div class="file">package.json (lines 10-11), BillingGate.tsx</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-high">High</div>
+    <div class="body">
+      <div class="title">19. Notifications table RLS allows any user full access</div>
+      <div class="desc">Policy uses USING (true) for ALL operations. Combined with exposed service key, any user can read/modify all notifications. Restrict to practitioner_id = auth.uid().</div>
+      <div class="file">migrations/029_add_notifications.sql (line 18)</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-high">High</div>
+    <div class="body">
+      <div class="title">20. Communication log allows unrestricted insert</div>
+      <div class="desc">FOR INSERT WITH CHECK (true) means anyone with the service key can insert fake communication logs for any practitioner. Add practitioner_id validation.</div>
+      <div class="file">migrations/028_add_communication_log.sql (line 24)</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-high">High</div>
+    <div class="body">
+      <div class="title">21. Create .env.example with all required variables documented</div>
+      <div class="desc">No documentation of required environment variables. New developers or deployment environments have no reference. Create .env.example with placeholder values and descriptions.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 3: MEDIUM — Fix Soon After Launch -->
+<!-- ============================================================ -->
+<div class="section">
+  <h2>MEDIUM — Should Fix Before or Shortly After Launch</h2>
+
+  <h3>Security & Data</h3>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-med">Medium</div>
+    <div class="body">
+      <div class="title">22. Remove unsafe-eval and unsafe-inline from CSP headers</div>
+      <div class="desc">Current CSP allows inline scripts and eval(), which weakens XSS protection. Use nonces for inline scripts/styles instead.</div>
+      <div class="file">middleware.ts (lines 59-60)</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-med">Medium</div>
+    <div class="body">
+      <div class="title">23. Add CSRF protection on state-changing endpoints</div>
+      <div class="desc">No CSRF tokens on POST/PUT/DELETE routes. Cross-origin requests could trigger unintended invoice creation, SMS sending, or appointment changes.</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-med">Medium</div>
+    <div class="body">
+      <div class="title">24. Validate file extensions against MIME type in uploads</div>
+      <div class="desc">Document upload validates MIME type but not extension. A file named "document.pdf.exe" with a spoofed MIME type could bypass checks. Cross-check extension and MIME, plus validate magic bytes.</div>
+      <div class="file">app/api/owners/[ownerId]/documents/route.ts (lines 104-118)</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-med">Medium</div>
+    <div class="body">
+      <div class="title">25. Use a phone number parsing library for SMS normalization</div>
+      <div class="desc">Current phone matching uses fragile string manipulation with multiple format guesses. Non-US numbers will break. Use libphonenumber-js for proper E.164 normalization.</div>
+      <div class="file">app/api/sms/incoming/route.ts (lines 54-79)</div>
+    </div>
+  </div>
+
+  <h3>Functionality</h3>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-med">Medium</div>
+    <div class="body">
+      <div class="title">26. Fix vet auth expiration off-by-one</div>
+      <div class="desc">Uses .lt('expires_at', today) so authorizations remain "active" on their expiration date. Should use .lte() to expire on the date itself.</div>
+      <div class="file">app/api/vet-auth/route.ts (line 26)</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-med">Medium</div>
+    <div class="body">
+      <div class="title">27. Add transaction safety to multi-animal intake form submission</div>
+      <div class="desc">Submitting multiple animals has no database transaction. If animal 2 fails, animal 1 is already created with no rollback. Use Supabase's rpc() for transactional inserts.</div>
+      <div class="file">app/api/intake/submit/route.ts (lines 67-143)</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-med">Medium</div>
+    <div class="body">
+      <div class="title">28. Add retry logic to external API calls (Stripe, OpenAI, Resend, Twilio)</div>
+      <div class="desc">All external API calls have no retry on failure. A single timeout or 429 rate limit silently fails the operation. Add exponential backoff with 2-3 retries.</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-med">Medium</div>
+    <div class="body">
+      <div class="title">29. Fix reminder cron timezone edge cases</div>
+      <div class="desc">Uses UTC dates for "tomorrow" calculation. Practitioners in UTC-8 could have reminders sent at wrong times or not at all. Store and use practitioner timezone.</div>
+      <div class="file">app/api/reminders/send/route.ts (lines 169-192)</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-med">Medium</div>
+    <div class="body">
+      <div class="title">30. Add loading states to dashboard and horse detail tabs</div>
+      <div class="desc">Multiple async fetches (owners, horses, visits) have no loading indicators. Users see blank UI while data loads. Add skeleton loaders or spinners.</div>
+      <div class="file">app/dashboard/page.tsx, app/horses/[id]/page.tsx</div>
+    </div>
+  </div>
+
+  <h3>Production Readiness</h3>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-med">Medium</div>
+    <div class="body">
+      <div class="title">31. Remove or gate 100+ console.log/console.error statements</div>
+      <div class="desc">Found across 57 files. Replace with proper logging (structured logger) or remove. Production console output is a performance and information leak concern.</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-med">Medium</div>
+    <div class="body">
+      <div class="title">32. Add robots.txt and sitemap.xml</div>
+      <div class="desc">Neither exists. Marketing pages won't be properly indexed by search engines. Generate a sitemap with all public routes and add robots.txt allowing crawling of marketing pages only.</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-med">Medium</div>
+    <div class="body">
+      <div class="title">33. Add OG meta tags and structured data to marketing pages</div>
+      <div class="desc">Landing, pricing, features, about pages lack Open Graph tags for social sharing. Add og:title, og:description, og:image, twitter:card meta tags.</div>
+      <div class="file">app/layout.tsx, app/page.tsx</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-med">Medium</div>
+    <div class="body">
+      <div class="title">34. Fix hardcoded practice name in SMS templates</div>
+      <div class="desc">SMS messages use a hardcoded practice name instead of the practitioner's actual practice_name. Breaks multi-tenant functionality.</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-med">Medium</div>
+    <div class="body">
+      <div class="title">35. Fix hardcoded Google Review URL</div>
+      <div class="desc">A Google Review URL is hardcoded for one practice. Should be configurable per practitioner in account settings, or removed.</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-med">Medium</div>
+    <div class="body">
+      <div class="title">36. Add cookie consent banner</div>
+      <div class="desc">App uses cookies/localStorage but has no consent mechanism. Required for GDPR/CCPA compliance if serving users in EU or California.</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-med">Medium</div>
+    <div class="body">
+      <div class="title">37. Standardize API error response format</div>
+      <div class="desc">Some routes return {error: string}, others return {message: string}, some return raw strings. Standardize to a consistent format: {error: string, code?: string, details?: object}.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 4: LOW — Nice to Have -->
+<!-- ============================================================ -->
+<div class="section">
+  <h2>LOW — Nice to Have / Post-Launch</h2>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-low">Low</div>
+    <div class="body">
+      <div class="title">38. Add composite database indexes for performance</div>
+      <div class="desc">visits(practitioner_id, visit_date), appointments(practitioner_id, appointment_date), horses(practitioner_id, archived), owners(practitioner_id, archived) — will matter at scale.</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-low">Low</div>
+    <div class="body">
+      <div class="title">39. Extend signed URL expiry for documents</div>
+      <div class="desc">Currently 1 hour — too short for practitioner workflows. Increase to 24h+ for internal use, or implement server-side proxying.</div>
+      <div class="file">app/api/owners/[ownerId]/documents/route.ts (line 52)</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-low">Low</div>
+    <div class="body">
+      <div class="title">40. Fix TypeScript type safety (25+ "as any" casts)</div>
+      <div class="desc">Excessive use of "as any" bypasses TypeScript's protections. Replace with proper type definitions to catch bugs at compile time.</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-low">Low</div>
+    <div class="body">
+      <div class="title">41. Add Playwright tests for authorization (cross-user data access)</div>
+      <div class="desc">No tests verify that User A cannot access User B's data. Add tests with two test accounts that verify data isolation.</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-low">Low</div>
+    <div class="body">
+      <div class="title">42. Add multi-browser Playwright testing (Firefox, Safari)</div>
+      <div class="desc">Only Chromium is configured. Add Firefox and WebKit/Safari to catch browser-specific bugs.</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-low">Low</div>
+    <div class="body">
+      <div class="title">43. Tighten CSP img-src to specific Supabase URL</div>
+      <div class="desc">Currently allows https://*.supabase.co — could load images from other Supabase projects. Restrict to your specific project URL.</div>
+      <div class="file">middleware.ts (line 62)</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-low">Low</div>
+    <div class="body">
+      <div class="title">44. Add data retention / archival policies</div>
+      <div class="desc">No automatic cleanup of old records. Consider retention policies for communication logs, expired vet authorizations, and old notifications.</div>
+    </div>
+  </div>
+
+  <div class="item">
+    <div class="cb"></div>
+    <div class="sev sev-low">Low</div>
+    <div class="body">
+      <div class="title">45. Add audit logging for critical actions</div>
+      <div class="desc">No audit trail for who deleted records, changed billing, or modified patient data. Consider an audit_log table for compliance.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- TEST COVERAGE SUMMARY -->
+<!-- ============================================================ -->
+<div class="section">
+  <h2>E2E Test Coverage Summary</h2>
+  <p style="color:#94a3b8; margin-bottom:1rem;">312 tests across 17 files. Tests could not run in sandbox (missing SWC binary) but code review identified these gaps:</p>
+
+  <h3>Well Covered</h3>
+  <div style="color:#94a3b8; font-size:0.85rem; margin-bottom:0.5rem;">
+    Public/marketing pages (21 tests), invoice CRUD (30+ tests), visit management (12 tests), account settings (17 tests), security headers (22 tests), mobile responsive (21 tests), offline/PWA (16 tests)
+  </div>
+
+  <h3>Not Covered</h3>
+  <div style="color:#94a3b8; font-size:0.85rem;">
+    Cross-user authorization (can User A see User B's data?), form validation (required fields, formats), payment flow end-to-end (Stripe checkout > webhook > subscription active), email/SMS delivery verification, large dataset performance, conflict resolution in offline sync, multi-browser (Firefox/Safari), calendar drag-and-drop
+  </div>
+</div>
+
+<p style="text-align:center; color:#475569; padding:2rem 0 1rem; font-size:0.8rem;">Chiro Stride Pre-Launch Audit &mdash; April 2, 2026 &mdash; 4 parallel agents</p>
+
+</div>
+</body>
+</html>
