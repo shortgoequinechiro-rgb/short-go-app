@@ -372,14 +372,32 @@ export default function InvoicesPage() {
                         )}
                       </>
                     )}
-                    <a
-                      href={`/api/invoices/${invoice.id}/pdf`}
+                    <button
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        try {
+                          const { data: { session } } = await supabase.auth.getSession();
+                          const res = await fetch(`/api/invoices/${invoice.id}/pdf`, {
+                            headers: { Authorization: `Bearer ${session?.access_token}` }
+                          });
+                          if (!res.ok) throw new Error('Failed to generate PDF');
+                          const blob = await res.blob();
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `${invoice.invoice_number}.pdf`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          URL.revokeObjectURL(url);
+                        } catch {
+                          alert('Failed to download PDF');
+                        }
+                      }}
                       className="px-2 py-1 text-xs font-medium text-slate-600 hover:text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50"
-                      target="_blank"
-                      rel="noopener noreferrer"
                     >
                       PDF
-                    </a>
+                    </button>
                   </div>
                 </div>
               </div>
