@@ -28,6 +28,7 @@ import {
   Zap,
   Shield,
   Globe,
+  BookOpen,
 } from "lucide-react";
 
 /* ───────────────────────── feature data ───────────────────────── */
@@ -63,6 +64,11 @@ const features = [
     title: "Offline Mode",
     desc: "Works without cell signal. Take notes at the barn, sync automatically when you're back online. Built for the field.",
   },
+  {
+    icon: BookOpen,
+    title: "QuickBooks Sync",
+    desc: "Connect QuickBooks Online in one click. Invoices and payments sync automatically — no double entry, no bookkeeping headaches.",
+  },
 ];
 
 const pricingFeatures = [
@@ -73,6 +79,7 @@ const pricingFeatures = [
   "Digital intake & consent forms",
   "SMS & email reminders",
   "Offline mode & PWA",
+  "QuickBooks integration",
   "Custom practice branding",
 ];
 

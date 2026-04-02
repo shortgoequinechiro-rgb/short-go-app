@@ -132,7 +132,7 @@ const additionalFeatures = [
   {
     icon: CreditCard,
     title: "Invoicing & Payments",
-    desc: "Create and send invoices. Accept payments via Stripe. Track outstanding balances automatically.",
+    desc: "Create and send invoices. Accept payments via Stripe. Sync automatically to QuickBooks Online — no double entry.",
   },
   {
     icon: Mail,
