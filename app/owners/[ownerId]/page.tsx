@@ -115,6 +115,7 @@ export default function OwnerPage() {
   const [owner, setOwner] = useState<Owner | null>(null)
   const [animals, setAnimals] = useState<Animal[]>([])
   const [visitCounts, setVisitCounts] = useState<Record<string, number>>({})
+  const [vetAuthStatus, setVetAuthStatus] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
@@ -253,6 +254,26 @@ export default function OwnerPage() {
             }
             setVisitCounts(counts)
           } catch { /* ignore */ }
+        }
+      }
+
+      // Vet authorization status per animal
+      if (animalList.length > 0) {
+        const ids = animalList.map(a => a.id)
+        const today = new Date().toISOString().split('T')[0]
+        const { data: authData } = await supabase
+          .from('vet_authorizations')
+          .select('horse_id')
+          .in('horse_id', ids)
+          .eq('status', 'active')
+          .gte('expires_at', today)
+
+        if (authData) {
+          const authMap: Record<string, boolean> = {}
+          for (const a of authData) {
+            if (a.horse_id) authMap[a.horse_id] = true
+          }
+          setVetAuthStatus(authMap)
         }
       }
 
@@ -868,6 +889,23 @@ export default function OwnerPage() {
                             {visits} {visits === 1 ? 'visit' : 'visits'}
                           </span>
                         </div>
+
+                        {/* Vet auth badge */}
+                        {vetAuthStatus[animal.id] ? (
+                          <div className="mt-2 flex items-center gap-1.5">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+                              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                              Vet Auth on File
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="mt-2 flex items-center gap-1.5">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+                              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                              No Vet Auth
+                            </span>
+                          </div>
+                        )}
 
                         {/* Meta row */}
                         <div className="mt-3 flex flex-wrap gap-1.5">

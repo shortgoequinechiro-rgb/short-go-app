@@ -150,6 +150,7 @@ export default function Home() {
   const [photoCount, setPhotoCount] = useState(0)
   const [visitCountsByHorse, setVisitCountsByHorse] = useState<Record<string, number>>({})
   const [horsePhotoUrls, setHorsePhotoUrls] = useState<Record<string, string>>({})
+  const [vetAuthByHorse, setVetAuthByHorse] = useState<Record<string, boolean>>({})
   const [recentVisits, setRecentVisits] = useState<Visit[]>([])
   const [todayAppointments, setTodayAppointments] = useState<TodayAppointment[]>([])
 
@@ -643,6 +644,26 @@ export default function Home() {
       )
     }
     setHorsePhotoUrls(urlMap)
+
+    // Vet authorization status per horse
+    if (horseList.length > 0 && navigator.onLine) {
+      const horseIds = horseList.map(h => h.id)
+      const today = new Date().toISOString().split('T')[0]
+      const { data: authData } = await supabase
+        .from('vet_authorizations')
+        .select('horse_id')
+        .in('horse_id', horseIds)
+        .eq('status', 'active')
+        .gte('expires_at', today)
+
+      if (authData) {
+        const authMap: Record<string, boolean> = {}
+        for (const a of authData) {
+          if (a.horse_id) authMap[a.horse_id] = true
+        }
+        setVetAuthByHorse(prev => ({ ...prev, ...authMap }))
+      }
+    }
   }
 
   async function loadVisitCount() {
@@ -1728,7 +1749,7 @@ export default function Home() {
                                 : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
                             }`}
                           >
-                            <p className="font-semibold">{owner.full_name}</p>
+                            <p className={`font-semibold ${isSelected ? '' : 'text-slate-900'}`}>{owner.full_name}</p>
                             <p className={`mt-1 text-sm ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
                               {formatPhone(owner.phone)}
                             </p>
@@ -1772,13 +1793,28 @@ export default function Home() {
                           href={`/horses/${horse.id}`}
                           className="block rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm"
                         >
-                          <p className="font-semibold text-slate-900">{horse.name}</p>
-                          <p className="mt-1 text-sm text-slate-500">
-                            {horse.owners?.full_name || '—'}
-                          </p>
-                          {horse.breed && (
-                            <p className="text-sm text-slate-400">{horse.breed}</p>
-                          )}
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="font-semibold text-slate-900">{horse.name}</p>
+                              <p className="mt-1 text-sm text-slate-500">
+                                {horse.owners?.full_name || '—'}
+                              </p>
+                              {horse.breed && (
+                                <p className="text-sm text-slate-400">{horse.breed}</p>
+                              )}
+                            </div>
+                            {vetAuthByHorse[horse.id] ? (
+                              <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                                <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                Auth
+                              </span>
+                            ) : (
+                              <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                                <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                                No Auth
+                              </span>
+                            )}
+                          </div>
                         </Link>
                       ))}
                       {horses.length < totalHorses && (
@@ -2165,6 +2201,17 @@ export default function Home() {
                                   </div>
 
                                   <div className="flex flex-col items-end gap-1">
+                                    {vetAuthByHorse[horse.id] ? (
+                                      <span className="inline-flex items-center gap-1 rounded-2xl bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-xs font-medium text-emerald-700">
+                                        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        Vet Auth
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 rounded-2xl bg-amber-50 border border-amber-200 px-2.5 py-1 text-xs font-medium text-amber-700">
+                                        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                                        No Auth
+                                      </span>
+                                    )}
                                     {horse.discipline ? (
                                       <span className="rounded-2xl bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
                                         {horse.discipline}

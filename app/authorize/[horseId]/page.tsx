@@ -26,6 +26,14 @@ type ExistingAuth = {
   status: string
 }
 
+type SiblingAnimal = {
+  id: string
+  name: string
+  species: string
+  breed: string | null
+  hasActiveAuth: boolean
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function VetAuthorizationPage() {
@@ -35,6 +43,9 @@ export default function VetAuthorizationPage() {
   const [horse, setHorse] = useState<HorseInfo | null>(null)
   const [practitioner, setPractitioner] = useState<PractitionerInfo | null>(null)
   const [existingAuths, setExistingAuths] = useState<ExistingAuth[]>([])
+  const [siblingAnimals, setSiblingAnimals] = useState<SiblingAnimal[]>([])
+  const [selectedSiblings, setSelectedSiblings] = useState<Set<string>>(new Set())
+  const [ownerName, setOwnerName] = useState<string | null>(null)
 
   // Form fields
   const [vetName, setVetName] = useState('')
@@ -59,6 +70,27 @@ export default function VetAuthorizationPage() {
 
   const practiceName = practitioner?.practice_name || practitioner?.full_name || 'the requesting practitioner'
   const canSubmit = vetName.trim() && examConfirmed && understandsScope && hasSigned
+  const totalAnimals = 1 + selectedSiblings.size
+
+  function toggleSibling(id: string) {
+    setSelectedSiblings((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  function selectAllSiblings() {
+    setSelectedSiblings(new Set(siblingAnimals.map((s) => s.id)))
+  }
+
+  function deselectAllSiblings() {
+    setSelectedSiblings(new Set())
+  }
 
   // ── Load horse data ─────────────────────────────────────────────────────────
 
@@ -72,6 +104,8 @@ export default function VetAuthorizationPage() {
         setHorse(data.horse)
         setPractitioner(data.practitioner)
         setExistingAuths(data.existingAuths || [])
+        setSiblingAnimals(data.siblingAnimals || [])
+        setOwnerName(data.ownerName || null)
       } catch {
         setError('Failed to load information.')
       }
@@ -149,6 +183,7 @@ export default function VetAuthorizationPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           horseId,
+          additionalHorseIds: Array.from(selectedSiblings),
           vetName: vetName.trim(),
           vetLicenseNumber: vetLicenseNumber.trim() || undefined,
           vetPracticeName: vetPracticeName.trim() || undefined,
@@ -195,16 +230,34 @@ export default function VetAuthorizationPage() {
   }
 
   if (submitted) {
+    const allAuthorizedNames = [
+      horse.name,
+      ...siblingAnimals.filter((s) => selectedSiblings.has(s.id)).map((s) => s.name),
+    ]
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#0a1628] to-[#162a4a] flex items-center justify-center p-6">
         <div className="bg-[#1a2d4a] rounded-2xl p-8 max-w-md text-center space-y-4">
           <div className="text-5xl">✅</div>
-          <h1 className="text-2xl font-bold text-white">Authorization Submitted</h1>
+          <h1 className="text-2xl font-bold text-white">
+            {allAuthorizedNames.length === 1 ? 'Authorization Submitted' : `${allAuthorizedNames.length} Authorizations Submitted`}
+          </h1>
           <p className="text-blue-200">
-            Thank you, Dr. {vetName}. Your authorization for chiropractic care of <strong>{horse.name}</strong> has been recorded.
+            Thank you, Dr. {vetName}. Your authorization for chiropractic care of{' '}
+            {allAuthorizedNames.length === 1 ? (
+              <strong>{allAuthorizedNames[0]}</strong>
+            ) : (
+              <>
+                {allAuthorizedNames.slice(0, -1).map((name, i) => (
+                  <span key={name}>{i > 0 ? ', ' : ''}<strong>{name}</strong></span>
+                ))}
+                {' and '}
+                <strong>{allAuthorizedNames[allAuthorizedNames.length - 1]}</strong>
+              </>
+            )}
+            {' '}has been recorded.
           </p>
           <p className="text-sm text-blue-300/70">
-            This authorization is valid for 1 year. {practiceName} has been notified.
+            {allAuthorizedNames.length === 1 ? 'This authorization is' : 'These authorizations are'} valid for 1 year. {practiceName} has been notified.
           </p>
           <p className="text-xs text-blue-400/50 mt-4">You can close this page.</p>
         </div>
@@ -242,6 +295,64 @@ export default function VetAuthorizationPage() {
           </div>
         )}
 
+        {/* Sibling animals — select additional animals from same owner */}
+        {siblingAnimals.length > 0 && (
+          <div className="bg-[#1a2d4a] rounded-2xl p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-white">
+                  {ownerName ? `${ownerName}'s Other Animals` : 'Additional Animals on File'}
+                </h2>
+                <p className="text-xs text-blue-300 mt-0.5">
+                  Select any additional animals you&apos;d like to authorize
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={selectedSiblings.size === siblingAnimals.length ? deselectAllSiblings : selectAllSiblings}
+                className="text-xs text-blue-400 hover:text-blue-300 transition whitespace-nowrap ml-3"
+              >
+                {selectedSiblings.size === siblingAnimals.length ? 'Deselect All' : 'Select All'}
+              </button>
+            </div>
+            <div className="space-y-2">
+              {siblingAnimals.map((sibling) => (
+                <label
+                  key={sibling.id}
+                  className={`flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer transition border ${
+                    selectedSiblings.has(sibling.id)
+                      ? 'bg-blue-500/15 border-blue-500/40'
+                      : 'bg-[#0f1f36] border-[#244770]/50 hover:border-[#244770]'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedSiblings.has(sibling.id)}
+                    onChange={() => toggleSibling(sibling.id)}
+                    className="h-4 w-4 rounded border-[#244770] bg-[#0f1f36] text-blue-500 focus:ring-blue-500"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white">{sibling.name}</p>
+                    <p className="text-xs text-blue-300/70 capitalize">
+                      {sibling.species}{sibling.breed ? ` · ${sibling.breed}` : ''}
+                    </p>
+                  </div>
+                  {sibling.hasActiveAuth && (
+                    <span className="text-[10px] font-medium text-emerald-400 bg-emerald-500/10 rounded-full px-2 py-0.5 whitespace-nowrap">
+                      Auth on file
+                    </span>
+                  )}
+                </label>
+              ))}
+            </div>
+            {selectedSiblings.size > 0 && (
+              <p className="text-xs text-blue-300">
+                Authorizing <strong className="text-white">{totalAnimals} animal{totalAnimals > 1 ? 's' : ''}</strong> total
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Legal context */}
         <div className="bg-[#1a2d4a] rounded-xl p-4 text-sm text-blue-200 space-y-2">
           <p className="font-semibold text-white">Texas Compliance Notice</p>
@@ -272,7 +383,7 @@ export default function VetAuthorizationPage() {
           </div>
 
           <div>
-            <label className="block text-sm text-blue-300 mb-1">License Number</label>
+            <label className="block text-sm text-blue-300 mb-1">License Number <span className="text-blue-400/60 font-normal">(Optional)</span></label>
             <input
               type="text"
               placeholder="TX-12345"
@@ -337,8 +448,15 @@ export default function VetAuthorizationPage() {
                 className="mt-0.5 h-5 w-5 rounded border-[#244770] bg-[#0f1f36] text-blue-500 focus:ring-blue-500"
               />
               <span className="text-sm text-blue-200">
-                I confirm that I have examined <strong className="text-white">{horse.name}</strong> and that
-                chiropractic treatment is not likely to be harmful to this animal. <span className="text-red-400">*</span>
+                I confirm that I have examined{' '}
+                {selectedSiblings.size === 0 ? (
+                  <strong className="text-white">{horse.name}</strong>
+                ) : (
+                  <strong className="text-white">
+                    all {totalAnimals} selected animal{totalAnimals > 1 ? 's' : ''}
+                  </strong>
+                )}
+                {' '}and that chiropractic treatment is not likely to be harmful. <span className="text-red-400">*</span>
               </span>
             </label>
 
@@ -398,7 +516,11 @@ export default function VetAuthorizationPage() {
             disabled={!canSubmit || saving}
             className="w-full rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {saving ? 'Submitting...' : 'Submit Authorization'}
+            {saving
+              ? 'Submitting...'
+              : totalAnimals > 1
+                ? `Submit Authorization for ${totalAnimals} Animals`
+                : 'Submit Authorization'}
           </button>
         </div>
 
