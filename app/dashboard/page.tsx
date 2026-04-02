@@ -1806,12 +1806,12 @@ export default function Home() {
                             {vetAuthByHorse[horse.id] ? (
                               <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
                                 <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                Auth
+                                Vet Auth
                               </span>
                             ) : (
                               <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-medium text-amber-700">
                                 <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
-                                No Auth
+                                No Vet Auth
                               </span>
                             )}
                           </div>
@@ -2204,12 +2204,12 @@ export default function Home() {
                                     {vetAuthByHorse[horse.id] ? (
                                       <span className="inline-flex items-center gap-1 rounded-2xl bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-xs font-medium text-emerald-700">
                                         <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        Vet Auth
+                                        Vet Authorization
                                       </span>
                                     ) : (
                                       <span className="inline-flex items-center gap-1 rounded-2xl bg-amber-50 border border-amber-200 px-2.5 py-1 text-xs font-medium text-amber-700">
                                         <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
-                                        No Auth
+                                        No Vet Authorization
                                       </span>
                                     )}
                                     {horse.discipline ? (

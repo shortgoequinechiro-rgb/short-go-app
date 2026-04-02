@@ -775,6 +775,18 @@ export default function HorseDetailPage() {
     await loadVisits()
   }
 
+  async function archivePatient() {
+    if (!navigator.onLine) { setMessage('Cannot archive patients while offline. Please reconnect and try again.'); return }
+    const confirmed = window.confirm(
+      `Archive ${horse?.name || 'this patient'}? The record will be hidden from your active patient list but can be restored later.`
+    )
+    if (!confirmed) return
+    const { error } = await supabase.from('horses').update({ archived: true }).eq('id', horseId)
+    if (error) { setMessage(`Error archiving patient: ${error.message}`); return }
+    setMessage(`${horse?.name || 'Patient'} has been archived.`)
+    router.push('/dashboard')
+  }
+
   async function deletePatient() {
     if (!navigator.onLine) { setMessage('Cannot delete patients while offline. Please reconnect and try again.'); return }
     const confirmed = window.confirm(
@@ -2121,20 +2133,12 @@ export default function HorseDetailPage() {
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-xl font-semibold text-slate-900">Patient Info</h2>
                 {!editingHorse ? (
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setEditingHorse(true)}
-                      className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={deletePatient}
-                      className="rounded-xl border border-red-200 bg-white px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition"
-                    >
-                      Delete
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => setEditingHorse(true)}
+                    className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+                  >
+                    Edit
+                  </button>
                 ) : null}
               </div>
 
@@ -2490,6 +2494,31 @@ export default function HorseDetailPage() {
                 )}
               </div>
             </div>
+          </div>
+
+          {/* ── Manage Patient ── */}
+          <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-base font-semibold text-slate-900">Manage Patient</h2>
+            <p className="mt-1 text-sm text-slate-500">Archive or permanently delete this patient record.</p>
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+              <button
+                onClick={archivePatient}
+                className="flex items-center justify-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-800 hover:bg-amber-100 transition"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
+                Archive Patient
+              </button>
+              <button
+                onClick={deletePatient}
+                className="flex items-center justify-center gap-2 rounded-xl border border-red-300 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-700 hover:bg-red-100 transition"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                Permanently Delete
+              </button>
+            </div>
+            <p className="mt-3 text-xs text-slate-400">
+              Archiving hides the record from active lists but preserves all data. Deleting is permanent and cannot be undone.
+            </p>
           </div>
         )}
 
