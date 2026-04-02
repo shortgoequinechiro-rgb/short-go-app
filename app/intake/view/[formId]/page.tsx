@@ -5,6 +5,11 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '../../../lib/supabase'
 
+async function getAccessToken() {
+  const { data: { session } } = await supabase.auth.getSession()
+  return session?.access_token || null
+}
+
 type IntakeFormFull = {
   id: string
   submitted_at: string
@@ -61,18 +66,20 @@ export default function IntakeFormViewPage() {
   }, [formId])
 
   async function loadForm() {
-    const { data } = await supabase
-      .from('intake_forms')
-      .select(`
-        *,
-        owners ( full_name, phone, email, address ),
-        horses ( id, name, species ),
-        practitioners ( practice_name, full_name )
-      `)
-      .eq('id', formId)
-      .single()
+    const token = await getAccessToken()
+    if (!token) { setLoading(false); return }
 
-    setForm(data || null)
+    try {
+      const res = await fetch(`/api/intake/${formId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setForm(data)
+      }
+    } catch {
+      // Failed to load
+    }
     setLoading(false)
   }
 
@@ -80,11 +87,22 @@ export default function IntakeFormViewPage() {
     if (!form) return
     setArchiving(true)
     const newArchived = !form.archived
-    const { error } = await supabase
-      .from('intake_forms')
-      .update({ archived: newArchived })
-      .eq('id', formId)
-    if (!error) setForm({ ...form, archived: newArchived })
+    const token = await getAccessToken()
+    if (token) {
+      try {
+        const res = await fetch(`/api/intake/${formId}`, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ archived: newArchived }),
+        })
+        if (res.ok) setForm({ ...form, archived: newArchived })
+      } catch {
+        // Failed to update
+      }
+    }
     setArchiving(false)
     setShowConfirm(false)
   }
