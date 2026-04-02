@@ -54,7 +54,7 @@ export async function GET(
     // Fetch practitioner payment links
     const { data: practitionerData } = await supabaseAdmin
       .from('practitioners')
-      .select('venmo_handle, paypal_email, zelle_info')
+      .select('venmo_handle, paypal_email, zelle_info, cash_app_handle')
       .eq('id', user.id)
       .single();
 
@@ -69,6 +69,7 @@ export async function GET(
       venmo_handle: practitionerData?.venmo_handle || null,
       paypal_email: practitionerData?.paypal_email || null,
       zelle_info: practitionerData?.zelle_info || null,
+      cash_app_handle: practitionerData?.cash_app_handle || null,
       owner: undefined,
       horse: undefined,
     };

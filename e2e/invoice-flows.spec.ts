@@ -568,6 +568,6 @@ test.describe('Invoice — QuickBooks Sync Integration', () => {
     const afterBody = await page.locator('body').textContent() || ''
     expect(afterBody).not.toContain('Unhandled Runtime Error')
     // Should see payment method options
-    expect(afterBody.toLowerCase()).toMatch(/cash|check|stripe|venmo|payment/)
+    expect(afterBody.toLowerCase()).toMatch(/cash|check|stripe|venmo|cash.app|payment/)
   })
 })

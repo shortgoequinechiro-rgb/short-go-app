@@ -34,6 +34,7 @@ interface Invoice {
   venmo_handle?: string;
   paypal_email?: string;
   zelle_info?: string;
+  cash_app_handle?: string;
 }
 
 const statusColors: Record<string, string> = {
@@ -663,8 +664,8 @@ export default function InvoiceDetailPage() {
         </div>
       )}
 
-      {/* Payment Options (Venmo / PayPal / Zelle) */}
-      {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (invoice.venmo_handle || invoice.paypal_email || invoice.zelle_info) && (
+      {/* Payment Options (Venmo / PayPal / Zelle / Cash App) */}
+      {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (invoice.venmo_handle || invoice.paypal_email || invoice.zelle_info || invoice.cash_app_handle) && (
         <div className="rounded-3xl bg-white p-5 shadow-sm mb-4">
           <h3 className="text-lg font-semibold text-slate-900 mb-3">Payment Options</h3>
           <div className="space-y-3">
@@ -704,6 +705,20 @@ export default function InvoiceDetailPage() {
                   <p className="text-xs text-slate-500">Send to: {invoice.zelle_info}</p>
                 </div>
               </div>
+            )}
+            {invoice.cash_app_handle && (
+              <a
+                href={`https://cash.app/${invoice.cash_app_handle.replace('$', '')}/${(invoice.total_cents / 100).toFixed(2)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 w-full rounded-xl border border-slate-200 px-4 py-3 hover:bg-green-50 hover:border-green-300 transition"
+              >
+                <span className="flex items-center justify-center w-10 h-10 rounded-full bg-[#00D632] text-white font-bold text-sm">$</span>
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">Pay with Cash App</p>
+                  <p className="text-xs text-slate-500">{invoice.cash_app_handle}</p>
+                </div>
+              </a>
             )}
           </div>
         </div>
@@ -795,7 +810,7 @@ export default function InvoiceDetailPage() {
             <h2 className="text-2xl font-bold text-slate-900 mb-4">Mark as Paid</h2>
 
             <div className="space-y-3 mb-6">
-              {['cash', 'check', 'venmo', 'other'].map((method) => (
+              {['cash', 'check', 'venmo', 'cash_app', 'other'].map((method) => (
                 <label key={method} className="flex items-center p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50">
                   <input
                     type="radio"
@@ -810,10 +825,10 @@ export default function InvoiceDetailPage() {
               ))}
             </div>
 
-            {(paymentMethod === 'check' || paymentMethod === 'venmo' || paymentMethod === 'other') && (
+            {(paymentMethod === 'check' || paymentMethod === 'venmo' || paymentMethod === 'cash_app' || paymentMethod === 'other') && (
               <div className="mb-6">
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Reference {paymentMethod === 'check' ? '(Check #)' : paymentMethod === 'venmo' ? '(Venmo ID)' : '(Optional)'}
+                  Reference {paymentMethod === 'check' ? '(Check #)' : paymentMethod === 'venmo' ? '(Venmo ID)' : paymentMethod === 'cash_app' ? '(Cash App ID)' : '(Optional)'}
                 </label>
                 <input
                   type="text"

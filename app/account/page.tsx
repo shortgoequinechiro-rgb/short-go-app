@@ -23,6 +23,7 @@ type Practitioner = {
   venmo_handle: string | null
   paypal_email: string | null
   zelle_info: string | null
+  cash_app_handle: string | null
 }
 
 type Tab = 'profile' | 'security' | 'billing' | 'reminders'
@@ -68,6 +69,7 @@ function ProfileTab({ practitioner, onSaved }: { practitioner: Practitioner; onS
   const [venmoHandle,   setVenmoHandle]   = useState(practitioner.venmo_handle ?? '')
   const [paypalEmail,   setPaypalEmail]   = useState(practitioner.paypal_email ?? '')
   const [zelleInfo,     setZelleInfo]     = useState(practitioner.zelle_info ?? '')
+  const [cashAppHandle, setCashAppHandle] = useState(practitioner.cash_app_handle ?? '')
   const [logoUrl,       setLogoUrl]       = useState(practitioner.logo_url ?? '')
   const [logoUploading, setLogoUploading] = useState(false)
   const [saving,  setSaving]  = useState(false)
@@ -123,7 +125,8 @@ function ProfileTab({ practitioner, onSaved }: { practitioner: Practitioner; onS
     location      !== (practitioner.location        ?? '') ||
     venmoHandle   !== (practitioner.venmo_handle    ?? '') ||
     paypalEmail   !== (practitioner.paypal_email    ?? '') ||
-    zelleInfo     !== (practitioner.zelle_info      ?? '')
+    zelleInfo     !== (practitioner.zelle_info      ?? '') ||
+    cashAppHandle !== (practitioner.cash_app_handle ?? '')
 
   async function handleSave() {
     if (!practiceName.trim()) { setError('Practice name is required.'); return }
@@ -135,15 +138,16 @@ function ProfileTab({ practitioner, onSaved }: { practitioner: Practitioner; onS
         practice_name:  practiceName.trim(),
         animals_served: animalsServed,
         location:       location.trim() || null,
-        venmo_handle:   venmoHandle.trim() || null,
-        paypal_email:   paypalEmail.trim() || null,
-        zelle_info:     zelleInfo.trim() || null,
+        venmo_handle:    venmoHandle.trim() || null,
+        paypal_email:    paypalEmail.trim() || null,
+        zelle_info:      zelleInfo.trim() || null,
+        cash_app_handle: cashAppHandle.trim() || null,
       })
       .eq('id', practitioner.id)
     setSaving(false)
     if (err) { setError('Failed to save. Please try again.'); return }
     setSaved(true)
-    onSaved({ ...practitioner, full_name: fullName.trim() || null, practice_name: practiceName.trim(), animals_served: animalsServed, location: location.trim() || null, venmo_handle: venmoHandle.trim() || null, paypal_email: paypalEmail.trim() || null, zelle_info: zelleInfo.trim() || null })
+    onSaved({ ...practitioner, full_name: fullName.trim() || null, practice_name: practiceName.trim(), animals_served: animalsServed, location: location.trim() || null, venmo_handle: venmoHandle.trim() || null, paypal_email: paypalEmail.trim() || null, zelle_info: zelleInfo.trim() || null, cash_app_handle: cashAppHandle.trim() || null })
     setTimeout(() => setSaved(false), 2500)
   }
 
@@ -265,7 +269,7 @@ function ProfileTab({ practitioner, onSaved }: { practitioner: Practitioner; onS
         <h3 className="text-sm font-bold text-white mb-1">Payment Links</h3>
         <p className="text-xs text-blue-300/60 mb-4">Add your payment handles to show them on invoices and invoice emails.</p>
       </div>
-      <div className="grid gap-5 sm:grid-cols-3">
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <label className="block text-xs font-semibold uppercase tracking-wider text-blue-400 mb-1.5">
             Venmo
@@ -299,6 +303,18 @@ function ProfileTab({ practitioner, onSaved }: { practitioner: Practitioner; onS
             value={zelleInfo}
             onChange={e => { setZelleInfo(e.target.value); setSaved(false) }}
             placeholder="Phone or email"
+            className="w-full rounded-xl border border-[#244770] bg-[#0f2040] px-4 py-2.5 text-sm text-white placeholder-white/40 outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/40 transition"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-blue-400 mb-1.5">
+            Cash App
+          </label>
+          <input
+            type="text"
+            value={cashAppHandle}
+            onChange={e => { setCashAppHandle(e.target.value); setSaved(false) }}
+            placeholder="$YourCashTag"
             className="w-full rounded-xl border border-[#244770] bg-[#0f2040] px-4 py-2.5 text-sm text-white placeholder-white/40 outline-none focus:border-[#c9a227] focus:ring-1 focus:ring-[#c9a227]/40 transition"
           />
         </div>

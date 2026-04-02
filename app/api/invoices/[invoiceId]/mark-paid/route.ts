@@ -16,10 +16,10 @@ export async function POST(
     const { payment_method, payment_reference } = body;
 
     // Validate payment_method
-    const validMethods = ['cash', 'check', 'venmo', 'stripe', 'other'];
+    const validMethods = ['cash', 'check', 'venmo', 'cash_app', 'stripe', 'other'];
     if (!payment_method || !validMethods.includes(payment_method)) {
       return NextResponse.json(
-        { error: 'Invalid payment_method. Must be one of: cash, check, venmo, stripe, other' },
+        { error: 'Invalid payment_method. Must be one of: cash, check, venmo, cash_app, stripe, other' },
         { status: 400 }
       );
     }

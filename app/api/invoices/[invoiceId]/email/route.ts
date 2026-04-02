@@ -65,7 +65,7 @@ export async function POST(
     // Fetch practitioner info
     const { data: practitionerRaw, error: practitionerError } = await supabaseAdmin
       .from('practitioners')
-      .select('full_name, practice_name, location, venmo_handle, paypal_email, zelle_info')
+      .select('full_name, practice_name, location, venmo_handle, paypal_email, zelle_info, cash_app_handle')
       .eq('id', invoice.practitioner_id)
       .single()
 
@@ -81,6 +81,7 @@ export async function POST(
       venmo_handle: practitionerRaw.venmo_handle || '',
       paypal_email: practitionerRaw.paypal_email || '',
       zelle_info: practitionerRaw.zelle_info || '',
+      cash_app_handle: practitionerRaw.cash_app_handle || '',
     }
 
     // Map line items for PDF (convert cents to dollars for display)
@@ -175,7 +176,7 @@ export async function POST(
 
         ${paymentLinkHtml}
 
-        ${(practitioner.venmo_handle || practitioner.paypal_email || practitioner.zelle_info) ? `
+        ${(practitioner.venmo_handle || practitioner.paypal_email || practitioner.zelle_info || practitioner.cash_app_handle) ? `
         <div style="margin: 30px 0; padding: 20px; background-color: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
           <h3 style="color: #333; margin: 0 0 15px 0; font-size: 16px;">Payment Options</h3>
           <table cellpadding="0" cellspacing="0" border="0" width="100%">
@@ -190,6 +191,10 @@ export async function POST(
             ${practitioner.zelle_info ? `<tr><td style="padding: 8px 0;">
               <span style="color: #6D1ED4; font-weight: bold;">Pay with Zelle</span>
               <span style="color: #999; font-size: 13px;"> &mdash; Send to: ${practitioner.zelle_info}</span>
+            </td></tr>` : ''}
+            ${practitioner.cash_app_handle ? `<tr><td style="padding: 8px 0;">
+              <a href="https://cash.app/${practitioner.cash_app_handle.replace('$', '')}/${totalDollars.toFixed(2)}" style="color: #00D632; text-decoration: none; font-weight: bold;">Pay with Cash App</a>
+              <span style="color: #999; font-size: 13px;"> &mdash; ${practitioner.cash_app_handle}</span>
             </td></tr>` : ''}
           </table>
         </div>` : ''}
