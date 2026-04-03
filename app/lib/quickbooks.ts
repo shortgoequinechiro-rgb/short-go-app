@@ -87,9 +87,12 @@ export async function getValidToken(practitionerId: string): Promise<string | nu
 
 // ── QuickBooks API helpers ────────────────────────────────────────────────────
 
-const QB_BASE_URL = process.env.QUICKBOOKS_ENVIRONMENT === 'sandbox'
+const QB_ENV = process.env.QUICKBOOKS_ENVIRONMENT || 'production'
+const QB_BASE_URL = QB_ENV === 'sandbox'
   ? 'https://sandbox-quickbooks.api.intuit.com'
   : 'https://quickbooks.api.intuit.com'
+
+console.log('[QB Config] QUICKBOOKS_ENVIRONMENT =', JSON.stringify(process.env.QUICKBOOKS_ENVIRONMENT), '→ QB_BASE_URL =', QB_BASE_URL)
 
 async function qbFetch(
   method: string,
