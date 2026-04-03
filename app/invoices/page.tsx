@@ -56,6 +56,9 @@ export default function InvoicesPage() {
   const [sendingEmail, setSendingEmail] = useState<string | null>(null)
   const [sendingSms, setSendingSms] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [deleting, setDeleting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   // Fetch invoices
   useEffect(() => {
@@ -107,6 +110,7 @@ export default function InvoicesPage() {
     }
 
     setFilteredInvoices(filtered)
+    setSelectedIds(new Set())
 
     // Calculate summary stats
     const now = new Date()
@@ -137,6 +141,66 @@ export default function InvoicesPage() {
       paidThisMonth: paidThisMonth,
     })
   }, [invoices, filters])
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredInvoices.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(filteredInvoices.map((inv) => inv.id)))
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return
+    try {
+      setDeleting(true)
+      setError(null)
+      const { data: session } = await supabase.auth.getSession()
+      if (!session?.session?.access_token) return
+
+      const results = await Promise.all(
+        Array.from(selectedIds).map((id) =>
+          fetch(`/api/invoices/${id}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${session.session.access_token}` },
+          })
+        )
+      )
+
+      const ids = Array.from(selectedIds)
+      const deletedIds = new Set<string>()
+      results.forEach((r, i) => {
+        if (r.ok) deletedIds.add(ids[i])
+      })
+
+      const failedCount = ids.length - deletedIds.size
+      if (failedCount > 0) {
+        setError(`${failedCount} invoice(s) could not be deleted.`)
+      }
+
+      if (deletedIds.size > 0) {
+        setSuccessMsg(`${deletedIds.size} invoice(s) deleted.`)
+        setTimeout(() => setSuccessMsg(null), 4000)
+      }
+
+      setInvoices((prev) => prev.filter((inv) => !deletedIds.has(inv.id)))
+      setSelectedIds(new Set())
+      setShowDeleteConfirm(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete invoices')
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   const handleQuickEmail = async (invoiceId: string) => {
     try {
@@ -303,13 +367,80 @@ export default function InvoicesPage() {
         </div>
       )}
 
+      {/* Bulk Actions Bar */}
+      {selectedIds.size > 0 && (
+        <div className="rounded-3xl bg-red-50 border border-red-200 p-4 mb-6 flex items-center justify-between">
+          <p className="text-red-700 font-medium text-sm">
+            {selectedIds.size} invoice{selectedIds.size !== 1 ? 's' : ''} selected
+          </p>
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium"
+          >
+            Delete Selected
+          </button>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-xl">
+            <h2 className="text-lg font-bold text-slate-900 mb-2">Delete Invoices</h2>
+            <p className="text-slate-600 mb-1">
+              Are you sure you want to delete {selectedIds.size} invoice{selectedIds.size !== 1 ? 's' : ''}?
+            </p>
+            <p className="text-red-600 text-sm mb-6">
+              This will permanently remove the invoices, their line items, and communication logs. This cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleting}
+                className="px-4 py-2 text-sm font-medium text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={deleting}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? 'Deleting...' : 'Yes, Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Invoices List */}
       {hasInvoices ? (
         <div className="space-y-4">
+          {filteredInvoices.length > 0 && (
+            <div className="flex items-center gap-3 px-5">
+              <input
+                type="checkbox"
+                checked={selectedIds.size === filteredInvoices.length && filteredInvoices.length > 0}
+                onChange={toggleSelectAll}
+                className="w-4 h-4 text-blue-600 border-slate-300 rounded cursor-pointer"
+              />
+              <span className="text-sm text-slate-500">Select all</span>
+            </div>
+          )}
           {filteredInvoices.length > 0 ? (
             filteredInvoices.map((invoice) => (
-              <div key={invoice.id} className="rounded-3xl bg-white p-5 shadow-sm">
+              <div key={invoice.id} className={`rounded-3xl bg-white p-5 shadow-sm ${selectedIds.has(invoice.id) ? 'ring-2 ring-blue-400' : ''}`}>
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                  {/* Checkbox */}
+                  <div className="md:col-span-1 flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(invoice.id)}
+                      onChange={() => toggleSelect(invoice.id)}
+                      className="w-4 h-4 text-blue-600 border-slate-300 rounded cursor-pointer"
+                    />
+                  </div>
+
                   {/* Invoice Info */}
                   <div className="md:col-span-3">
                     <p className="text-slate-500 text-xs font-semibold uppercase">Invoice</p>
@@ -320,7 +451,7 @@ export default function InvoicesPage() {
                   </div>
 
                   {/* Owner & Patient */}
-                  <div className="md:col-span-3">
+                  <div className="md:col-span-2">
                     <p className="text-slate-500 text-xs font-semibold uppercase">Owner</p>
                     <p className="text-slate-900 font-semibold">{invoice.owner_name}</p>
                     <p className="text-slate-600 text-sm">
