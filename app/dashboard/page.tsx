@@ -1691,7 +1691,7 @@ export default function Home() {
                   setSelectedOwnerId(null)
                   setEditingOwner(false)
                 }}
-                className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base text-slate-900 placeholder:text-slate-400"
                 placeholder="Search owner name, patient name, phone, breed..."
               />
             </div>
@@ -1959,7 +1959,7 @@ export default function Home() {
                             <input
                               value={ownerNameEdit}
                               onChange={(e) => setOwnerNameEdit(e.target.value)}
-                              className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                              className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base text-slate-900 placeholder:text-slate-400"
                               placeholder="Owner name"
                             />
                           </Field>
@@ -1968,7 +1968,7 @@ export default function Home() {
                             <input
                               value={ownerPhoneEdit}
                               onChange={(e) => setOwnerPhoneEdit(e.target.value)}
-                              className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                              className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base text-slate-900 placeholder:text-slate-400"
                               placeholder="Phone"
                             />
                           </Field>
@@ -1977,7 +1977,7 @@ export default function Home() {
                             <input
                               value={ownerEmailEdit}
                               onChange={(e) => setOwnerEmailEdit(e.target.value)}
-                              className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                              className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base text-slate-900 placeholder:text-slate-400"
                               placeholder="Email"
                             />
                           </Field>
@@ -1991,7 +1991,7 @@ export default function Home() {
                                 onBlur={() => setTimeout(() => setShowEditAddressSuggestions(false), 150)}
                                 onFocus={() => ownerAddressEdit.length >= 2 && editAddressSuggestions.length > 0 && setShowEditAddressSuggestions(true)}
                                 autoComplete="off"
-                                className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                                className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base text-slate-900 placeholder:text-slate-400"
                                 placeholder="Start typing an address…"
                               />
                               {showEditAddressSuggestions && editAddressSuggestions.length > 0 && (
@@ -2267,7 +2267,7 @@ export default function Home() {
                 <input
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                  className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base text-slate-900 placeholder:text-slate-400"
                   placeholder="Owner full name"
                   autoFocus
                 />
@@ -2277,7 +2277,7 @@ export default function Home() {
                 <input
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                  className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base text-slate-900 placeholder:text-slate-400"
                   placeholder="Phone number"
                 />
               </Field>
@@ -2286,7 +2286,7 @@ export default function Home() {
                 <input
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                  className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base text-slate-900 placeholder:text-slate-400"
                   placeholder="Email address"
                 />
               </Field>
@@ -2300,7 +2300,7 @@ export default function Home() {
                     onBlur={() => setTimeout(() => setShowAddAddressSuggestions(false), 150)}
                     onFocus={() => address.length >= 2 && addAddressSuggestions.length > 0 && setShowAddAddressSuggestions(true)}
                     autoComplete="off"
-                    className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                    className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base text-slate-900 placeholder:text-slate-400"
                     placeholder="Start typing an address…"
                   />
                   {showAddAddressSuggestions && addAddressSuggestions.length > 0 && (
@@ -2601,7 +2601,7 @@ export default function Home() {
                 <select
                   value={selectedOwnerIdForAdd}
                   onChange={(e) => setSelectedOwnerIdForAdd(e.target.value)}
-                  className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                  className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base text-slate-900 placeholder:text-slate-400"
                 >
                   <option value="">Select an owner</option>
                   {owners.map((owner) => (
@@ -2616,7 +2616,7 @@ export default function Home() {
                 <select
                   value={addSpecies}
                   onChange={(e) => setAddSpecies(e.target.value as SpeciesType)}
-                  className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                  className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base text-slate-900 placeholder:text-slate-400"
                 >
                   <option value="equine">🐴 Equine (Horse)</option>
                   <option value="canine">🐕 Canine (Dog)</option>
@@ -2631,7 +2631,7 @@ export default function Home() {
                 <input
                   value={horseName}
                   onChange={(e) => setHorseName(e.target.value)}
-                  className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                  className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base text-slate-900 placeholder:text-slate-400"
                   placeholder={getNamePlaceholder(addSpecies)}
                   autoFocus
                 />
@@ -2642,7 +2642,7 @@ export default function Home() {
                   <input
                     value={horseBreed}
                     onChange={(e) => setHorseBreed(e.target.value)}
-                    className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                    className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base text-slate-900 placeholder:text-slate-400"
                     placeholder="Breed"
                   />
                 </Field>
@@ -2651,7 +2651,7 @@ export default function Home() {
                   <input
                     value={horseDiscipline}
                     onChange={(e) => setHorseDiscipline(e.target.value)}
-                    className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                    className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base text-slate-900 placeholder:text-slate-400"
                     placeholder={getDisciplinePlaceholder(addSpecies)}
                   />
                 </Field>
@@ -2662,7 +2662,7 @@ export default function Home() {
                   <input
                     value={horseAge}
                     onChange={(e) => setHorseAge(e.target.value)}
-                    className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                    className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base text-slate-900 placeholder:text-slate-400"
                     placeholder="e.g. 5 years"
                   />
                 </Field>
@@ -2671,7 +2671,7 @@ export default function Home() {
                   <select
                     value={horseGender}
                     onChange={(e) => setHorseGender(e.target.value)}
-                    className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base"
+                    className="min-h-[48px] w-full rounded-2xl border border-slate-300 px-4 py-3 text-base text-slate-900 placeholder:text-slate-400"
                   >
                     <option value="">Select gender</option>
                     {addSpecies === 'equine' ? (
