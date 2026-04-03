@@ -64,23 +64,41 @@ export async function getValidToken(practitionerId: string): Promise<string | nu
       refresh_token: conn.refresh_token,
       token_type: 'bearer',
       expires_in: 0,
+      // The intuit-oauth library validates refresh token expiry via x_refresh_token_expires_in.
+      // QB refresh tokens are valid for 100 days (8,640,000 seconds). Without this field the
+      // library defaults to 0, thinks the refresh token is expired, and throws before even
+      // attempting the HTTP call.
+      x_refresh_token_expires_in: 8640000,
+      createdAt: Date.now(),
     })
 
+    console.log('[QB Token] Attempting token refresh for practitioner', practitionerId)
     const authResponse = await oauthClient.refresh()
     const newToken = authResponse.getJson()
+
+    if (!newToken?.access_token) {
+      console.error('[QB Token] Refresh returned empty access_token. Response:', JSON.stringify(newToken))
+      return null
+    }
 
     await supabaseAdmin
       .from('quickbooks_connections')
       .update({
         access_token: newToken.access_token,
-        refresh_token: newToken.refresh_token,
-        token_expires_at: new Date(Date.now() + newToken.expires_in * 1000).toISOString(),
+        refresh_token: newToken.refresh_token || conn.refresh_token,
+        token_expires_at: new Date(Date.now() + (newToken.expires_in || 3600) * 1000).toISOString(),
       })
       .eq('practitioner_id', practitionerId)
 
+    console.log('[QB Token] Token refreshed successfully')
     return newToken.access_token
   } catch (err) {
-    console.error('Failed to refresh QB token:', err)
+    const errMsg = err instanceof Error ? err.message : String(err)
+    console.error('[QB Token] Failed to refresh token:', errMsg)
+    // If it's a known library validation error, log extra detail
+    if (errMsg.includes('Refresh token is invalid') || errMsg.includes('Refresh token is missing')) {
+      console.error('[QB Token] This likely means the QB connection needs to be re-authorized. Stored token_expires_at:', conn.token_expires_at)
+    }
     return null
   }
 }
