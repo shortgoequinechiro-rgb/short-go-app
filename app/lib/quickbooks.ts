@@ -120,6 +120,68 @@ async function qbFetch(
   return res.json()
 }
 
+// ── Item helpers ─────────────────────────────────────────────────────────────
+
+/**
+ * QuickBooks requires an ItemRef on every SalesItemLineDetail line.
+ * Find the default "Services" item in QB, or create one if it doesn't exist.
+ * Returns the QB Item ID as a string.
+ */
+async function getOrCreateServicesItem(
+  realmId: string,
+  accessToken: string
+): Promise<string> {
+  // Search for an existing "Services" item (QB creates one by default in most accounts)
+  try {
+    const query = encodeURIComponent("select * from Item where Name = 'Services' and Type = 'Service'")
+    const searchResult = await qbFetch('GET', `/query?query=${query}`, realmId, accessToken)
+    if (searchResult.QueryResponse?.Item?.length > 0) {
+      return String(searchResult.QueryResponse.Item[0].Id)
+    }
+  } catch (err) {
+    console.log('[QB] Services item search failed, will try to create:', err instanceof Error ? err.message : err)
+  }
+
+  // If "Services" doesn't exist, find any Service-type item
+  try {
+    const query = encodeURIComponent("select * from Item where Type = 'Service' maxresults 1")
+    const searchResult = await qbFetch('GET', `/query?query=${query}`, realmId, accessToken)
+    if (searchResult.QueryResponse?.Item?.length > 0) {
+      return String(searchResult.QueryResponse.Item[0].Id)
+    }
+  } catch {
+    // Fall through to create
+  }
+
+  // Create a "Services" item
+  try {
+    const result = await qbFetch('POST', '/item', realmId, accessToken, {
+      Name: 'Services',
+      Type: 'Service',
+      IncomeAccountRef: { name: 'Services' },
+    })
+    return String(result.Item.Id)
+  } catch (err) {
+    // Last resort: try with a generic income account
+    console.error('[QB] Failed to create Services item:', err instanceof Error ? err.message : err)
+
+    // Try to find any income account to use
+    const acctQuery = encodeURIComponent("select * from Account where AccountType = 'Income' maxresults 1")
+    const acctResult = await qbFetch('GET', `/query?query=${acctQuery}`, realmId, accessToken)
+    if (acctResult.QueryResponse?.Account?.length > 0) {
+      const acct = acctResult.QueryResponse.Account[0]
+      const result = await qbFetch('POST', '/item', realmId, accessToken, {
+        Name: 'Services',
+        Type: 'Service',
+        IncomeAccountRef: { value: String(acct.Id), name: acct.Name },
+      })
+      return String(result.Item.Id)
+    }
+
+    throw new Error('Cannot find or create a Services item in QuickBooks. Please create a Service-type item in your QuickBooks account.')
+  }
+}
+
 // ── Customer sync ─────────────────────────────────────────────────────────────
 
 /**
@@ -149,7 +211,7 @@ export async function syncOwnerToQBCustomer(
 
   // Search QB for existing customer by name
   try {
-    const query = encodeURIComponent(`select * from Customer where DisplayName = '${owner.full_name.replace(/'/g, "\\'")}'`)
+    const query = encodeURIComponent(`select * from Customer where DisplayName = '${owner.full_name.replace(/'/g, "''")}'`)
     console.log('QB customer search query:', query, 'realmId:', conn.realm_id)
     const searchResult = await qbFetch('GET', `/query?query=${query}`, conn.realm_id, accessToken)
 
@@ -235,6 +297,10 @@ export async function syncInvoiceToQB(
     const qbCustomerId = await syncOwnerToQBCustomer(practitionerId, owner)
     if (!qbCustomerId) return { success: false, error: 'Failed to sync customer to QB' }
 
+    // Find or create a "Services" item in QB to use as the ItemRef
+    // (QB requires ItemRef on SalesItemLineDetail lines)
+    const servicesItemId = await getOrCreateServicesItem(conn.realm_id, accessToken)
+
     // Build QB invoice
     const qbInvoice = {
       CustomerRef: { value: qbCustomerId },
@@ -244,6 +310,7 @@ export async function syncInvoiceToQB(
         Amount: item.quantity * item.unit_price_cents / 100,
         Description: item.description,
         SalesItemLineDetail: {
+          ItemRef: { value: servicesItemId },
           Qty: item.quantity,
           UnitPrice: item.unit_price_cents / 100,
         },

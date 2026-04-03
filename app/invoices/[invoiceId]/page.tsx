@@ -37,6 +37,10 @@ interface Invoice {
   zelle_info?: string;
   cash_app_handle?: string;
   qb_payment_url?: string;
+  qb_sync_status?: string;
+  qb_sync_error?: string;
+  qb_invoice_id?: string;
+  qb_synced_at?: string;
 }
 
 const statusColors: Record<string, string> = {
@@ -87,6 +91,9 @@ export default function InvoiceDetailPage() {
   // Delete state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // QB sync state
+  const [syncingToQb, setSyncingToQb] = useState(false);
 
   const showSuccess = (msg: string) => {
     setSuccessMessage(msg);
@@ -320,6 +327,33 @@ export default function InvoiceDetailPage() {
     }
   };
 
+  const handleSyncToQb = async () => {
+    try {
+      setSyncingToQb(true);
+      setError(null);
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const res = await fetch('/api/quickbooks/sync-invoice', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ invoiceId }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to sync to QuickBooks');
+
+      showSuccess('Invoice synced to QuickBooks!');
+      fetchInvoice(); // Refresh to show updated QB status
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to sync to QuickBooks');
+    } finally {
+      setSyncingToQb(false);
+    }
+  };
+
   const handleDelete = async () => {
     try {
       setDeleting(true);
@@ -469,6 +503,68 @@ export default function InvoiceDetailPage() {
           </div>
         )}
       </div>
+
+      {/* QuickBooks Sync Status */}
+      {invoice.qb_sync_status && invoice.qb_sync_status !== 'none' && (
+        <div className={`rounded-3xl p-4 shadow-sm mb-4 ${
+          invoice.qb_sync_status === 'synced' ? 'bg-emerald-50 border border-emerald-200' :
+          invoice.qb_sync_status === 'failed' ? 'bg-red-50 border border-red-200' :
+          'bg-blue-50 border border-blue-200'
+        }`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-[#2CA01C] text-white font-bold text-xs">QB</span>
+              <div>
+                <p className={`text-sm font-semibold ${
+                  invoice.qb_sync_status === 'synced' ? 'text-emerald-700' :
+                  invoice.qb_sync_status === 'failed' ? 'text-red-700' :
+                  'text-blue-700'
+                }`}>
+                  {invoice.qb_sync_status === 'synced' ? 'Synced to QuickBooks' :
+                   invoice.qb_sync_status === 'failed' ? 'QuickBooks sync failed' :
+                   'Syncing to QuickBooks...'}
+                </p>
+                {invoice.qb_sync_status === 'synced' && invoice.qb_synced_at && (
+                  <p className="text-xs text-emerald-600">
+                    Synced {new Date(invoice.qb_synced_at).toLocaleString()}
+                  </p>
+                )}
+                {invoice.qb_sync_status === 'failed' && invoice.qb_sync_error && (
+                  <p className="text-xs text-red-600 mt-0.5">{invoice.qb_sync_error}</p>
+                )}
+              </div>
+            </div>
+            {(invoice.qb_sync_status === 'failed' || !invoice.qb_invoice_id) && (
+              <button
+                onClick={handleSyncToQb}
+                disabled={syncingToQb}
+                className="px-3 py-1.5 text-xs font-semibold text-white bg-[#2CA01C] rounded-lg hover:bg-[#249016] transition disabled:opacity-50"
+              >
+                {syncingToQb ? 'Syncing...' : 'Retry Sync'}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Sync to QB button (shown when no sync has been attempted) */}
+      {(!invoice.qb_sync_status || invoice.qb_sync_status === 'none') && (
+        <div className="rounded-3xl bg-white p-4 shadow-sm mb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-[#2CA01C] text-white font-bold text-xs">QB</span>
+              <p className="text-sm text-slate-600">Sync this invoice to QuickBooks</p>
+            </div>
+            <button
+              onClick={handleSyncToQb}
+              disabled={syncingToQb}
+              className="px-3 py-1.5 text-xs font-semibold text-white bg-[#2CA01C] rounded-lg hover:bg-[#249016] transition disabled:opacity-50"
+            >
+              {syncingToQb ? 'Syncing...' : 'Sync to QuickBooks'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Owner & Patient Info */}
       <div className="grid grid-cols-2 gap-4 mb-4">
