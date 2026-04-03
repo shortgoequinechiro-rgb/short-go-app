@@ -23,6 +23,7 @@ interface Invoice {
   owner_email?: string;
   owner_phone?: string;
   horse_name: string;
+  horse_names?: string[];
   line_items: LineItem[];
   subtotal_cents: number;
   tax_cents?: number;
@@ -35,6 +36,7 @@ interface Invoice {
   paypal_email?: string;
   zelle_info?: string;
   cash_app_handle?: string;
+  qb_payment_url?: string;
 }
 
 const statusColors: Record<string, string> = {
@@ -477,8 +479,14 @@ export default function InvoiceDetailPage() {
           {invoice.owner_phone && <p className="text-slate-600 text-sm">{invoice.owner_phone}</p>}
         </div>
         <div className="rounded-3xl bg-white p-5 shadow-sm">
-          <h3 className="text-sm font-semibold text-slate-600 mb-3 uppercase">Patient</h3>
-          <p className="text-lg font-medium text-slate-900">{invoice.horse_name}</p>
+          <h3 className="text-sm font-semibold text-slate-600 mb-3 uppercase">
+            {invoice.horse_names && invoice.horse_names.length > 1 ? 'Patients' : 'Patient'}
+          </h3>
+          <p className="text-lg font-medium text-slate-900">
+            {invoice.horse_names && invoice.horse_names.length > 0
+              ? invoice.horse_names.join(', ')
+              : invoice.horse_name}
+          </p>
         </div>
       </div>
 
@@ -664,8 +672,8 @@ export default function InvoiceDetailPage() {
         </div>
       )}
 
-      {/* Payment Options (Venmo / PayPal / Zelle / Cash App) */}
-      {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (invoice.venmo_handle || invoice.paypal_email || invoice.zelle_info || invoice.cash_app_handle) && (
+      {/* Payment Options (Venmo / PayPal / Zelle / Cash App / QuickBooks) */}
+      {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (invoice.venmo_handle || invoice.paypal_email || invoice.zelle_info || invoice.cash_app_handle || invoice.qb_payment_url) && (
         <div className="rounded-3xl bg-white p-5 shadow-sm mb-4">
           <h3 className="text-lg font-semibold text-slate-900 mb-3">Payment Options</h3>
           <div className="space-y-3">
@@ -717,6 +725,20 @@ export default function InvoiceDetailPage() {
                 <div>
                   <p className="text-sm font-semibold text-slate-900">Pay with Cash App</p>
                   <p className="text-xs text-slate-500">{invoice.cash_app_handle}</p>
+                </div>
+              </a>
+            )}
+            {invoice.qb_payment_url && (
+              <a
+                href={invoice.qb_payment_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 w-full rounded-xl border border-slate-200 px-4 py-3 hover:bg-green-50 hover:border-green-300 transition"
+              >
+                <span className="flex items-center justify-center w-10 h-10 rounded-full bg-[#2CA01C] text-white font-bold text-sm">QB</span>
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">Pay with QuickBooks</p>
+                  <p className="text-xs text-slate-500">Pay securely via QuickBooks</p>
                 </div>
               </a>
             )}

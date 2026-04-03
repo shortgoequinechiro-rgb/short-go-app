@@ -12,6 +12,7 @@ type Invoice = {
   owner_email?: string
   owner_phone?: string
   horse_name: string
+  horse_names?: string[]
   total_cents: number
   status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled'
   due_date: string | null
@@ -322,7 +323,11 @@ export default function InvoicesPage() {
                   <div className="md:col-span-3">
                     <p className="text-slate-500 text-xs font-semibold uppercase">Owner</p>
                     <p className="text-slate-900 font-semibold">{invoice.owner_name}</p>
-                    <p className="text-slate-600 text-sm">{invoice.horse_name}</p>
+                    <p className="text-slate-600 text-sm">
+                      {invoice.horse_names && invoice.horse_names.length > 0
+                        ? invoice.horse_names.join(', ')
+                        : invoice.horse_name}
+                    </p>
                   </div>
 
                   {/* Total */}

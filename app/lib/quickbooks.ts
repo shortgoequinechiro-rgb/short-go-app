@@ -247,11 +247,16 @@ export async function syncInvoiceToQB(
     const result = await qbFetch('POST', '/invoice', conn.realm_id, accessToken, qbInvoice)
     const qbInvoiceId = String(result.Invoice.Id)
 
-    // Update local invoice with QB ID
+    // Build the QB customer-facing payment URL if QB Payments is enabled
+    // Format: https://app.qbo.intuit.com/app/customerportal?txnId=<id>&txnType=invoice&realmId=<realmId>
+    const qbPaymentUrl = `https://app.qbo.intuit.com/app/customerportal?txnId=${qbInvoiceId}&txnType=invoice&realmId=${conn.realm_id}`
+
+    // Update local invoice with QB ID and payment URL
     await supabaseAdmin
       .from('invoices')
       .update({
         qb_invoice_id: qbInvoiceId,
+        qb_payment_url: qbPaymentUrl,
         qb_sync_status: 'synced',
         qb_sync_error: null,
         qb_synced_at: new Date().toISOString(),

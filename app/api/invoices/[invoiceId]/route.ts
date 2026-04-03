@@ -22,8 +22,10 @@ export async function GET(
         subtotal_cents,
         total_cents,
         notes,
+        horse_ids,
         stripe_payment_link_id,
         stripe_payment_url,
+        qb_payment_url,
         paid_at,
         payment_method,
         payment_reference,
@@ -60,12 +62,29 @@ export async function GET(
 
     const ownerData = invoice.owner as unknown as Record<string, string> | null;
     const ownerArr = Array.isArray(invoice.owner) ? invoice.owner[0] : null;
+
+    // Resolve horse names for multi-patient invoices
+    const horseIds = invoice.horse_ids as string[] | null;
+    let horseNames: string[] = [];
+    if (horseIds && Array.isArray(horseIds) && horseIds.length > 0) {
+      const { data: horsesData } = await supabaseAdmin
+        .from('horses')
+        .select('id, name')
+        .in('id', horseIds);
+      if (horsesData) {
+        horseNames = horseIds
+          .map((id: string) => horsesData.find((h: { id: string; name: string }) => h.id === id)?.name)
+          .filter(Boolean) as string[];
+      }
+    }
+
     const result = {
       ...invoice,
       owner_name: ownerData?.full_name || ownerArr?.full_name,
       owner_email: ownerData?.email || ownerArr?.email,
       owner_phone: ownerData?.phone || ownerArr?.phone,
       horse_name: (invoice.horse as unknown as Record<string, string> | null)?.name || (Array.isArray(invoice.horse) ? invoice.horse[0]?.name : undefined),
+      horse_names: horseNames.length > 0 ? horseNames : undefined,
       venmo_handle: practitionerData?.venmo_handle || null,
       paypal_email: practitionerData?.paypal_email || null,
       zelle_info: practitionerData?.zelle_info || null,
@@ -195,8 +214,10 @@ export async function PUT(
         subtotal_cents,
         total_cents,
         notes,
+        horse_ids,
         stripe_payment_link_id,
         stripe_payment_url,
+        qb_payment_url,
         paid_at,
         payment_method,
         payment_reference,

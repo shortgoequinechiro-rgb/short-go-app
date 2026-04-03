@@ -38,7 +38,7 @@ export default function CreateInvoicePage() {
 
   const [step, setStep] = useState<FormStep>(1)
   const [selectedOwner, setSelectedOwner] = useState<string>('')
-  const [selectedHorse, setSelectedHorse] = useState<string>('')
+  const [selectedHorses, setSelectedHorses] = useState<Set<string>>(new Set())
   const [notes, setNotes] = useState('')
   const [dueDate, setDueDate] = useState('')
 
@@ -78,7 +78,7 @@ export default function CreateInvoicePage() {
     const fetchHorses = async () => {
       if (!selectedOwner) {
         setHorses([])
-        setSelectedHorse('')
+        setSelectedHorses(new Set())
         return
       }
 
@@ -91,7 +91,7 @@ export default function CreateInvoicePage() {
 
         if (err) throw err
         setHorses(data || [])
-        setSelectedHorse('')
+        setSelectedHorses(new Set())
       } catch (err) {
         console.error('Error fetching horses:', err)
       }
@@ -210,7 +210,7 @@ export default function CreateInvoicePage() {
 
   const handleCreateInvoice = async () => {
     try {
-      if (!selectedOwner || !selectedHorse || lineItems.length === 0) {
+      if (!selectedOwner || selectedHorses.size === 0 || lineItems.length === 0) {
         setError('Please complete all required fields and add at least one line item')
         return
       }
@@ -222,9 +222,12 @@ export default function CreateInvoicePage() {
         return
       }
 
+      const horseIdsArray = Array.from(selectedHorses)
+
       const payload = {
         owner_id: selectedOwner,
-        horse_id: selectedHorse,
+        horse_id: horseIdsArray[0],
+        horse_ids: horseIdsArray,
         notes,
         due_date: dueDate || null,
         line_items: lineItems.map((item) => ({
@@ -246,7 +249,7 @@ export default function CreateInvoicePage() {
 
       if (!res.ok) {
         const data = await res.json()
-        throw new Error(data.message || 'Failed to create invoice')
+        throw new Error(data.error || data.message || 'Failed to create invoice')
       }
 
       const data = await res.json()
@@ -260,7 +263,10 @@ export default function CreateInvoicePage() {
 
   const total = calculateTotal()
   const ownerName = owners.find((o) => o.id === selectedOwner)?.full_name || ''
-  const horseName = horses.find((h) => h.id === selectedHorse)?.name || ''
+  const selectedHorseNames = horses
+    .filter((h) => selectedHorses.has(h.id))
+    .map((h) => h.name)
+  const horseNamesDisplay = selectedHorseNames.join(', ') || ''
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
@@ -328,25 +334,62 @@ export default function CreateInvoicePage() {
         </div>
       )}
 
-      {/* Step 2: Select Patient */}
+      {/* Step 2: Select Patients */}
       {step === 2 && (
         <div className="rounded-3xl bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-bold text-slate-900 mb-4">Select Patient</h2>
+          <h2 className="text-xl font-bold text-slate-900 mb-4">Select Patients</h2>
           <p className="text-slate-600 text-sm mb-4">Owner: {ownerName}</p>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Patient</label>
-            <select
-              value={selectedHorse}
-              onChange={(e) => setSelectedHorse(e.target.value)}
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg text-slate-900"
+
+          {horses.length > 1 && (
+            <button
+              onClick={() => {
+                if (selectedHorses.size === horses.length) {
+                  setSelectedHorses(new Set())
+                } else {
+                  setSelectedHorses(new Set(horses.map((h) => h.id)))
+                }
+              }}
+              className="mb-3 text-sm font-medium text-blue-600 hover:text-blue-700 transition"
             >
-              <option value="">Choose a patient...</option>
-              {horses.map((horse) => (
-                <option key={horse.id} value={horse.id}>
-                  {horse.name}
-                </option>
-              ))}
-            </select>
+              {selectedHorses.size === horses.length ? 'Deselect All' : 'Select All'}
+            </button>
+          )}
+
+          <div className="space-y-2">
+            {horses.map((horse) => {
+              const isSelected = selectedHorses.has(horse.id)
+              return (
+                <label
+                  key={horse.id}
+                  className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition ${
+                    isSelected
+                      ? 'border-blue-300 bg-blue-50'
+                      : 'border-slate-200 bg-white hover:bg-slate-50'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => {
+                      setSelectedHorses((prev) => {
+                        const next = new Set(prev)
+                        if (next.has(horse.id)) {
+                          next.delete(horse.id)
+                        } else {
+                          next.add(horse.id)
+                        }
+                        return next
+                      })
+                    }}
+                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-slate-900">{horse.name}</span>
+                </label>
+              )
+            })}
+            {horses.length === 0 && (
+              <p className="text-sm text-slate-500">No patients found for this owner.</p>
+            )}
           </div>
 
           <div className="flex gap-4 mt-8">
@@ -358,7 +401,7 @@ export default function CreateInvoicePage() {
             </button>
             <button
               onClick={() => setStep(3)}
-              disabled={!selectedHorse}
+              disabled={selectedHorses.size === 0}
               className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-300 transition font-medium"
             >
               Next
@@ -372,7 +415,7 @@ export default function CreateInvoicePage() {
         <div className="rounded-3xl bg-white p-6 shadow-sm">
           <h2 className="text-xl font-bold text-slate-900 mb-4">Add Line Items</h2>
           <p className="text-slate-600 text-sm mb-6">
-            {ownerName} - {horseName}
+            {ownerName} — {horseNamesDisplay}
           </p>
 
           {/* Available Services */}
@@ -581,8 +624,8 @@ export default function CreateInvoicePage() {
                   <p className="font-semibold text-slate-900">{ownerName}</p>
                 </div>
                 <div>
-                  <p className="text-slate-600">Patient</p>
-                  <p className="font-semibold text-slate-900">{horseName}</p>
+                  <p className="text-slate-600">{selectedHorses.size === 1 ? 'Patient' : 'Patients'}</p>
+                  <p className="font-semibold text-slate-900">{horseNamesDisplay}</p>
                 </div>
                 {dueDate && (
                   <div>

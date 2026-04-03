@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
         subtotal_cents,
         total_cents,
         notes,
+        horse_ids,
         stripe_payment_link_id,
         stripe_payment_url,
         created_at,
@@ -65,14 +66,39 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: queryError.message }, { status: 500 });
     }
 
+    // Resolve all horse names for invoices with horse_ids
+    const allHorseIds = new Set<string>();
+    for (const inv of data) {
+      const ids = inv.horse_ids as string[] | null;
+      if (ids && Array.isArray(ids)) {
+        ids.forEach((id: string) => allHorseIds.add(id));
+      }
+    }
+
+    let horseNameMap: Record<string, string> = {};
+    if (allHorseIds.size > 0) {
+      const { data: horsesData } = await supabaseAdmin
+        .from('horses')
+        .select('id, name')
+        .in('id', Array.from(allHorseIds));
+      if (horsesData) {
+        horseNameMap = Object.fromEntries(horsesData.map((h: { id: string; name: string }) => [h.id, h.name]));
+      }
+    }
+
     const invoices = data.map((invoice: Record<string, unknown>) => {
       const ownerData = invoice.owner as unknown as Record<string, string> | null;
+      const ids = invoice.horse_ids as string[] | null;
+      const horseNames = ids && Array.isArray(ids)
+        ? ids.map((id: string) => horseNameMap[id]).filter(Boolean)
+        : [];
       return {
         ...invoice,
         owner_name: ownerData?.full_name,
         owner_email: ownerData?.email,
         owner_phone: ownerData?.phone,
         horse_name: (invoice.horse as unknown as Record<string, string> | null)?.name,
+        horse_names: horseNames.length > 0 ? horseNames : undefined,
         owner: undefined,
         horse: undefined,
       };
@@ -93,11 +119,17 @@ export async function POST(request: NextRequest) {
     if (error) return error;
     const body = await request.json();
 
-    const { visit_id, owner_id, horse_id, line_items, notes, due_date } = body;
+    const { visit_id, owner_id, horse_id, horse_ids, line_items, notes, due_date } = body;
 
-    if (!owner_id || !horse_id || !line_items || !Array.isArray(line_items) || line_items.length === 0) {
+    // Support both single horse_id and horse_ids array
+    const resolvedHorseIds: string[] = horse_ids && Array.isArray(horse_ids) && horse_ids.length > 0
+      ? horse_ids
+      : horse_id ? [horse_id] : [];
+    const primaryHorseId = resolvedHorseIds[0] || null;
+
+    if (!owner_id || resolvedHorseIds.length === 0 || !line_items || !Array.isArray(line_items) || line_items.length === 0) {
       return NextResponse.json(
-        { error: 'Missing required fields: owner_id, horse_id, line_items' },
+        { error: 'Missing required fields: owner_id, horse_id/horse_ids, line_items' },
         { status: 400 }
       );
     }
@@ -113,6 +145,7 @@ export async function POST(request: NextRequest) {
       .like('invoice_number', `INV-${yearMonth}-%`);
 
     if (countError) {
+      console.error('[INVOICE CREATE] countError:', countError);
       return NextResponse.json({ error: countError.message }, { status: 500 });
     }
 
@@ -134,7 +167,8 @@ export async function POST(request: NextRequest) {
           practitioner_id: user.id,
           visit_id,
           owner_id,
-          horse_id,
+          horse_id: primaryHorseId,
+          horse_ids: resolvedHorseIds,
           invoice_number: invoiceNumber,
           invoice_date: new Date().toISOString().split('T')[0],
           due_date,
@@ -148,6 +182,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (invoiceError) {
+      console.error('[INVOICE CREATE] invoiceError:', invoiceError, 'payload:', { practitioner_id: user.id, visit_id, owner_id, horse_id: primaryHorseId, horse_ids: resolvedHorseIds, invoice_number: invoiceNumber });
       return NextResponse.json({ error: invoiceError.message }, { status: 500 });
     }
 
@@ -165,6 +200,7 @@ export async function POST(request: NextRequest) {
       .insert(lineItemsData);
 
     if (lineItemsError) {
+      console.error('[INVOICE CREATE] lineItemsError:', lineItemsError, 'lineItemsData:', lineItemsData);
       return NextResponse.json({ error: lineItemsError.message }, { status: 500 });
     }
 
@@ -181,6 +217,7 @@ export async function POST(request: NextRequest) {
         subtotal_cents,
         total_cents,
         notes,
+        horse_ids,
         created_at,
         owner:owners(full_name, email, phone),
         horse:horses(name),
@@ -197,13 +234,29 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (fetchError) {
+      console.error('[INVOICE CREATE] fetchError:', fetchError);
       return NextResponse.json({ error: fetchError.message }, { status: 500 });
+    }
+
+    // Resolve all horse names for the invoice
+    let horseNames: string[] = [];
+    if (resolvedHorseIds.length > 0) {
+      const { data: horsesData } = await supabaseAdmin
+        .from('horses')
+        .select('id, name')
+        .in('id', resolvedHorseIds);
+      if (horsesData) {
+        horseNames = resolvedHorseIds
+          .map((id: string) => horsesData.find((h: { id: string; name: string }) => h.id === id)?.name)
+          .filter(Boolean) as string[];
+      }
     }
 
     const result = {
       ...completeInvoice,
       owner_name: (completeInvoice.owner as unknown as Record<string, string> | null)?.full_name || (Array.isArray(completeInvoice.owner) ? completeInvoice.owner[0]?.full_name : undefined),
       horse_name: (completeInvoice.horse as unknown as Record<string, string> | null)?.name || (Array.isArray(completeInvoice.horse) ? completeInvoice.horse[0]?.name : undefined),
+      horse_names: horseNames.length > 0 ? horseNames : undefined,
       owner: undefined,
       horse: undefined,
     };
@@ -243,6 +296,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof SyntaxError) {
       return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
     }
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('[INVOICE CREATE] Unhandled error:', error);
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal server error' }, { status: 500 });
   }
 }
