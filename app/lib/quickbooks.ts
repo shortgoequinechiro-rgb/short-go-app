@@ -73,8 +73,22 @@ export async function getValidToken(practitionerId: string): Promise<string | nu
     })
 
     console.log('[QB Token] Attempting token refresh for practitioner', practitionerId)
-    const authResponse = await oauthClient.refresh()
-    const newToken = authResponse.getJson()
+    let authResponse
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        authResponse = await oauthClient.refresh()
+        break
+      } catch (retryErr) {
+        if (attempt < 2) {
+          const delay = 1000 * Math.pow(2, attempt)
+          console.warn(`[QB Token] Refresh attempt ${attempt + 1} failed, retrying in ${delay}ms:`, retryErr instanceof Error ? retryErr.message : retryErr)
+          await new Promise(resolve => setTimeout(resolve, delay))
+        } else {
+          throw retryErr
+        }
+      }
+    }
+    const newToken = authResponse!.getJson()
 
     if (!newToken?.access_token) {
       console.error('[QB Token] Refresh returned empty access_token. Response:', JSON.stringify(newToken))
@@ -117,25 +131,50 @@ async function qbFetch(
   path: string,
   realmId: string,
   accessToken: string,
-  body?: object
+  body?: object,
+  maxRetries = 3
 ) {
   const url = `${QB_BASE_URL}/v3/company/${realmId}${path}`
-  const res = await fetch(url, {
-    method,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  })
 
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error(`QB API ${method} ${path}: ${res.status} — ${text}`)
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      })
+
+      // Retry on transient errors (429 rate limit, 5xx server errors)
+      if (!res.ok && attempt < maxRetries && (res.status === 429 || res.status >= 500)) {
+        const delay = Math.min(1000 * Math.pow(2, attempt), 10000)
+        console.warn(`[QB API] ${method} ${path} returned ${res.status}, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`)
+        await new Promise(resolve => setTimeout(resolve, delay))
+        continue
+      }
+
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(`QB API ${method} ${path}: ${res.status} — ${text}`)
+      }
+
+      return res.json()
+    } catch (err) {
+      // Retry on network errors (fetch failures, timeouts)
+      if (attempt < maxRetries && err instanceof TypeError) {
+        const delay = Math.min(1000 * Math.pow(2, attempt), 10000)
+        console.warn(`[QB API] ${method} ${path} network error, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries}):`, err.message)
+        await new Promise(resolve => setTimeout(resolve, delay))
+        continue
+      }
+      throw err
+    }
   }
 
-  return res.json()
+  throw new Error(`QB API ${method} ${path}: max retries (${maxRetries}) exceeded`)
 }
 
 // ── Item helpers ─────────────────────────────────────────────────────────────
