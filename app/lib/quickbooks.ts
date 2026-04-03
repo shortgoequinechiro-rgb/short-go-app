@@ -147,6 +147,7 @@ export async function syncOwnerToQBCustomer(
   // Search QB for existing customer by name
   try {
     const query = encodeURIComponent(`select * from Customer where DisplayName = '${owner.full_name.replace(/'/g, "\\'")}'`)
+    console.log('QB customer search query:', query, 'realmId:', conn.realm_id)
     const searchResult = await qbFetch('GET', `/query?query=${query}`, conn.realm_id, accessToken)
 
     if (searchResult.QueryResponse?.Customer?.length > 0) {
@@ -157,7 +158,8 @@ export async function syncOwnerToQBCustomer(
         .eq('id', owner.id)
       return qbCustomerId
     }
-  } catch {
+  } catch (searchErr) {
+    console.error('QB customer search failed:', searchErr instanceof Error ? searchErr.message : searchErr)
     // Search failed, try to create
   }
 
@@ -173,6 +175,7 @@ export async function syncOwnerToQBCustomer(
       customerData.PrimaryPhone = { FreeFormNumber: owner.phone }
     }
 
+    console.log('Creating QB customer:', JSON.stringify(customerData), 'realmId:', conn.realm_id, 'baseUrl:', QB_BASE_URL)
     const result = await qbFetch('POST', '/customer', conn.realm_id, accessToken, customerData)
     const qbCustomerId = String(result.Customer.Id)
 
