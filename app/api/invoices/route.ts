@@ -140,16 +140,23 @@ export async function POST(request: NextRequest) {
 
     const { data: existingInvoices, error: countError } = await supabaseAdmin
       .from('invoices')
-      .select('id', { count: 'exact' })
+      .select('invoice_number')
       .eq('practitioner_id', user.id)
-      .like('invoice_number', `INV-${yearMonth}-%`);
+      .like('invoice_number', `INV-${yearMonth}-%`)
+      .order('invoice_number', { ascending: false })
+      .limit(1);
 
     if (countError) {
       console.error('[INVOICE CREATE] countError:', countError);
       return NextResponse.json({ error: countError.message }, { status: 500 });
     }
 
-    const sequential = (existingInvoices?.length || 0) + 1;
+    let sequential = 1;
+    if (existingInvoices && existingInvoices.length > 0) {
+      const lastNumber = existingInvoices[0].invoice_number;
+      const lastSeq = parseInt(lastNumber.split('-').pop() || '0', 10);
+      sequential = lastSeq + 1;
+    }
     const invoiceNumber = `INV-${yearMonth}-${String(sequential).padStart(4, '0')}`;
 
     // Calculate totals
