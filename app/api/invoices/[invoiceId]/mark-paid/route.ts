@@ -118,13 +118,17 @@ export async function POST(
       horse: undefined,
     };
 
-    // Fire-and-forget: sync payment to QuickBooks if connected
-    getQBConnection(user.id).then((conn) => {
+    // Sync payment to QuickBooks if connected (awaited so Vercel doesn't kill the function)
+    try {
+      const conn = await getQBConnection(user.id);
       if (conn) {
-        syncPaymentToQB(user.id, invoiceId, updatedInvoice.total_cents || 0, payment_method)
-          .catch((err: unknown) => console.error('QB payment sync failed:', err))
+        console.log('[QB Sync] Syncing payment for invoice', invoiceId);
+        await syncPaymentToQB(user.id, invoiceId, updatedInvoice.total_cents || 0, payment_method);
+        console.log('[QB Sync] Payment synced successfully');
       }
-    }).catch(() => { /* QB not configured, skip */ })
+    } catch (qbErr) {
+      console.error('[QB Sync] Payment sync failed:', qbErr instanceof Error ? qbErr.message : qbErr);
+    }
 
     return NextResponse.json(result);
   } catch (error) {

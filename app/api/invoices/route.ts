@@ -276,24 +276,31 @@ export async function POST(request: NextRequest) {
       `Invoice ${invoiceNumber} for ${result.owner_name || 'Unknown'}`
     );
 
-    // Fire-and-forget: sync to QuickBooks if connected
-    getQBConnection(user.id).then((conn) => {
+    // Sync to QuickBooks if connected (awaited so Vercel doesn't kill the function)
+    try {
+      const conn = await getQBConnection(user.id);
       if (conn) {
-        supabaseAdmin.from('invoices').update({ qb_sync_status: 'pending' }).eq('id', invoice.id).then(() => {
-          syncInvoiceToQB(user.id, {
-            id: invoice.id,
-            invoice_number: invoiceNumber,
-            owner_id,
-            total_cents: totalCents,
-            line_items: line_items.map((li: { description: string; quantity: number; unit_price_cents: number }) => ({
-              description: li.description || '',
-              quantity: li.quantity || 1,
-              unit_price_cents: li.unit_price_cents || 0,
-            })),
-          }).catch((err: unknown) => console.error('QB invoice sync failed:', err))
-        })
+        console.log('[QB Sync] Connection found, syncing invoice', invoiceNumber);
+        await supabaseAdmin.from('invoices').update({ qb_sync_status: 'pending' }).eq('id', invoice.id);
+        await syncInvoiceToQB(user.id, {
+          id: invoice.id,
+          invoice_number: invoiceNumber,
+          owner_id,
+          total_cents: totalCents,
+          line_items: line_items.map((li: { description: string; quantity: number; unit_price_cents: number }) => ({
+            description: li.description || '',
+            quantity: li.quantity || 1,
+            unit_price_cents: li.unit_price_cents || 0,
+          })),
+        });
+        console.log('[QB Sync] Invoice', invoiceNumber, 'synced successfully');
+      } else {
+        console.log('[QB Sync] No QB connection found, skipping sync');
       }
-    }).catch(() => { /* QB not configured, skip */ })
+    } catch (qbErr) {
+      console.error('[QB Sync] Invoice sync failed:', qbErr instanceof Error ? qbErr.message : qbErr);
+      // Don't fail the invoice creation if QB sync fails
+    }
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
