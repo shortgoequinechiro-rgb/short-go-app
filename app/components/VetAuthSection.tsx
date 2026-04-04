@@ -223,13 +223,42 @@ export default function VetAuthSection({ horseId, horseName, onAuthStatusChange 
       {/* Action buttons */}
       <div className="flex flex-wrap gap-2">
         <button
-          onClick={() => { setShowManualForm(v => !v); setShowRequestForm(false); setMessage('') }}
+          onClick={() => {
+            const opening = !showManualForm
+            setShowManualForm(opening)
+            setShowRequestForm(false)
+            setMessage('')
+            if (opening) {
+              const lastAuth = authorizations[0]
+              if (lastAuth) {
+                setVetName(lastAuth.vet_name || '')
+                setVetLicense(lastAuth.vet_license_number || '')
+                setVetPractice(lastAuth.vet_practice_name || '')
+                setVetPhone(lastAuth.vet_phone || '')
+                setVetEmail(lastAuth.vet_email || '')
+              }
+            }
+          }}
           className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition"
         >
           {showManualForm ? 'Cancel' : '+ Add Manually'}
         </button>
         <button
-          onClick={() => { setShowRequestForm(v => !v); setShowManualForm(false); setMessage('') }}
+          onClick={() => {
+            const opening = !showRequestForm
+            setShowRequestForm(opening)
+            setShowManualForm(false)
+            setMessage('')
+            // Pre-fill from most recent vet auth (active first, then expired)
+            if (opening) {
+              const lastAuth = authorizations[0]
+              if (lastAuth) {
+                setReqVetName(lastAuth.vet_name || '')
+                setReqVetEmail(lastAuth.vet_email || '')
+                setReqVetPhone(lastAuth.vet_phone || '')
+              }
+            }
+          }}
           className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-500 transition"
         >
           {showRequestForm ? 'Cancel' : 'Request from Vet'}
