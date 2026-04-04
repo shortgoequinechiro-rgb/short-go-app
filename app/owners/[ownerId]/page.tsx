@@ -221,7 +221,7 @@ export default function OwnerPage() {
         try {
           const cached = await getCachedOwnerById(ownerId)
           if (cached) {
-            setOwner({ id: cached.id, full_name: cached.full_name, phone: cached.phone, email: cached.email, address: cached.address })
+            setOwner({ id: cached.id, full_name: cached.full_name, phone: cached.phone, email: cached.email, address: cached.address, vet_name: cached.vet_name ?? null, vet_practice_name: cached.vet_practice_name ?? null, vet_phone: cached.vet_phone ?? null, vet_email: cached.vet_email ?? null, vet_license_number: cached.vet_license_number ?? null })
           } else {
             setNotFound(true)
             setLoading(false)
