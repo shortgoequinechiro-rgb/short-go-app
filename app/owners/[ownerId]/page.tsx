@@ -46,6 +46,7 @@ type IntakeForm = {
   submitted_at: string
   animal_name: string
   signed_name: string | null
+  archived: boolean | null
 }
 
 type ConsentForm = {
@@ -144,6 +145,7 @@ export default function OwnerPage() {
   const [consentForms, setConsentForms] = useState<ConsentForm[]>([])
   const [documents, setDocuments] = useState<OwnerDocument[]>([])
   const [vetAuthorizations, setVetAuthorizations] = useState<VetAuthorization[]>([])
+  const [showArchivedIntakes, setShowArchivedIntakes] = useState(false)
   const [loadingRecords, setLoadingRecords] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadNote, setUploadNote] = useState('')
@@ -294,7 +296,7 @@ export default function OwnerPage() {
       // Intake / consent status (non-critical, just skip offline)
       if (navigator.onLine) {
         const [intakeRes, consentRes] = await Promise.all([
-          supabase.from('intake_forms').select('id').eq('owner_id', ownerId).limit(1),
+          supabase.from('intake_forms').select('id').eq('owner_id', ownerId).or('archived.is.null,archived.eq.false').limit(1),
           supabase.from('consent_forms').select('id').eq('owner_id', ownerId).limit(1),
         ])
         setHasIntake(!intakeRes.error && (intakeRes.data?.length ?? 0) > 0)
@@ -317,10 +319,10 @@ export default function OwnerPage() {
   async function loadRecords() {
     setLoadingRecords(true)
 
-    // Intake forms
+    // Intake forms (fetch all, filter in UI based on toggle)
     const { data: intakes } = await supabase
       .from('intake_forms')
-      .select('id, submitted_at, animal_name, signed_name')
+      .select('id, submitted_at, animal_name, signed_name, archived')
       .eq('owner_id', ownerId)
       .order('submitted_at', { ascending: false })
 
@@ -1052,26 +1054,45 @@ export default function OwnerPage() {
             ) : (
               <>
                 {/* ── Intake Forms ── */}
-                {intakeForms.length > 0 && (
+                {intakeForms.length > 0 && (() => {
+                  const activeIntakes = intakeForms.filter(f => !f.archived)
+                  const archivedIntakes = intakeForms.filter(f => f.archived)
+                  const visibleIntakes = showArchivedIntakes ? intakeForms : activeIntakes
+                  return visibleIntakes.length > 0 || archivedIntakes.length > 0 ? (
                   <div className="rounded-3xl bg-white p-5 shadow-sm md:p-6">
-                    <h3 className="text-base font-semibold text-slate-900 mb-1 flex items-center gap-2">
-                      <span className="text-emerald-600">📋</span>
-                      Intake Forms
-                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                        {intakeForms.length}
-                      </span>
-                    </h3>
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
+                        <span className="text-emerald-600">📋</span>
+                        Intake Forms
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                          {activeIntakes.length}
+                        </span>
+                      </h3>
+                      {archivedIntakes.length > 0 && (
+                        <button
+                          onClick={() => setShowArchivedIntakes(!showArchivedIntakes)}
+                          className="text-xs text-slate-500 hover:text-slate-700 transition"
+                        >
+                          {showArchivedIntakes ? 'Hide' : 'Show'} archived ({archivedIntakes.length})
+                        </button>
+                      )}
+                    </div>
                     <p className="text-xs text-slate-500 mb-3">Submitted intake forms for this owner</p>
                     <div className="space-y-2">
-                      {intakeForms.map(form => (
+                      {visibleIntakes.map(form => (
                         <div
                           key={form.id}
-                          className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 hover:bg-white hover:shadow-sm transition"
+                          className={`flex items-center gap-3 rounded-xl border px-4 py-3 hover:shadow-sm transition ${
+                            form.archived
+                              ? 'border-amber-200 bg-amber-50/50 opacity-70'
+                              : 'border-slate-200 bg-slate-50 hover:bg-white'
+                          }`}
                         >
-                          <span className="text-lg">📑</span>
+                          <span className="text-lg">{form.archived ? '🗄' : '📑'}</span>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-slate-800 truncate">
                               Intake — {form.animal_name || 'Unknown'}
+                              {form.archived && <span className="ml-1.5 text-[10px] font-semibold text-amber-600 uppercase">Archived</span>}
                             </p>
                             <p className="text-xs text-slate-500">
                               Submitted {formatDate(form.submitted_at)}
@@ -1100,7 +1121,7 @@ export default function OwnerPage() {
                       ))}
                     </div>
                   </div>
-                )}
+                  ) : null})()}
 
                 {/* ── Consent Forms ── */}
                 {consentForms.length > 0 && (
