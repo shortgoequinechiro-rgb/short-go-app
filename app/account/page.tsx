@@ -24,6 +24,11 @@ type Practitioner = {
   paypal_email: string | null
   zelle_info: string | null
   cash_app_handle: string | null
+  stripe_account_id: string | null
+  stripe_connect_status: string | null
+  stripe_charges_enabled: boolean | null
+  stripe_payouts_enabled: boolean | null
+  stripe_connect_onboarded_at: string | null
 }
 
 type Tab = 'profile' | 'security' | 'billing' | 'reminders'
@@ -920,8 +925,204 @@ function BillingTab({ practitioner }: { practitioner: Practitioner }) {
         </ul>
       </div>
 
+      {/* Stripe Connect — collect client payments */}
+      <StripeConnectSection practitioner={practitioner} />
+
       {/* QuickBooks integration */}
       <QuickBooksSection />
+    </div>
+  )
+}
+
+// ── Stripe Connect Section ──────────────────────────────────────────────────
+
+function StripeConnectSection({ practitioner }: { practitioner: Practitioner }) {
+  const [loading, setLoading] = useState(false)
+  const [checking, setChecking] = useState(false)
+  const [error, setError] = useState('')
+  const [connectStatus, setConnectStatus] = useState(practitioner.stripe_connect_status ?? 'not_connected')
+  const [chargesEnabled, setChargesEnabled] = useState(practitioner.stripe_charges_enabled ?? false)
+  const [payoutsEnabled, setPayoutsEnabled] = useState(practitioner.stripe_payouts_enabled ?? false)
+
+  const searchParams = useSearchParams()
+
+  // When returning from Stripe onboarding, refresh status automatically
+  useEffect(() => {
+    const stripeConnect = searchParams.get('stripe_connect')
+    if (stripeConnect === 'return' || stripeConnect === 'refresh') {
+      checkStatus()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
+  async function checkStatus() {
+    setChecking(true); setError('')
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/stripe-connect/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: session?.access_token }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setConnectStatus(data.status)
+        setChargesEnabled(data.charges_enabled)
+        setPayoutsEnabled(data.payouts_enabled)
+      } else {
+        setError(data.error || 'Failed to check status.')
+      }
+    } catch {
+      setError('Network error.')
+    }
+    setChecking(false)
+  }
+
+  async function handleConnect() {
+    setLoading(true); setError('')
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/stripe-connect/onboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: session?.access_token }),
+      })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        setError(data.error || 'Failed to start Stripe setup.')
+        setLoading(false)
+      }
+    } catch {
+      setError('Network error.')
+      setLoading(false)
+    }
+  }
+
+  async function handleOpenDashboard() {
+    setLoading(true); setError('')
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/stripe-connect/dashboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: session?.access_token }),
+      })
+      const data = await res.json()
+      if (data.url) {
+        window.open(data.url, '_blank')
+      } else {
+        setError(data.error || 'Failed to open Stripe dashboard.')
+      }
+    } catch {
+      setError('Network error.')
+    }
+    setLoading(false)
+  }
+
+  const isActive = connectStatus === 'active' && chargesEnabled
+
+  return (
+    <div className="rounded-2xl border border-[#244770] bg-[#162d50] p-6">
+      <div className="flex items-start justify-between gap-4 mb-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-blue-400 mb-1">Client Payments</p>
+          <p className="text-lg font-bold text-white">Stripe Connect</p>
+          <p className="text-sm text-blue-300 mt-0.5">
+            Accept credit card payments from your clients directly to your bank account.
+          </p>
+        </div>
+        {isActive && (
+          <span className="inline-flex items-center rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-3 py-1 text-xs font-semibold">
+            Connected
+          </span>
+        )}
+        {connectStatus === 'onboarding' && (
+          <span className="inline-flex items-center rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 px-3 py-1 text-xs font-semibold">
+            Setup Incomplete
+          </span>
+        )}
+        {connectStatus === 'restricted' && (
+          <span className="inline-flex items-center rounded-full bg-red-500/20 text-red-300 border border-red-500/40 px-3 py-1 text-xs font-semibold">
+            Action Needed
+          </span>
+        )}
+      </div>
+
+      {error && <p className="text-sm text-red-400 mb-3">{error}</p>}
+
+      {isActive ? (
+        <div className="space-y-3">
+          <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 px-4 py-3">
+            <p className="text-sm text-emerald-200">
+              Your Stripe account is connected. When you send invoices with a Stripe payment link,
+              payments will go directly to your bank account.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleOpenDashboard}
+              disabled={loading}
+              className="flex-1 rounded-xl border border-white/20 py-2.5 text-sm font-medium text-white transition hover:bg-white/10 disabled:opacity-50"
+            >
+              {loading ? 'Opening…' : 'View Stripe Dashboard'}
+            </button>
+            <button
+              onClick={checkStatus}
+              disabled={checking}
+              className="rounded-xl border border-white/20 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-white/10 disabled:opacity-50"
+            >
+              {checking ? '…' : 'Refresh'}
+            </button>
+          </div>
+        </div>
+      ) : connectStatus === 'onboarding' || connectStatus === 'restricted' ? (
+        <div className="space-y-3">
+          <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 px-4 py-3">
+            <p className="text-sm text-amber-200">
+              {connectStatus === 'restricted'
+                ? 'Your Stripe account needs additional information. Click below to complete setup.'
+                : 'You started connecting your Stripe account but haven\'t finished setup yet.'}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleConnect}
+              disabled={loading}
+              className="flex-1 rounded-xl bg-[#c9a227] py-2.5 text-sm font-semibold text-[#0f2040] transition hover:bg-[#b89020] disabled:opacity-50"
+            >
+              {loading ? 'Redirecting to Stripe…' : 'Continue Setup'}
+            </button>
+            <button
+              onClick={checkStatus}
+              disabled={checking}
+              className="rounded-xl border border-white/20 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-white/10 disabled:opacity-50"
+            >
+              {checking ? '…' : 'Refresh'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-sm text-blue-300/70">
+            Connect your Stripe account to start accepting credit card payments for invoices.
+            Stripe handles all the payment processing — funds go directly to your bank. Standard
+            Stripe processing fees apply (2.9% + 30¢ per transaction).
+          </p>
+          <button
+            onClick={handleConnect}
+            disabled={loading}
+            className="w-full rounded-xl bg-[#c9a227] py-3 text-sm font-semibold text-[#0f2040] transition hover:bg-[#b89020] disabled:opacity-50"
+          >
+            {loading ? 'Redirecting to Stripe…' : 'Connect Stripe Account'}
+          </button>
+        </div>
+      )}
+
+      <p className="mt-3 text-[11px] text-blue-400/60 text-center">
+        Powered by Stripe Connect. Your financial information is handled securely by Stripe.
+      </p>
     </div>
   )
 }

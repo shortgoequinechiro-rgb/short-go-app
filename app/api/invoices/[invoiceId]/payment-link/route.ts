@@ -27,11 +27,82 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    // Initialize Stripe
+    // Check if practitioner has a connected Stripe account
+    const { data: practitioner } = await supabaseAdmin
+      .from('practitioners')
+      .select('stripe_account_id, stripe_charges_enabled')
+      .eq('id', user.id)
+      .single();
+
     const stripe = getStripe();
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
-    // Create payment link
+    // If the practitioner has a connected & active Stripe account,
+    // create a Checkout Session on their connected account so the
+    // payment goes directly to them.
+    if (practitioner?.stripe_account_id && practitioner?.stripe_charges_enabled) {
+      const session = await stripe.checkout.sessions.create(
+        {
+          mode: 'payment',
+          line_items: [
+            {
+              price_data: {
+                currency: 'usd',
+                product_data: {
+                  name: `Invoice ${invoice.invoice_number}`,
+                },
+                unit_amount: invoice.total_cents,
+              },
+              quantity: 1,
+            },
+          ],
+          payment_intent_data: {
+            // No application_fee_amount — practitioner keeps 100%
+            metadata: {
+              invoiceId,
+              practitionerId: user.id,
+            },
+          },
+          metadata: {
+            invoiceId,
+            practitionerId: user.id,
+          },
+          success_url: `${appUrl}/pay/${invoiceId}?paid=true`,
+          cancel_url: `${appUrl}/pay/${invoiceId}`,
+        },
+        {
+          stripeAccount: practitioner.stripe_account_id,
+        }
+      );
+
+      // Update invoice with payment link details
+      const updateData: Record<string, string> = {
+        stripe_payment_link_id: session.id,
+        stripe_payment_url: session.url!,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (invoice.status === 'draft') {
+        updateData.status = 'sent';
+      }
+
+      const { error: updateError } = await supabaseAdmin
+        .from('invoices')
+        .update(updateData)
+        .eq('id', invoiceId);
+
+      if (updateError) {
+        console.error('Failed to update invoice with payment link:', updateError);
+        return NextResponse.json({ error: 'Failed to create payment link.' }, { status: 500 });
+      }
+
+      return NextResponse.json({
+        url: session.url,
+        linkId: session.id,
+      });
+    }
+
+    // Fallback: create a Payment Link on the platform account (original behavior)
     const paymentLink = await stripe.paymentLinks.create({
       line_items: [
         {
@@ -64,7 +135,6 @@ export async function POST(
       updated_at: new Date().toISOString(),
     };
 
-    // Update status to 'sent' if currently 'draft'
     if (invoice.status === 'draft') {
       updateData.status = 'sent';
     }

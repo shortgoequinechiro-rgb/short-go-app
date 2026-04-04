@@ -68,39 +68,6 @@ export async function POST(req: Request) {
   try {
     switch (event.type) {
 
-      // Fired when a checkout session completes (new subscription started)
-      case 'checkout.session.completed': {
-        const session = event.data.object as Stripe.Checkout.Session
-        if (session.mode !== 'subscription') break
-
-        const userId = session.metadata?.supabase_user_id
-        if (!userId) break
-
-        const subscription = await stripe.subscriptions.retrieve(
-          session.subscription as string
-        )
-
-        // Map Stripe status to our simplified status
-        const status = subscription.status === 'trialing' ? 'trialing' : 'active'
-
-        const { error } = await supabaseAdmin
-          .from('practitioners')
-          .update({
-            subscription_id: subscription.id,
-            stripe_customer_id: session.customer as string,
-            subscription_status: status,
-            trial_ends_at: subscription.trial_end
-              ? new Date(subscription.trial_end * 1000).toISOString()
-              : null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', userId)
-
-        if (error) throw error
-        await markEventProcessed(event.id)
-        break
-      }
-
       // Fired when a subscription changes (upgrade, downgrade, trial → active, etc.)
       case 'customer.subscription.updated': {
         const sub = event.data.object as Stripe.Subscription
@@ -220,6 +187,112 @@ export async function POST(req: Request) {
         break
       }
 
+      // ── Stripe Connect Events ──────────────────────────────────
+
+      // Fired when a connected account is updated (onboarding completed, status changes)
+      case 'account.updated': {
+        const account = event.data.object as Stripe.Account
+        if (!account.id) break
+
+        // Look up the practitioner by their connected account ID
+        const { data: connectedPractitioner } = await supabaseAdmin
+          .from('practitioners')
+          .select('id, stripe_connect_status')
+          .eq('stripe_account_id', account.id)
+          .single()
+
+        if (!connectedPractitioner) break
+
+        const chargesEnabled = account.charges_enabled ?? false
+        const payoutsEnabled = account.payouts_enabled ?? false
+
+        let connectStatus = 'onboarding'
+        if (chargesEnabled && payoutsEnabled) {
+          connectStatus = 'active'
+        } else if (account.requirements?.disabled_reason) {
+          connectStatus = 'restricted'
+        }
+
+        const connectUpdate: Record<string, unknown> = {
+          stripe_connect_status: connectStatus,
+          stripe_charges_enabled: chargesEnabled,
+          stripe_payouts_enabled: payoutsEnabled,
+          updated_at: new Date().toISOString(),
+        }
+
+        // Record onboarding completion time
+        if (connectStatus === 'active' && connectedPractitioner.stripe_connect_status !== 'active') {
+          connectUpdate.stripe_connect_onboarded_at = new Date().toISOString()
+        }
+
+        const { error: connectError } = await supabaseAdmin
+          .from('practitioners')
+          .update(connectUpdate)
+          .eq('id', connectedPractitioner.id)
+
+        if (connectError) throw connectError
+        await markEventProcessed(event.id)
+        break
+      }
+
+      // Fired when a checkout session on a connected account completes (invoice payment)
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session
+
+        // If it's a subscription checkout (platform billing), handle as before
+        if (session.mode === 'subscription') {
+          const userId = session.metadata?.supabase_user_id
+          if (!userId) break
+
+          const subscription = await stripe.subscriptions.retrieve(
+            session.subscription as string
+          )
+
+          const status = subscription.status === 'trialing' ? 'trialing' : 'active'
+
+          const { error } = await supabaseAdmin
+            .from('practitioners')
+            .update({
+              subscription_id: subscription.id,
+              stripe_customer_id: session.customer as string,
+              subscription_status: status,
+              trial_ends_at: subscription.trial_end
+                ? new Date(subscription.trial_end * 1000).toISOString()
+                : null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', userId)
+
+          if (error) throw error
+          await markEventProcessed(event.id)
+          break
+        }
+
+        // If it's a payment-mode session (invoice payment via Connect), mark invoice paid
+        if (session.mode === 'payment' && session.metadata?.invoiceId) {
+          const invoiceId = session.metadata.invoiceId
+
+          const { error: invoiceError } = await supabaseAdmin
+            .from('invoices')
+            .update({
+              status: 'paid',
+              paid_at: new Date().toISOString(),
+              payment_method: 'stripe',
+              payment_reference: session.payment_intent as string || session.id,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', invoiceId)
+
+          if (invoiceError) {
+            console.error('Failed to mark invoice as paid:', invoiceError)
+            throw invoiceError
+          }
+
+          await markEventProcessed(event.id)
+        }
+        break
+      }
+
       // Unhandled event type
       default: {
         console.log(`Unhandled webhook event type: ${event.type}`)
@@ -228,12 +301,14 @@ export async function POST(req: Request) {
     }
 
     // Mark event as processed on success
+    // (Events already marked inside their case blocks are excluded here)
     if (event.type !== 'customer.subscription.paused' &&
         event.type !== 'checkout.session.completed' &&
         event.type !== 'customer.subscription.updated' &&
         event.type !== 'customer.subscription.deleted' &&
         event.type !== 'invoice.payment_failed' &&
-        event.type !== 'invoice.payment_succeeded') {
+        event.type !== 'invoice.payment_succeeded' &&
+        event.type !== 'account.updated') {
       // For unhandled events, still mark as processed to avoid spam
       await markEventProcessed(event.id)
     }

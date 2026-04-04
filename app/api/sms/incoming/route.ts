@@ -97,16 +97,22 @@ export async function POST(req: NextRequest) {
     return twimlResponse('')
   }
 
-  // Match owner by normalized phone digits
-  const owner = owners.find(o => {
+  // Match all owners by normalized phone digits
+  const matchingOwners = owners.filter(o => {
     if (!o.phone) return false
     const ownerDigits = o.phone.replace(/\D/g, '')
     return possibleFormats.includes(ownerDigits) || possibleFormats.includes(`1${ownerDigits}`)
   })
 
-  if (!owner) {
+  if (matchingOwners.length === 0) {
     return twimlResponse('')
   }
+
+  // Prefer the owner with 'pending' consent status (the one awaiting a YES reply),
+  // then fall back to the one with a pending_sms_action, then first match
+  const owner = matchingOwners.find(o => o.sms_consent_status === 'pending')
+    || matchingOwners.find(o => o.pending_sms_action)
+    || matchingOwners[0]
 
   const optInKeywords = ['YES', 'Y', 'OPTIN', 'OPT IN', 'START', 'SUBSCRIBE']
   const optOutKeywords = ['STOP', 'NO', 'N', 'OPTOUT', 'OPT OUT', 'UNSUBSCRIBE', 'CANCEL', 'QUIT']
@@ -146,8 +152,9 @@ export async function POST(req: NextRequest) {
       // Send the pending form
       try {
         await sendPendingForm(owner, pendingAction, supabase)
-      } catch {
-        // Don't fail the opt-in if the form send fails
+      } catch (err) {
+        // Don't fail the opt-in if the form send fails, but log the error
+        console.error('[sms/incoming] Failed to send pending form:', err instanceof Error ? err.message : err)
       }
     }
 
