@@ -19,6 +19,10 @@ type Owner = {
   email: string | null
   address: string | null
   practitioner_id: string | null
+  vet_name: string | null
+  vet_practice_name: string | null
+  vet_phone: string | null
+  vet_email: string | null
 }
 
 type Practitioner = {
@@ -122,6 +126,12 @@ export default function IntakeFormPage() {
   const [zip, setZip] = useState('')
   const [referralSources, setReferralSources] = useState<string[]>([])
 
+  // Vet info
+  const [vetName, setVetName] = useState('')
+  const [vetPractice, setVetPractice] = useState('')
+  const [vetPhone, setVetPhone] = useState('')
+  const [vetEmail, setVetEmail] = useState('')
+
   // Multiple animal entries
   const [animals, setAnimals] = useState<AnimalEntry[]>([blankAnimal()])
 
@@ -152,6 +162,10 @@ export default function IntakeFormPage() {
       setPhone(ownerData.phone || '')
       setEmail(ownerData.email || '')
       if (ownerData.address) setStreetAddress(ownerData.address)
+      if (ownerData.vet_name) setVetName(ownerData.vet_name)
+      if (ownerData.vet_practice_name) setVetPractice(ownerData.vet_practice_name)
+      if (ownerData.vet_phone) setVetPhone(ownerData.vet_phone)
+      if (ownerData.vet_email) setVetEmail(ownerData.vet_email)
 
       // Fetch practitioner data if practitioner_id exists
       if (ownerData.practitioner_id) {
@@ -365,6 +379,10 @@ export default function IntakeFormPage() {
           })),
           signatureData,
           signedName: resolvedSignedName,
+          vetName: vetName.trim() || null,
+          vetPractice: vetPractice.trim() || null,
+          vetPhone: vetPhone.trim() || null,
+          vetEmail: vetEmail.trim() || null,
         }),
       })
 
@@ -542,6 +560,29 @@ export default function IntakeFormPage() {
           >
             + Add Another Animal
           </button>
+
+          {/* ── Veterinarian Info ── */}
+          <Section title="Veterinarian Information">
+            <p className="text-xs text-slate-500 -mt-2 mb-2">Please provide your animal&apos;s primary veterinarian so we can coordinate care if needed.</p>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Veterinarian Name">
+                <input value={vetName} onChange={e => setVetName(e.target.value)} placeholder="Dr. Jane Smith, DVM"
+                  className={inputCls} />
+              </Field>
+              <Field label="Practice Name">
+                <input value={vetPractice} onChange={e => setVetPractice(e.target.value)} placeholder="Hill Country Veterinary"
+                  className={inputCls} />
+              </Field>
+              <Field label="Vet Phone">
+                <input value={vetPhone} onChange={e => setVetPhone(e.target.value)} placeholder="(512) 555-0123"
+                  className={inputCls} />
+              </Field>
+              <Field label="Vet Email">
+                <input value={vetEmail} onChange={e => setVetEmail(e.target.value)} placeholder="vet@clinic.com"
+                  className={inputCls} />
+              </Field>
+            </div>
+          </Section>
 
           {/* ── Consent ── */}
           <Section title="Informed Consent">

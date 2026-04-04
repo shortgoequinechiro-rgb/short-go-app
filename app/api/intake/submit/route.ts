@@ -36,6 +36,10 @@ export async function POST(req: NextRequest) {
     animals: AnimalPayload[]
     signatureData: string | null
     signedName: string
+    vetName: string | null
+    vetPractice: string | null
+    vetPhone: string | null
+    vetEmail: string | null
   }
 
   try {
@@ -44,7 +48,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 })
   }
 
-  const { ownerId, referralSources, animals, signatureData, signedName } = body
+  const { ownerId, referralSources, animals, signatureData, signedName, vetName, vetPractice, vetPhone, vetEmail } = body
 
   if (!ownerId || !animals?.length) {
     return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 })
@@ -123,6 +127,10 @@ export async function POST(req: NextRequest) {
         consent_signed: true,
         signature_data: signatureData,
         signed_name: signedName,
+        vet_name: vetName || null,
+        vet_practice_name: vetPractice || null,
+        vet_phone: vetPhone || null,
+        vet_email: vetEmail || null,
       })
       .select('id')
       .single()
@@ -140,6 +148,19 @@ export async function POST(req: NextRequest) {
     }
 
     results.push({ horseId: resolvedHorseId, formId: newForm?.id ?? null, name: resolvedAnimalName })
+  }
+
+  // Update owner's default vet info if provided on the intake form
+  if (vetName || vetPractice || vetPhone || vetEmail) {
+    await supabase
+      .from('owners')
+      .update({
+        ...(vetName ? { vet_name: vetName } : {}),
+        ...(vetPractice ? { vet_practice_name: vetPractice } : {}),
+        ...(vetPhone ? { vet_phone: vetPhone } : {}),
+        ...(vetEmail ? { vet_email: vetEmail } : {}),
+      })
+      .eq('id', ownerId)
   }
 
   return NextResponse.json({ success: true, results })

@@ -22,7 +22,7 @@ export async function GET(
   const [ownerResult, horsesResult] = await Promise.all([
     supabaseAdmin
       .from('owners')
-      .select('id, full_name, phone, email, address, practitioner_id')
+      .select('id, full_name, phone, email, address, practitioner_id, vet_name, vet_practice_name, vet_phone, vet_email')
       .eq('id', ownerId)
       .single(),
     supabaseAdmin

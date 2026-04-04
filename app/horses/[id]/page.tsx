@@ -2410,6 +2410,7 @@ export default function HorseDetailPage() {
             <VetAuthSection
               horseId={horseId as string}
               horseName={horse?.name || ''}
+              ownerId={horse?.owner_id || undefined}
               onAuthStatusChange={setHasValidVetAuth}
             />
 

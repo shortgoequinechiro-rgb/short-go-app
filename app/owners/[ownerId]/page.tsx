@@ -27,6 +27,11 @@ type Owner = {
   phone: string | null
   email: string | null
   address: string | null
+  vet_name: string | null
+  vet_practice_name: string | null
+  vet_phone: string | null
+  vet_email: string | null
+  vet_license_number: string | null
 }
 
 type Animal = {
@@ -160,6 +165,15 @@ export default function OwnerPage() {
   const [editAddress, setEditAddress] = useState('')
   const [savingOwner, setSavingOwner] = useState(false)
 
+  // Edit vet info
+  const [editingVet, setEditingVet] = useState(false)
+  const [vetName, setVetName] = useState('')
+  const [vetPractice, setVetPractice] = useState('')
+  const [vetPhone, setVetPhone] = useState('')
+  const [vetEmail, setVetEmail] = useState('')
+  const [vetLicense, setVetLicense] = useState('')
+  const [savingVet, setSavingVet] = useState(false)
+
   // Sending state
   const [sendingIntake, setSendingIntake] = useState(false)
   const [sendingIntakeSms, setSendingIntakeSms] = useState(false)
@@ -198,7 +212,7 @@ export default function OwnerPage() {
       // Owner
       const { data: ownerData, error: ownerErr } = await supabase
         .from('owners')
-        .select('id, full_name, phone, email, address')
+        .select('id, full_name, phone, email, address, vet_name, vet_practice_name, vet_phone, vet_email, vet_license_number')
         .eq('id', ownerId)
         .single()
 
@@ -220,6 +234,12 @@ export default function OwnerPage() {
         }
       } else {
         setOwner(ownerData as Owner)
+        // Populate vet state from owner data
+        if (ownerData.vet_name) setVetName(ownerData.vet_name)
+        if (ownerData.vet_practice_name) setVetPractice(ownerData.vet_practice_name)
+        if (ownerData.vet_phone) setVetPhone(ownerData.vet_phone)
+        if (ownerData.vet_email) setVetEmail(ownerData.vet_email)
+        if (ownerData.vet_license_number) setVetLicense(ownerData.vet_license_number)
       }
 
       // Animals
@@ -584,6 +604,28 @@ export default function OwnerPage() {
     }
   }
 
+  async function saveVetInfo() {
+    if (!owner) return
+    setSavingVet(true)
+    const { error } = await supabase
+      .from('owners')
+      .update({
+        vet_name: vetName.trim() || null,
+        vet_practice_name: vetPractice.trim() || null,
+        vet_phone: vetPhone.trim() || null,
+        vet_email: vetEmail.trim() || null,
+        vet_license_number: vetLicense.trim() || null,
+      })
+      .eq('id', owner.id)
+    if (!error) {
+      setEditingVet(false)
+      setMessage('Vet info saved!')
+    } else {
+      setMessage('Failed to save vet info.')
+    }
+    setSavingVet(false)
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (checkingAuth) return null
@@ -878,6 +920,68 @@ export default function OwnerPage() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* ── Default Veterinarian ── */}
+            <div className="rounded-3xl bg-white p-5 shadow-sm md:p-6">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
+                  <span className="text-blue-600">🩺</span> Default Veterinarian
+                </h3>
+                <button
+                  onClick={() => setEditingVet(!editingVet)}
+                  className="text-xs text-slate-500 hover:text-slate-700 transition"
+                >
+                  {editingVet ? 'Cancel' : (owner?.vet_name ? 'Edit' : '+ Add')}
+                </button>
+              </div>
+              {editingVet ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-slate-500">Vet Name</label>
+                      <input value={vetName} onChange={e => setVetName(e.target.value)} placeholder="Dr. Jane Smith, DVM"
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-500">License #</label>
+                      <input value={vetLicense} onChange={e => setVetLicense(e.target.value)} placeholder="TX-12345"
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-500">Practice</label>
+                      <input value={vetPractice} onChange={e => setVetPractice(e.target.value)} placeholder="Hill Country Vet"
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-500">Phone</label>
+                      <input value={vetPhone} onChange={e => setVetPhone(e.target.value)} placeholder="(512) 555-0123"
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="text-xs text-slate-500">Email</label>
+                      <input value={vetEmail} onChange={e => setVetEmail(e.target.value)} placeholder="vet@clinic.com"
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                    </div>
+                  </div>
+                  <button onClick={saveVetInfo} disabled={savingVet}
+                    className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40">
+                    {savingVet ? 'Saving...' : 'Save Vet Info'}
+                  </button>
+                </div>
+              ) : owner?.vet_name ? (
+                <div className="text-sm space-y-1">
+                  <p className="font-medium text-slate-800">{owner.vet_name}</p>
+                  {owner.vet_practice_name && <p className="text-slate-600">{owner.vet_practice_name}</p>}
+                  {owner.vet_license_number && <p className="text-slate-500">License: {owner.vet_license_number}</p>}
+                  <div className="flex gap-4 text-slate-500">
+                    {owner.vet_phone && <span>{owner.vet_phone}</span>}
+                    {owner.vet_email && <span>{owner.vet_email}</span>}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400">No veterinarian on file. Click &quot;+ Add&quot; to add one.</p>
+              )}
             </div>
 
             {/* ── Animals ── */}

@@ -34,6 +34,10 @@ type IntakeFormFull = {
   medications_supplements: string | null
   use_of_animal: string | null
   previous_chiro_care: boolean | null
+  vet_name: string | null
+  vet_practice_name: string | null
+  vet_phone: string | null
+  vet_email: string | null
   owners: {
     full_name: string
     phone: string | null
@@ -240,6 +244,19 @@ export default function IntakeFormViewPage() {
             <Row label="Medications / Supplements" value={form.medications_supplements || '—'} block />
             <Row label="Use / Job of Animal" value={form.use_of_animal || '—'} block />
           </Section>
+
+          {/* Vet Info */}
+          {(form.vet_name || form.vet_practice_name || form.vet_phone || form.vet_email) && (
+            <div className="mb-6 rounded-3xl bg-white p-8 shadow-md">
+              <h2 className="text-base font-bold text-slate-900 mb-4">Veterinarian Information</h2>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                {form.vet_name && <div><span className="text-slate-500">Vet Name:</span> <span className="font-medium text-slate-800">{form.vet_name}</span></div>}
+                {form.vet_practice_name && <div><span className="text-slate-500">Practice:</span> <span className="font-medium text-slate-800">{form.vet_practice_name}</span></div>}
+                {form.vet_phone && <div><span className="text-slate-500">Phone:</span> <span className="font-medium text-slate-800">{form.vet_phone}</span></div>}
+                {form.vet_email && <div><span className="text-slate-500">Email:</span> <span className="font-medium text-slate-800">{form.vet_email}</span></div>}
+              </div>
+            </div>
+          )}
 
           {/* Consent & Signature */}
           <Section title="Informed Consent">

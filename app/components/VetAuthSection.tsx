@@ -24,12 +24,13 @@ type VetAuth = {
 type Props = {
   horseId: string
   horseName: string
+  ownerId?: string
   onAuthStatusChange?: (hasValidAuth: boolean) => void
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function VetAuthSection({ horseId, horseName, onAuthStatusChange }: Props) {
+export default function VetAuthSection({ horseId, horseName, ownerId, onAuthStatusChange }: Props) {
   const [authorizations, setAuthorizations] = useState<VetAuth[]>([])
   const [hasValidAuth, setHasValidAuth] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -76,6 +77,22 @@ export default function VetAuthSection({ horseId, horseName, onAuthStatusChange 
   }
 
   useEffect(() => { loadAuths() }, [horseId])
+
+  // Fetch owner's default vet info as fallback for form pre-fill
+  const [ownerVet, setOwnerVet] = useState<{vet_name: string|null, vet_practice_name: string|null, vet_phone: string|null, vet_email: string|null, vet_license_number: string|null}|null>(null)
+
+  useEffect(() => {
+    if (!ownerId) return
+    async function loadOwnerVet() {
+      const { data } = await supabase
+        .from('owners')
+        .select('vet_name, vet_practice_name, vet_phone, vet_email, vet_license_number')
+        .eq('id', ownerId)
+        .single()
+      if (data) setOwnerVet(data)
+    }
+    loadOwnerVet()
+  }, [ownerId])
 
   async function handleManualSave() {
     if (!vetName.trim()) { setMessage('Vet name is required.'); return }
@@ -236,6 +253,12 @@ export default function VetAuthSection({ horseId, horseName, onAuthStatusChange 
                 setVetPractice(lastAuth.vet_practice_name || '')
                 setVetPhone(lastAuth.vet_phone || '')
                 setVetEmail(lastAuth.vet_email || '')
+              } else if (ownerVet) {
+                setVetName(ownerVet.vet_name || '')
+                setVetLicense(ownerVet.vet_license_number || '')
+                setVetPractice(ownerVet.vet_practice_name || '')
+                setVetPhone(ownerVet.vet_phone || '')
+                setVetEmail(ownerVet.vet_email || '')
               }
             }
           }}
@@ -256,6 +279,10 @@ export default function VetAuthSection({ horseId, horseName, onAuthStatusChange 
                 setReqVetName(lastAuth.vet_name || '')
                 setReqVetEmail(lastAuth.vet_email || '')
                 setReqVetPhone(lastAuth.vet_phone || '')
+              } else if (ownerVet) {
+                setReqVetName(ownerVet.vet_name || '')
+                setReqVetEmail(ownerVet.vet_email || '')
+                setReqVetPhone(ownerVet.vet_phone || '')
               }
             }
           }}
